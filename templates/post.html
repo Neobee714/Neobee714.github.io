@@ -173,7 +173,8 @@
     (function() {
       function getGiscusTheme() {
         var theme = document.documentElement.getAttribute('data-theme') || 'lofi';
-        return theme === 'business' ? 'dark_dimmed' : 'light';
+        // map site themes to giscus themes
+        return theme === 'business' ? 'dark' : 'light';
       }
       function loadGiscus() {
         var s = document.createElement('script');
