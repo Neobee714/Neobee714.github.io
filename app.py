@@ -1,8 +1,9 @@
 """
 Neobee's Blog - Flask 主入口文件
 """
+import os
 import traceback
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, make_response, url_for, render_template_string
 from config import Config
 from services.notion_service import get_posts, get_post_content, get_categories
 try:
@@ -105,5 +106,88 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 
+@app.route('/sitemap.xml', methods=['GET'])
+def sitemap():
+    """动态生成 sitemap.xml"""
+    posts = []
+    try:
+        posts = get_posts() or []
+    except Exception:
+        posts = []
+
+    # build XML
+    host_index = url_for('index', _external=True)
+    host_about = url_for('about', _external=True)
+    url_entries = []
+
+    def fmt_date(d):
+        if not d:
+            return ''
+        return (d[:10] if isinstance(d, str) else str(d))
+
+    # Home
+    url_entries.append({
+        'loc': host_index,
+        'lastmod': '',
+        'changefreq': 'daily',
+        'priority': '1.0'
+    })
+    # About
+    url_entries.append({
+        'loc': host_about,
+        'lastmod': '',
+        'changefreq': 'monthly',
+        'priority': '0.5'
+    })
+    # Posts
+    for p in posts:
+        slug = p.get('slug') or ''
+        if not slug:
+            continue
+        loc = url_for('post', slug=slug, _external=True)
+        lastmod = fmt_date(p.get('date'))
+        url_entries.append({
+            'loc': loc,
+            'lastmod': lastmod,
+            'changefreq': 'weekly',
+            'priority': '0.8'
+        })
+
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for u in url_entries:
+        xml_parts.append('  <url>')
+        xml_parts.append(f'    <loc>{u["loc"]}</loc>')
+        if u.get('lastmod'):
+            xml_parts.append(f'    <lastmod>{u["lastmod"]}</lastmod>')
+        xml_parts.append(f'    <changefreq>{u["changefreq"]}</changefreq>')
+        xml_parts.append(f'    <priority>{u["priority"]}</priority>')
+        xml_parts.append('  </url>')
+    xml_parts.append('</urlset>')
+    xml = '\n'.join(xml_parts)
+    response = make_response(xml)
+    response.headers['Content-Type'] = 'application/xml'
+    return response
+
+
+@app.route('/robots.txt')
+def robots():
+    """动态生成 robots.txt"""
+    sitemap_url = url_for('sitemap', _external=True)
+    lines = [
+        "User-agent: *",
+        "Disallow:",
+        "",
+        f"Sitemap: {sitemap_url}"
+    ]
+    text = "\n".join(lines)
+    resp = make_response(text)
+    resp.headers['Content-Type'] = 'text/plain'
+    return resp
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # 获取 Railway 分配的端口，如果没有则默认 5000
+    port = int(os.environ.get("PORT", 5000))
+    # 必须 host='0.0.0.0'
+    app.run(host='0.0.0.0', port=port)
