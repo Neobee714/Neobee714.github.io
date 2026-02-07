@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}About — Neobee{% endblock %}
+
+{% block content %}
+  <section class="min-h-[60vh] flex items-center justify-center px-4">
+    <div class="max-w-md w-full text-center">
+      <img src="{{ url_for('static', filename='avatar.png') }}" alt="avatar" class="mx-auto rounded-full w-32 h-32 object-cover mb-6">
+      <h1 class="text-2xl font-bold mb-2">Neobee</h1>
+      <p class="text-sm text-base-content/60 mb-4">Student / Red Team </p>
+      <p class="text-base-content/80 mb-6">Focusing on Web Security and Penetration Testing.</p>
+      <div class="flex items-center justify-center gap-4">
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-base-content/80 hover:text-primary transition-colors" aria-label="GitHub">
+          <i class="fa-brands fa-github fa-lg"></i>
+        </a>
+        <a href="mailto:neobee@neobee.top" class="text-base-content/80 hover:text-primary transition-colors" aria-label="Email">
+          <i class="fa-solid fa-envelope fa-lg"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

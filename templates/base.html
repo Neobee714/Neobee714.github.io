@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="lofi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Neobee's Blog{% endblock %}</title>
+  <!-- Google Fonts: Inter (正文) + JetBrains Mono (代码) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- Tailwind CSS + DaisyUI (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    body { font-family: var(--font-sans); }
+    .font-mono, code, pre { font-family: var(--font-mono); }
+    /* Force code blocks to wrap instead of showing horizontal scroll */
+    pre, code {
+      white-space: pre-wrap !important;
+      word-break: break-all !important;
+      overflow-wrap: break-word !important;
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-base-100">
+  <div class="drawer">
+    <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content">
+      <!-- Navbar: 精简为汉堡 + 标题 -->
+      <header class="navbar fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 bg-base-100/70 backdrop-blur-xl border-b border-base-content/5 shadow-sm">
+        <div class="navbar max-w-6xl mx-auto">
+          <div class="navbar-start">
+            <label for="drawer-toggle" class="btn btn-ghost btn-square btn-sm mr-2" aria-label="打开菜单">
+              <i class="fa-solid fa-bars"></i>
+            </label>
+            <a href="/" class="text-xl font-semibold tracking-tight text-base-content hover:opacity-80 transition-opacity">Neobee</a>
+          </div>
+          <div class="navbar-end gap-2">
+            <button type="button" id="theme-toggle" class="btn btn-ghost btn-square btn-sm" aria-label="切换日/夜模式">
+              <i class="fa-solid fa-sun text-lg theme-icon-light"></i>
+              <i class="fa-solid fa-moon text-lg theme-icon-dark hidden"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="pt-16">
+        {% block content %}{% endblock %}
+      </main>
+      <!-- Footer: 极简低调 -->
+      <footer class="mt-8">
+        <div class="max-w-6xl mx-auto text-center py-6 text-sm text-base-content/60 border-t border-base-content/5">
+          © 2026 Neobee. All rights reserved.
+        </div>
+      </footer>
+    </div>
+    <div class="drawer-side z-[999]">
+      <label for="drawer-toggle" class="drawer-overlay"></label>
+      <aside class="w-64 h-full p-4 bg-base-300">
+        <!-- 用户资料卡片 -->
+        <div class="flex flex-col items-center text-center mb-4">
+          <img src="{{ url_for('static', filename='avatar.png') }}" onerror="this.src='https://ui-avatars.com/api/?name=Neobee&background=random'" alt="avatar" class="w-24 h-24 rounded-full ring ring-primary mb-3 object-cover">
+          <div class="font-bold text-lg">Neobee</div>
+          <div class="text-sm text-base-content/60">Hacker / CTF Player</div>
+        </div>
+        <div class="border-b border-base-content/10 mb-4"></div>
+
+        <div class="mb-4">
+          <a href="/" class="flex items-center gap-3 text-lg font-semibold px-2 py-2 rounded-lg hover:bg-base-300">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+          </a>
+        </div>
+
+        <nav class="menu bg-base-200 text-base-content min-h-full p-2 rounded-lg">
+          <p class="font-semibold text-sm px-2 text-base-content/60 mb-2">CATEGORIES</p>
+          <ul class="p-0">
+            {% for cat in (categories or []) %}
+            <li>
+              <a href="{{ url_for('category', name=cat) }}" class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-300">
+                {% if cat == 'HTB' %}
+                <i class="fa-solid fa-skull"></i>
+                {% elif cat == 'Methodology' or cat == '方法论' %}
+                <i class="fa-solid fa-book-open"></i>
+                {% else %}
+                <i class="fa-solid fa-tags"></i>
+                {% endif %}
+                <span>{{ cat }}</span>
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </nav>
+
+        <div class="mt-6">
+          <a href="/about" class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-300">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>About</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- 日/夜模式切换 + localStorage 记忆 -->
+  <script>
+    (function() {
+      const THEME_KEY = 'neobee-theme';
+      const LIGHT_THEME = 'lofi';
+      const DARK_THEME = 'business';
+
+      function getStoredTheme() {
+        return localStorage.getItem(THEME_KEY) || LIGHT_THEME;
+      }
+
+      function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem(THEME_KEY, theme);
+        const isDark = theme === DARK_THEME;
+        document.querySelectorAll('.theme-icon-light').forEach(el => el.classList.toggle('hidden', isDark));
+        document.querySelectorAll('.theme-icon-dark').forEach(el => el.classList.toggle('hidden', !isDark));
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        setTheme(getStoredTheme());
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+          const current = document.documentElement.getAttribute('data-theme');
+          setTheme(current === DARK_THEME ? LIGHT_THEME : DARK_THEME);
+        });
+      });
+    })();
+  </script>
+  <!-- medium-zoom: 点击图片放大 -->
+  <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        var imgs = document.querySelectorAll('.post-content img');
+        if (imgs && imgs.length) {
+          mediumZoom(imgs, { background: '#000000', margin: 24 });
+        }
+      } catch (e) {
+        // fail silently
+        console.error(e);
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

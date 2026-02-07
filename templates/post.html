@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title | default('文章') }} — Neobee's Blog{% endblock %}
+
+{% block head %}
+  <!-- Prism.js 语法高亮：Dracula 主题，符合黑客审美 -->
+  <link href="https://cdn.jsdelivr.net/gh/PrismJS/prism-themes@master/themes/prism-dracula.min.css" rel="stylesheet">
+  <style>
+    /* 所有代码块强制使用 JetBrains Mono */
+    pre[class*="language-"],
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+      font-size: 0.875rem;
+    }
+    .post-content pre {
+      margin: 1rem 0;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .post-content :first-child { margin-top: 0; }
+    /* TOC styles are applied via utility classes to respect theme variables */
+  </style>
+{% endblock %}
+
+{% block content %}
+  <article class="px-4 md:px-6 py-8 md:py-12">
+    <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 gap-8">
+      <div class="lg:col-span-3">
+        <header class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">{{ post.title | default('无标题') }}</h1>
+        {% if post.date %}
+        <p class="text-base-content/50 text-sm mt-2">{{ post.date[:10] }}</p>
+        {% endif %}
+        {% if post.tags %}
+        <div class="flex flex-wrap gap-2 mt-3">
+          {% for tag in post.tags %}
+          <span class="badge badge-outline badge-sm">{{ tag }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </header>
+
+        <div class="post-content prose prose-base max-w-none text-base-content/90 leading-relaxed"
+             style="font-family: var(--font-sans, 'Inter', sans-serif);">
+          {% if post.content_html %}
+          {{ post.content_html | safe }}
+          {% else %}
+          <p class="text-base-content/60">暂无正文。</p>
+          {% endif %}
+        </div>
+
+        <!-- Giscus 评论：需在 .env 中配置 GISCUS_REPO / GISCUS_REPO_ID / GISCUS_CATEGORY / GISCUS_CATEGORY_ID -->
+        <div class="giscus mt-12 pt-8 border-t border-base-content/10" id="giscus-container"></div>
+
+        <footer class="mt-12 pt-6 border-t border-base-content/10">
+          <a href="{{ url_for('index') }}" class="link link-hover text-sm text-base-content/70">← 返回首页</a>
+        </footer>
+      </div>
+
+      <!-- Table of Contents (右侧) -->
+      <aside class="hidden lg:block lg:col-span-1">
+        <div class="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto p-4 bg-base-300 rounded-md">
+          <h4 class="font-bold text-lg mb-4 text-base-content">目录</h4>
+          <ul id="toc-list" class="space-y-2"></ul>
+        </div>
+      </aside>
+
+    </div>
+  </article>
+
+  <!-- Prism.js 核心 + 常用语言 -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+      }
+    });
+  </script>
+
+  <!-- TOC generation + Scroll Spy -->
+  <script>
+    (function() {
+      function slugify(s) {
+        return s.trim().toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w\-]+/g, '');
+      }
+
+      function buildTOC() {
+        var content = document.querySelector('.post-content');
+        var container = document.getElementById('toc-list');
+        if (!content || !container) return;
+        var headings = Array.from(content.querySelectorAll('h1,h2,h3'));
+        if (!headings.length) {
+          container.innerHTML = '<li class="text-sm text-base-content/60">本文暂无目录。</li>';
+          return;
+        }
+        container.innerHTML = '';
+        var items = [];
+        headings.forEach(function(h, idx) {
+          var level = parseInt(h.tagName.substring(1), 10);
+          var id = h.id || slugify(h.textContent || ('heading-' + idx));
+          // ensure unique id
+          var base = id, i = 1;
+          while (document.getElementById(id)) { id = base + '-' + (i++); }
+          h.id = id;
+
+          var li = document.createElement('li');
+          var a = document.createElement('a');
+          a.href = '#' + id;
+          a.textContent = h.textContent.trim();
+          // default classes: block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all
+          a.className = 'block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all';
+          // indentation based on level
+          if (level === 2) a.classList.add('pl-4');
+          if (level === 3) a.classList.add('pl-8');
+
+          // store reference for scrollspy
+          items.push({id: id, node: a, heading: h});
+
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            var target = document.getElementById(id);
+            if (target) {
+              var top = target.getBoundingClientRect().top + window.pageYOffset - 96;
+              window.scrollTo({top: top, behavior: 'smooth'});
+            }
+          });
+
+          li.appendChild(a);
+          container.appendChild(li);
+        });
+
+        // Scroll spy
+        function onScroll() {
+          var fromTop = window.scrollY + 110;
+          var current = null;
+          for (var i = 0; i < items.length; i++) {
+            var rect = items[i].heading.getBoundingClientRect();
+            var offset = items[i].heading.offsetTop;
+            if (items[i].heading.offsetTop <= fromTop) current = items[i];
+            else break;
+          }
+          // clear all
+          items.forEach(function(it) {
+            it.node.classList.remove('text-primary', 'font-bold', 'border-l-4', 'pl-3');
+            // ensure base left padding remains for level 2/3
+            // remove pl-3 if present, restore pl-4/8 if needed
+          });
+          if (current) {
+            current.node.classList.add('text-primary', 'font-bold', 'border-l-4', 'pl-3');
+          }
+        }
+
+        window.addEventListener('scroll', onScroll, {passive: true});
+        window.addEventListener('resize', onScroll);
+        // initial highlight
+        setTimeout(onScroll, 200);
+      }
+
+      document.addEventListener('DOMContentLoaded', buildTOC);
+    })();
+  </script>
+
+  <!-- Giscus：根据当前页主题动态设置 data-theme，并在切换日/夜时更新 -->
+  {% if config.GISCUS_REPO and config.GISCUS_REPO_ID %}
+  <script>
+    (function() {
+      function getGiscusTheme() {
+        var theme = document.documentElement.getAttribute('data-theme') || 'lofi';
+        return theme === 'business' ? 'dark_dimmed' : 'light';
+      }
+      function loadGiscus() {
+        var s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', '{{ config.GISCUS_REPO }}');
+        s.setAttribute('data-repo-id', '{{ config.GISCUS_REPO_ID }}');
+        s.setAttribute('data-category', '{{ config.GISCUS_CATEGORY }}');
+        s.setAttribute('data-category-id', '{{ config.GISCUS_CATEGORY_ID }}');
+        s.setAttribute('data-mapping', 'pathname');
+        s.setAttribute('data-strict', '0');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '0');
+        s.setAttribute('data-input-position', 'bottom');
+        s.setAttribute('data-theme', getGiscusTheme());
+        s.setAttribute('data-lang', 'zh-CN');
+        s.crossOrigin = 'anonymous';
+        s.async = true;
+        document.body.appendChild(s);
+      }
+      function updateGiscusTheme(theme) {
+        var iframe = document.querySelector('iframe.giscus-frame');
+        if (!iframe || !iframe.contentWindow) return;
+        iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: theme } } }, 'https://giscus.app');
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        loadGiscus();
+        var observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(m) {
+            if (m.attributeName === 'data-theme') {
+              updateGiscusTheme(getGiscusTheme());
+            }
+          });
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

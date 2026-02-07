@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}404 — Not Found{% endblock %}
+
+{% block head %}
+<style>
+  .glitch {
+    position: relative;
+    color: var(--tw-prose-headings);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: hidden;
+    clip: rect(0, 9999px, 0, 0);
+  }
+  .glitch::before {
+    animation: glitchTop 2s infinite linear;
+    color: rgba(255,0,50,0.8);
+    z-index: -1;
+  }
+  .glitch::after {
+    animation: glitchBottom 2.5s infinite linear;
+    color: rgba(0,150,255,0.8);
+    z-index: -2;
+  }
+
+  @keyframes glitchTop {
+    0% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+    10% { clip: rect(0,9999px,20px,0); transform: translate(-3px,-2px); }
+    20% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+    30% { clip: rect(10px,9999px,40px,0); transform: translate(-2px,1px); }
+    40% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+    50% { clip: rect(0,9999px,30px,0); transform: translate(-4px,-1px); }
+    100% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+  }
+
+  @keyframes glitchBottom {
+    0% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+    15% { clip: rect(20px,9999px,60px,0); transform: translate(4px,2px); }
+    35% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+    60% { clip: rect(10px,9999px,50px,0); transform: translate(3px,-2px); }
+    100% { clip: rect(0,9999px,0,0); transform: translate(0,0); }
+  }
+
+  .terminal {
+    font-family: var(--font-mono);
+    background: transparent;
+    color: var(--tw-prose-body);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <section class="min-h-[70vh] flex items-center justify-center px-4">
+    <div class="max-w-4xl w-full text-center bg-base-200 p-12 rounded-xl shadow-xl">
+      <div class="mb-6">
+        <div class="glitch text-9xl font-black" data-text="404">404</div>
+      </div>
+      <div class="mb-4 terminal text-lg">
+        <div class="mb-2">SYSTEM FAILURE: TARGET NOT FOUND</div>
+        <div class="text-base-content/60">[!] ACCESS DENIED</div>
+      </div>
+      <div class="mt-6">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+          <span class="font-mono mr-2">&gt;_</span> 返回首页
+        </a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
