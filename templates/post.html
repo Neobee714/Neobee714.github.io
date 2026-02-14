@@ -42,10 +42,38 @@
 
         <div class="post-content prose prose-base max-w-none text-base-content/90 leading-relaxed"
              style="font-family: var(--font-sans, 'Inter', sans-serif);">
+
+          <!-- 简介引言区 (Summary Quote) - 无条件显示 -->
+          {% if post.summary %}
+          <blockquote class="text-base-content/70 italic mb-8 border-l-4 border-primary pl-4 bg-base-200 py-3 rounded-r-lg">
+            {{ post.summary }}
+          </blockquote>
+          {% endif %}
+
+          <!-- 内容渲染逻辑：根据状态判断 (Content Rendering Logic) -->
+          {% if post.status == '已锁住' %}
+          <!-- 已锁住状态：显示终端报错风格警告 (Locked Status Warning) -->
+          <div class="bg-base-300 rounded-lg p-6 my-8 border-l-4 border-error">
+            <div class="flex items-center gap-3 mb-4">
+              <i class="fa-solid fa-lock text-error text-2xl"></i>
+              <h3 class="text-xl font-bold font-mono text-error">ACCESS DENIED</h3>
+            </div>
+            <div class="font-mono text-sm text-error space-y-2">
+              <p>[ ERROR ] This machine is still active on Hack The Box.</p>
+              <p>[ INFO ] Full writeup will be published after retirement.</p>
+              <p class="text-base-content/60 mt-4">
+                <i class="fa-solid fa-info-circle"></i>
+                该靶机尚未退役，完整 Writeup 将在退役后发布。
+              </p>
+            </div>
+          </div>
+          {% else %}
+          <!-- 正常状态：渲染完整内容 (Normal Status: Render Full Content) -->
           {% if post.content_html %}
           {{ post.content_html | safe }}
           {% else %}
           <p class="text-base-content/60">暂无正文。</p>
+          {% endif %}
           {% endif %}
         </div>
 

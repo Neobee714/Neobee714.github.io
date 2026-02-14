@@ -37,7 +37,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 # 缓存配置：开发环境使用 SimpleCache，生产可改为 FileSystemCache
 if getattr(Config, 'DEBUG', True):
-    cache_config = {
+    cache_config = {    
         'CACHE_TYPE': 'SimpleCache',
         'CACHE_DEFAULT_TIMEOUT': 300
     }

@@ -14,13 +14,18 @@ def get_notion_client():
 
 def get_posts(category=None):
     """
-    从 Notion Database 获取状态为「已完成」的文章（中文列名）。
-    返回: list 每项为 dict，键：title, slug, date, tags, os, difficulty, user, root。
+    从 Notion Database 获取状态为「已完成」或「已锁住」的文章（中文列名）。
+    返回: list 每项为 dict，键：title, slug, date, tags, os, difficulty, user, root, status。
     """
     notion = get_notion_client()
     try:
-        # 构建 filter：始终筛选状态为 已完成，若传入 category 则追加类型筛选
-        base_filter = {"property": "状态", "status": {"equals": "已完成"}}
+        # 构建 filter：筛选状态为 已完成 或 已锁住，若传入 category 则追加类型筛选
+        base_filter = {
+            "or": [
+                {"property": "状态", "status": {"equals": "已完成"}},
+                {"property": "状态", "status": {"equals": "已锁住"}}
+            ]
+        }
         if category:
             query_filter = {"and": [base_filter, {"property": "类型", "select": {"equals": category}}]}
         else:
@@ -81,6 +86,11 @@ def get_posts(category=None):
                 icon_val = (icon_prop.get('external') or {}).get('url') or ''
             elif icon_type == 'file':
                 icon_val = (icon_prop.get('file') or {}).get('url') or ''
+            # 状态: properties['状态'] -> status.name
+            status_prop = properties.get('状态') or {}
+            status = ''
+            if (status_prop.get('type') or '') == 'status' and status_prop.get('status'):
+                status = (status_prop.get('status') or {}).get('name', '') or ''
             posts.append({
                 'title': title,
                 'slug': slug,
@@ -95,6 +105,7 @@ def get_posts(category=None):
                 'root': root,
                 'icon_type': icon_type,
                 'icon_url_or_emoji': icon_val,
+                'status': status,
             })
         return posts
     except Exception as e:
@@ -344,6 +355,12 @@ def get_post_content(slug):
             return p['select'].get('name', '') or ''
         return ''
 
+    def get_status():
+        p = properties.get('状态', {})
+        if (p.get('type') or '') == 'status' and p.get('status'):
+            return p['status'].get('name', '') or ''
+        return ''
+
     renderer = NotionRenderer(notion)
     blocks = renderer._fetch_page_blocks(page_id)
     content_html = renderer.render_blocks(blocks)
@@ -360,5 +377,6 @@ def get_post_content(slug):
         'difficulty': get_difficulty(),
         'user': get_user(),
         'root': get_root(),
+        'status': get_status(),
         'content_html': content_html,
     }

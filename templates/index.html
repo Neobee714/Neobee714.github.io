@@ -52,124 +52,116 @@
           {% endfor %}
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="space-y-6">
         {% for post in posts %}
         <a href="{{ url_for('post', slug=post.slug) if post.slug else '#' }}" class="group block post-card">
-          {% if post.category == 'HTB' %}
+          <!-- 统一的左右分栏卡片布局 (Unified Card Layout) -->
           <article class="card md:card-side bg-base-200 shadow-xl rounded-box overflow-hidden hover:shadow-2xl transition-all">
-            <div class="card-body md:w-2/3 gap-4">
-              <h3 class="card-title text-2xl">{{ post.title or '无标题' }}</h3>
-              {% if post.summary %}
-              <p class="text-base-content/60">{{ post.summary }}</p>
-              {% endif %}
-              <div class="flex flex-wrap gap-2 mt-2">
-                {% for tag in (post.tags or []) %}
-                <span class="badge badge-lg badge-outline">{{ tag }}</span>
-                {% endfor %}
-                {% if not (post.tags or []) %}
-                <span class="text-base-content/40 text-sm">—</span>
+            <!-- 左侧内容区 (Left Content Area) -->
+            <div class="card-body md:w-2/3 gap-3">
+              <div class="flex items-center gap-3 flex-wrap">
+                <h3 class="card-title text-2xl text-base-content">{{ post.title or '无标题' }}</h3>
+                <!-- 已锁住状态徽章 (Locked Badge) -->
+                {% if post.status == '已锁住' %}
+                <span class="badge badge-error gap-1">
+                  <i class="fa-solid fa-lock text-xs"></i>
+                  Locked
+                </span>
                 {% endif %}
               </div>
+
+              <!-- 简介 (Summary) - 限制两行显示 -->
+              <p class="text-base-content/70 line-clamp-2 leading-relaxed">
+                {{ post.summary or '暂无简介' }}
+              </p>
+
+              <!-- 标签 (Tags) -->
+              <div class="flex flex-wrap gap-2 mt-2">
+                {% for tag in (post.tags or []) %}
+                <span class="badge badge-outline text-base-content/80">{{ tag }}</span>
+                {% endfor %}
+              </div>
+
+              <!-- 底部元数据：日期 + 类型 (Date & Type) -->
               <div class="mt-auto flex items-center gap-4 text-sm text-base-content/60">
-                <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i><span>{{ post.date[:10] if post.date else '' }}</span></span>
-                <span class="flex items-center gap-2"><i class="fa-regular fa-folder"></i><span>{{ post.type | default('Uncategorized') }}</span></span>
+                <span class="flex items-center gap-2">
+                  <i class="fa-regular fa-calendar"></i>
+                  <span>{{ post.date[:10] if post.date else '未知日期' }}</span>
+                </span>
+                <span class="flex items-center gap-2">
+                  <i class="fa-regular fa-folder"></i>
+                  <span>{{ post.type | default('Uncategorized') }}</span>
+                </span>
               </div>
             </div>
+
+            <!-- 右侧侧边栏 (Right Sidebar) -->
             <figure class="md:w-1/3 bg-base-300 flex flex-col items-center justify-center p-6 gap-4 border-l border-base-content/10">
-              <div class="w-24 h-24 rounded-full overflow-hidden ring ring-primary ring-offset-base-100 ring-offset-2 flex items-center justify-center bg-base-200 text-2xl">
+              <!-- 圆形图片/图标 (Circular Avatar) -->
+              <div class="w-24 h-24 rounded-full aspect-square overflow-hidden ring ring-primary ring-offset-base-100 ring-offset-2 flex items-center justify-center bg-base-200">
                 {% if post.icon_type in ['external', 'file'] and post.icon_url_or_emoji %}
-                <img src="{{ post.icon_url_or_emoji }}" alt="icon" class="w-full h-full object-cover">
+                <img src="{{ post.icon_url_or_emoji }}" alt="{{ post.title }}" class="w-full h-full object-cover">
                 {% elif post.icon_type == 'emoji' and post.icon_url_or_emoji %}
                 <span class="text-4xl">{{ post.icon_url_or_emoji }}</span>
                 {% else %}
+                <!-- 默认图标：根据类型显示不同图标 (Default Icon by Type) -->
+                {% if post.category == 'HTB' %}
                 <i class="fa-solid fa-robot fa-2x text-base-content/60"></i>
+                {% elif post.category in ['Methodology', '方法论'] %}
+                <i class="fa-solid fa-book-open fa-2x text-base-content/60"></i>
+                {% else %}
+                <span class="text-3xl font-bold text-base-content/60">{{ post.title[0] if post.title else '?' }}</span>
+                {% endif %}
                 {% endif %}
               </div>
-              <ul class="text-sm text-base-content/80 space-y-2 mt-2">
-                <li class="flex items-center gap-2"><i class="fa-solid fa-desktop"></i><span>{{ post.os or 'Unknown' }}</span></li>
-                <li class="flex items-center gap-2">
+
+              <!-- 元数据列表 (Metadata List) -->
+              <ul class="text-sm text-base-content/80 space-y-2 w-full">
+                <!-- 如果有 OS 和 difficulty 字段则显示（HTB 类型） -->
+                {% if post.os or post.difficulty %}
+                <li class="flex items-center gap-2 justify-center">
+                  <i class="fa-solid fa-desktop"></i>
+                  <span>{{ post.os or 'Unknown' }}</span>
+                </li>
+                <li class="flex items-center gap-2 justify-center">
                   <i class="fa-solid fa-fire"></i>
                   {% if post.difficulty %}
-                  <span class="ml-1
-                    {% if post.difficulty == '简单' %}badge badge-success
-                    {% elif post.difficulty == '中等' %}badge badge-warning
-                    {% elif post.difficulty == '困难' %}badge badge-error
-                    {% else %}badge badge-ghost{% endif %}">{{ post.difficulty }}</span>
+                  <span class="badge badge-sm
+                    {% if post.difficulty == '简单' %}badge-success
+                    {% elif post.difficulty == '中等' %}badge-warning
+                    {% elif post.difficulty == '困难' %}badge-error
+                    {% else %}badge-ghost{% endif %}">{{ post.difficulty }}</span>
                   {% else %}
                   <span class="text-base-content/40">—</span>
                   {% endif %}
                 </li>
-                <li class="flex items-center gap-3">
+                <!-- User/Root 标志 (Flags) -->
+                {% if post.user is defined or post.root is defined %}
+                <li class="flex items-center gap-3 justify-center">
                   <span class="flex items-center gap-2">
                     {% if post.user %}
-                    <i class="fa-solid fa-user-check text-success" title="User"></i>
+                    <i class="fa-solid fa-user-check text-success" title="User Flag"></i>
                     {% else %}
-                    <i class="fa-solid fa-user text-base-content/40" title="User"></i>
+                    <i class="fa-solid fa-user text-base-content/40" title="User Flag"></i>
                     {% endif %}
                     {% if post.root %}
-                    <i class="fa-solid fa-skull text-error" title="Root"></i>
+                    <i class="fa-solid fa-skull text-error" title="Root Flag"></i>
                     {% else %}
-                    <i class="fa-solid fa-shield-halved text-base-content/40" title="Root"></i>
+                    <i class="fa-solid fa-shield-halved text-base-content/40" title="Root Flag"></i>
                     {% endif %}
                   </span>
                 </li>
+                {% endif %}
+                {% else %}
+                <!-- 其他类型文章：显示作者信息 (Author Info for Non-HTB) -->
+                <li class="flex items-center justify-center gap-2 text-sm font-mono text-base-content/70">
+                  <i class="fa-solid fa-terminal text-xs"></i>
+                  <span>作者: Neobee</span>
+                </li>
+                {% endif %}
               </ul>
             </figure>
           </article>
-          {% elif post.category in ['Methodology', '方法论'] %}
-          <!-- Methodology: 深色左右分栏卡片 -->
-          <article class="card md:card-side bg-base-200 shadow-xl rounded-box overflow-hidden hover:shadow-2xl transition-all">
-            <div class="card-body md:w-2/3 gap-4">
-              <div class="flex items-center gap-3 mb-2">
-                <i class="fa-solid fa-book-open text-info text-2xl" aria-hidden="true"></i>
-                <h3 class="card-title text-2xl">{{ post.title or '无标题' }}</h3>
-              </div>
-              <div class="text-base-content/60 text-sm leading-relaxed mb-4">
-                {{ post.summary or '暂无摘要' }}
-              </div>
-              <div class="mt-auto flex items-center justify-between">
-                <div class="text-sm text-base-content/60 flex items-center gap-4">
-                  <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i><span>{{ post.date[:10] if post.date else '' }}</span></span>
-                  <span class="flex items-center gap-2"><i class="fa-regular fa-folder"></i><span>{{ post.type | default('Uncategorized') }}</span></span>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  {% for tag in (post.tags or []) %}
-                  <span class="badge badge-sm badge-outline">{{ tag }}</span>
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-            <figure class="md:w-1/3 bg-base-300 flex items-center justify-center p-6 border-l border-base-content/10">
-              <i class="fa-solid fa-brain text-9xl opacity-10 text-base-content" aria-hidden="true"></i>
-            </figure>
-          </article>
-          {% else %}
-          <!-- Fallback for other types: 保持简洁卡片（左侧强调边框） -->
-          <article class="card bg-base-100 shadow-sm rounded-xl border-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-md relative overflow-hidden border-l-4 border-primary">
-            <div class="card-body p-5">
-              <div class="flex items-start justify-between gap-2 mb-2">
-                <div class="flex items-center gap-2 min-w-0 flex-1">
-                  <i class="fa-solid fa-book text-primary shrink-0" aria-hidden="true"></i>
-                  <h3 class="card-title text-lg font-semibold text-base-content group-hover:text-primary transition-colors truncate">{{ post.title or '无标题' }}</h3>
-                </div>
-              </div>
-              <div class="my-2 text-base-content/60 text-sm leading-relaxed">
-                {{ post.summary or '' }}
-              </div>
-              <div class="mt-auto pt-2 flex items-center justify-between">
-                <div class="text-sm text-base-content/60 flex items-center gap-4">
-                  <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i><span>{{ post.date[:10] if post.date else '' }}</span></span>
-                  <span class="flex items-center gap-2"><i class="fa-regular fa-folder"></i><span>{{ post.type | default('Uncategorized') }}</span></span>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  {% for tag in (post.tags or []) %}
-                  <span class="badge badge-sm badge-outline">{{ tag }}</span>
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-          </article>
-          {% endif %}
         </a>
         {% else %}
         <div class="col-span-full text-center py-12 text-base-content/60">暂无已完成文章。</div>
