@@ -31,3 +31,6 @@ class Config:
             raise ValueError("NOTION_TOKEN 环境变量未设置")
         if not Config.NOTION_DATABASE_ID:
             raise ValueError("NOTION_DATABASE_ID 环境变量未设置")
+        # 生产环境必须设置 SECRET_KEY
+        if not Config.DEBUG and Config.SECRET_KEY == 'dev-secret-key-change-in-production':
+            raise ValueError("生产环境必须设置 SECRET_KEY 环境变量")

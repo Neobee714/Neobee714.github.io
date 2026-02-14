@@ -2,8 +2,11 @@
 Notion API 服务 - 处理与 Notion 数据库的交互
 """
 import html
+import logging
 from notion_client import Client
 from config import Config
+
+logger = logging.getLogger(__name__)
 
 
 def get_notion_client():
@@ -19,6 +22,7 @@ def get_posts(category=None):
     """
     notion = get_notion_client()
     try:
+        logger.info(f"正在查询 Notion 数据库，分类: {category or '全部'}")
         # 构建 filter：筛选状态为 已完成 或 已锁住，若传入 category 则追加类型筛选
         base_filter = {
             "or": [
@@ -35,6 +39,8 @@ def get_posts(category=None):
             filter=query_filter,
             sorts=[{"property": "日期", "direction": "descending"}]
         )
+        results = response.get('results', [])
+        logger.info(f"查询到 {len(results)} 条记录")
         posts = []
         for page in response.get('results', []):
             properties = page.get('properties') or {}
@@ -98,7 +104,6 @@ def get_posts(category=None):
                 'tags': tags,
                 'summary': summary,
                 'category': category,
-                'type': category,
                 'os': os_name,
                 'difficulty': difficulty,
                 'user': user,
@@ -107,8 +112,10 @@ def get_posts(category=None):
                 'icon_url_or_emoji': icon_val,
                 'status': status,
             })
+        logger.info(f"成功解析 {len(posts)} 篇文章")
         return posts
     except Exception as e:
+        logger.error(f"获取 Notion 文章失败: {str(e)}", exc_info=True)
         raise Exception(f"获取 Notion 文章失败: {str(e)}")
 
 
@@ -284,10 +291,12 @@ def get_post_content(slug):
     先通过 slug 查到 Page ID，再拉取该页所有 Blocks 并渲染。
     返回: dict 含 title, slug, tags, date, summary, content_html；若未找到则返回 None。
     """
+    logger.info(f"正在查询文章详情: {slug}")
     notion = get_notion_client()
     Config.validate()
 
     # 通过 Slug 查询数据库（支持 rich_text 或 title 类型）
+    results = []
     for filter_slug in (
         {"property": "Slug", "rich_text": {"equals": slug}},
         {"property": "Slug", "title": {"equals": slug}},
@@ -298,8 +307,10 @@ def get_post_content(slug):
         )
         results = response.get('results', [])
         if results:
+            logger.info(f"找到文章: {slug}")
             break
     if not results:
+        logger.warning(f"文章未找到: {slug}")
         return None
 
     page = results[0]
@@ -361,9 +372,16 @@ def get_post_content(slug):
             return p['status'].get('name', '') or ''
         return ''
 
-    renderer = NotionRenderer(notion)
-    blocks = renderer._fetch_page_blocks(page_id)
-    content_html = renderer.render_blocks(blocks)
+    # 获取状态，如果是"已锁住"则不渲染完整内容
+    status = get_status()
+    content_html = ''
+    if status != '已锁住':
+        logger.info(f"正在渲染文章内容: {get_title()}")
+        renderer = NotionRenderer(notion)
+        blocks = renderer._fetch_page_blocks(page_id)
+        content_html = renderer.render_blocks(blocks)
+    else:
+        logger.info(f"文章已锁住，跳过内容渲染: {get_title()}")
 
     return {
         'title': get_title(),
@@ -372,11 +390,10 @@ def get_post_content(slug):
         'date': get_date(),
         'summary': get_summary(),
         'category': get_category(),
-        'type': get_category(),
         'os': get_os(),
         'difficulty': get_difficulty(),
         'user': get_user(),
         'root': get_root(),
-        'status': get_status(),
+        'status': status,
         'content_html': content_html,
     }

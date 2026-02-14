@@ -3,7 +3,8 @@ Neobee's Blog - Flask 主入口文件
 """
 import os
 import traceback
-from flask import Flask, render_template, abort, make_response, url_for, render_template_string
+import logging
+from flask import Flask, render_template, abort, make_response, url_for
 from config import Config
 from services.notion_service import get_posts, get_post_content, get_categories
 try:
@@ -35,6 +36,14 @@ if not hasattr(pkgutil, 'get_loader'):
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# 配置日志系统
+logging.basicConfig(
+    level=logging.INFO if not Config.DEBUG else logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 # 缓存配置：开发环境使用 SimpleCache，生产可改为 FileSystemCache
 if getattr(Config, 'DEBUG', True):
     cache_config = {    
@@ -53,10 +62,15 @@ cache = Cache(app, config=cache_config)
 def inject_categories():
     """将 categories 注入到所有模板中（从 Notion schema 自动读取）"""
     try:
-        cats = get_categories() or []
+        cats = _get_cached_categories()
     except Exception:
         cats = []
     return {'categories': cats}
+
+@cache.cached(timeout=600, key_prefix='categories')
+def _get_cached_categories():
+    """缓存的分类获取函数"""
+    return get_categories() or []
 
 
 
@@ -65,10 +79,13 @@ def inject_categories():
 def index():
     """首页路由：渲染文章列表"""
     try:
+        logger.info("正在获取文章列表")
         posts = get_posts()
+        logger.info(f"成功获取 {len(posts)} 篇文章")
         return render_template('index.html', posts=posts)
     except Exception as e:
         # 控制台打印完整错误，便于排查 500
+        logger.error(f"获取文章列表失败: {str(e)}", exc_info=True)
         traceback.print_exc()
         # 仍返回 200，页面显示错误信息，方便了解此错误
         return render_template('index.html', posts=[], error=str(e))
@@ -78,9 +95,12 @@ def index():
 @cache.cached()
 def post(slug):
     """文章详情页：从 Notion 拉取正文并渲染"""
+    logger.info(f"正在获取文章: {slug}")
     post_data = get_post_content(slug)
     if post_data is None:
+        logger.warning(f"文章未找到: {slug}")
         abort(404)
+    logger.info(f"成功获取文章: {post_data.get('title', slug)}")
     return render_template('post.html', post=post_data)
 
 @app.route('/about')
@@ -93,9 +113,12 @@ def about():
 def category(name):
     """按分类显示文章列表"""
     try:
+        logger.info(f"正在获取分类文章: {name}")
         posts = get_posts(category=name)
+        logger.info(f"分类 {name} 获取到 {len(posts)} 篇文章")
         return render_template('index.html', posts=posts)
     except Exception as e:
+        logger.error(f"获取分类 {name} 失败: {str(e)}", exc_info=True)
         traceback.print_exc()
         return render_template('index.html', posts=[], error=str(e))
 
