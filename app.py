@@ -459,6 +459,7 @@ def rss_feed():
 
 
 @app.route('/api/translate/<slug>', methods=['POST'])
+@csrf.exempt  # API 端点，禁用 CSRF 保护
 @limiter.limit("10 per hour")
 def translate_post(slug):
     """
