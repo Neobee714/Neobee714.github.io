@@ -467,41 +467,68 @@ def translate_post(slug):
     """
     from flask import jsonify
 
-    # 检查是否配置了 LLM API
-    if not Config.LLM_API_KEY:
-        return jsonify({'error': '翻译功能未配置 (Translation feature not configured)'}), 503
-
-    # 检查缓存
-    cache_key = f'translated_{slug}'
-    cached_translation = cache.get(cache_key)
-    if cached_translation:
-        logger.info(f"返回缓存的翻译: {slug}")
-        return jsonify({'content_html': cached_translation})
-
     try:
-        # 获取原始文章内容
+        # 1. 检查是否配置了 LLM API Key
+        if not Config.LLM_API_KEY:
+            logger.warning("翻译功能未配置：缺少 LLM_API_KEY 环境变量")
+            return jsonify({
+                'success': False,
+                'error': '翻译功能未配置，请联系管理员设置 LLM_API_KEY 环境变量'
+            }), 503
+
+        # 2. 检查缓存
+        cache_key = f'translated_{slug}'
+        cached_translation = cache.get(cache_key)
+        if cached_translation:
+            logger.info(f"返回缓存的翻译: {slug}")
+            return jsonify({
+                'success': True,
+                'content_html': cached_translation,
+                'from_cache': True
+            }), 200
+
+        # 3. 获取原始文章内容
+        logger.info(f"开始翻译文章: {slug}")
         post_data = get_post_content(slug)
         if not post_data:
-            return jsonify({'error': '文章未找到 (Post not found)'}), 404
+            logger.warning(f"文章未找到: {slug}")
+            return jsonify({
+                'success': False,
+                'error': '文章未找到'
+            }), 404
 
         original_html = post_data.get('content_html', '')
         if not original_html:
-            return jsonify({'error': '文章内容为空 (Post content is empty)'}), 400
+            logger.warning(f"文章内容为空: {slug}")
+            return jsonify({
+                'success': False,
+                'error': '文章内容为空，无法翻译'
+            }), 400
 
-        # 调用 OpenAI API 进行翻译
+        # 4. 检查 OpenAI 库是否已安装
         try:
             from openai import OpenAI
-        except ImportError:
-            return jsonify({'error': 'OpenAI 库未安装 (OpenAI library not installed)'}), 500
+        except ImportError as import_err:
+            logger.error(f"OpenAI 库未安装: {str(import_err)}")
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI 库未安装，请运行 pip install openai'
+            }), 500
 
-        client = OpenAI(
-            api_key=Config.LLM_API_KEY,
-            base_url=Config.LLM_BASE_URL
-        )
+        # 5. 初始化 OpenAI 客户端
+        try:
+            client = OpenAI(
+                api_key=Config.LLM_API_KEY,
+                base_url=Config.LLM_BASE_URL
+            )
+        except Exception as client_err:
+            logger.error(f"初始化 OpenAI 客户端失败: {str(client_err)}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': f'初始化翻译客户端失败: {str(client_err)}'
+            }), 500
 
-        logger.info(f"正在翻译文章: {slug}")
-
-        # 构建 System Prompt
+        # 6. 构建 System Prompt
         system_prompt = """You are an expert technical translator. Translate the provided HTML content from Chinese to English (or vice versa).
 
 CRITICAL RULES:
@@ -515,28 +542,45 @@ Example:
 Input: <code class="language-python"># 这是注释\nprint("你好")</code>
 Output: <code class="language-python"># This is a comment\nprint("Hello")</code>"""
 
-        # 调用 LLM
-        response = client.chat.completions.create(
-            model=Config.LLM_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Translate this HTML content:\n\n{original_html}"}
-            ],
-            temperature=0.3,  # 降低温度以获得更一致的翻译
-            max_tokens=8000
-        )
+        # 7. 调用 LLM 进行翻译
+        try:
+            logger.info(f"调用 LLM 翻译，模型: {Config.LLM_MODEL}")
+            response = client.chat.completions.create(
+                model=Config.LLM_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Translate this HTML content:\n\n{original_html}"}
+                ],
+                temperature=0.3,
+                max_tokens=8000
+            )
 
-        translated_html = response.choices[0].message.content
+            translated_html = response.choices[0].message.content
 
-        # 存入缓存（缓存 1 小时）
-        cache.set(cache_key, translated_html, timeout=3600)
+            # 8. 存入缓存（缓存 1 小时）
+            cache.set(cache_key, translated_html, timeout=3600)
 
-        logger.info(f"翻译完成: {slug}")
-        return jsonify({'content_html': translated_html})
+            logger.info(f"翻译完成: {slug}")
+            return jsonify({
+                'success': True,
+                'content_html': translated_html,
+                'from_cache': False
+            }), 200
+
+        except Exception as llm_err:
+            logger.error(f"LLM 调用失败: {str(llm_err)}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': f'翻译服务调用失败: {str(llm_err)}'
+            }), 500
 
     except Exception as e:
-        logger.error(f"翻译失败: {str(e)}", exc_info=True)
-        return jsonify({'error': f'翻译失败 (Translation failed): {str(e)}'}), 500
+        # 捕获所有未预期的异常
+        logger.error(f"翻译 API 发生未知错误: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'服务器内部错误: {str(e)}'
+        }), 500
 
 
 if __name__ == '__main__':

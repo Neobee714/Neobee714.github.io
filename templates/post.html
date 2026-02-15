@@ -399,15 +399,41 @@
             'Content-Type': 'application/json',
           }
         })
-        .then(response => {
+        .then(async response => {
+          // 先检查 HTTP 状态码
           if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.error || '翻译失败');
-            });
+            // 尝试解析为 JSON 获取错误信息
+            let errorMessage = `服务器错误 (HTTP ${response.status})`;
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch (jsonError) {
+              // 如果不是 JSON，读取文本内容（可能是 HTML 错误页面）
+              try {
+                const errorText = await response.text();
+                // 只显示前 200 个字符，避免显示整个 HTML 页面
+                errorMessage = `服务器返回了非 JSON 响应: ${errorText.substring(0, 200)}...`;
+              } catch (textError) {
+                errorMessage = `无法读取错误信息 (HTTP ${response.status})`;
+              }
+            }
+            throw new Error(errorMessage);
           }
+
+          // 解析 JSON 响应
           return response.json();
         })
         .then(data => {
+          // 检查响应中的 success 字段
+          if (data.success === false) {
+            throw new Error(data.error || '翻译失败，但未返回具体错误信息');
+          }
+
+          // 检查是否有翻译内容
+          if (!data.content_html) {
+            throw new Error('翻译响应中缺少 content_html 字段');
+          }
+
           // 替换内容
           postContent.innerHTML = data.content_html;
           translateBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>恢复原文</span>';
@@ -415,12 +441,34 @@
           translateBtn.disabled = false;
           isTranslated = true;
 
+          // 显示缓存提示（如果是从缓存读取）
+          if (data.from_cache) {
+            console.log('翻译内容来自缓存');
+          }
+
           // 重新初始化代码高亮和其他功能
           reinitializeFeatures();
         })
         .catch(error => {
           console.error('翻译失败:', error);
-          alert(`翻译失败: ${error.message}`);
+
+          // 显示用户友好的错误提示
+          let userMessage = '翻译失败';
+          if (error.message.includes('未配置')) {
+            userMessage = '翻译功能未配置，请联系管理员';
+          } else if (error.message.includes('未找到')) {
+            userMessage = '文章未找到';
+          } else if (error.message.includes('为空')) {
+            userMessage = '文章内容为空，无法翻译';
+          } else if (error.message.includes('未安装')) {
+            userMessage = '服务器缺少必要的依赖库';
+          } else {
+            userMessage = `翻译失败: ${error.message}`;
+          }
+
+          alert(userMessage);
+
+          // 恢复按钮状态
           translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
           translateBtn.disabled = false;
         });
