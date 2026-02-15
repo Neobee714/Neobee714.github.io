@@ -70,3 +70,7 @@ test_routes.py
 
 # Logs
 *.log
+
+clear_cache.py
+IMPROVEMENTS.md
+CLAUDE.md
