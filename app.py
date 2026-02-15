@@ -465,33 +465,52 @@ def translate_post(slug):
     AI 翻译 API (AI Translation API)
     使用 LLM 翻译文章内容，保留代码块语法，仅翻译注释
     """
+    import traceback
     from flask import jsonify
 
     try:
-        # 1. 检查是否配置了 LLM API Key
+        # ========== 第一道防线：环境变量检查 ==========
+        logger.info(f"[翻译请求] 收到翻译请求: {slug}")
+
+        # 检查 API Key 是否配置
         if not Config.LLM_API_KEY:
-            logger.warning("翻译功能未配置：缺少 LLM_API_KEY 环境变量")
+            logger.error("[配置错误] LLM_API_KEY 环境变量未设置")
+            logger.error(f"[配置信息] LLM_BASE_URL: {Config.LLM_BASE_URL}")
+            logger.error(f"[配置信息] LLM_MODEL: {Config.LLM_MODEL}")
             return jsonify({
                 'success': False,
-                'error': '翻译功能未配置，请联系管理员设置 LLM_API_KEY 环境变量'
-            }), 503
+                'error': 'Server Configuration Error: API Key missing in production environment.'
+            }), 500
 
-        # 2. 检查缓存
+        logger.info(f"[配置检查] API Key 已配置: {Config.LLM_API_KEY[:20]}...")
+        logger.info(f"[配置检查] Base URL: {Config.LLM_BASE_URL}")
+        logger.info(f"[配置检查] Model: {Config.LLM_MODEL}")
+
+        # ========== 第二道防线：缓存检查 ==========
         cache_key = f'translated_{slug}'
         cached_translation = cache.get(cache_key)
         if cached_translation:
-            logger.info(f"返回缓存的翻译: {slug}")
+            logger.info(f"[缓存命中] 返回缓存的翻译: {slug}")
             return jsonify({
                 'success': True,
                 'content_html': cached_translation,
                 'from_cache': True
             }), 200
 
-        # 3. 获取原始文章内容
-        logger.info(f"开始翻译文章: {slug}")
-        post_data = get_post_content(slug)
+        # ========== 第三道防线：获取文章内容 ==========
+        logger.info(f"[开始翻译] 正在获取文章内容: {slug}")
+        try:
+            post_data = get_post_content(slug)
+        except Exception as e:
+            logger.error(f"[获取文章失败] {str(e)}")
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'error': f'获取文章内容失败: {str(e)}'
+            }), 500
+
         if not post_data:
-            logger.warning(f"文章未找到: {slug}")
+            logger.warning(f"[文章不存在] 文章未找到: {slug}")
             return jsonify({
                 'success': False,
                 'error': '文章未找到'
@@ -499,36 +518,43 @@ def translate_post(slug):
 
         original_html = post_data.get('content_html', '')
         if not original_html:
-            logger.warning(f"文章内容为空: {slug}")
+            logger.warning(f"[内容为空] 文章内容为空: {slug}")
             return jsonify({
                 'success': False,
                 'error': '文章内容为空，无法翻译'
             }), 400
 
-        # 4. 检查 OpenAI 库是否已安装
+        logger.info(f"[内容长度] 原文长度: {len(original_html)} 字符")
+
+        # ========== 第四道防线：检查依赖库 ==========
         try:
             from openai import OpenAI
+            logger.info("[依赖检查] OpenAI 库已加载")
         except ImportError as import_err:
-            logger.error(f"OpenAI 库未安装: {str(import_err)}")
+            logger.error(f"[依赖缺失] OpenAI 库未安装: {str(import_err)}")
+            traceback.print_exc()
             return jsonify({
                 'success': False,
                 'error': 'OpenAI 库未安装，请运行 pip install openai'
             }), 500
 
-        # 5. 初始化 OpenAI 客户端
+        # ========== 第五道防线：初始化客户端 ==========
         try:
+            logger.info("[客户端初始化] 正在创建 OpenAI 客户端...")
             client = OpenAI(
                 api_key=Config.LLM_API_KEY,
                 base_url=Config.LLM_BASE_URL
             )
+            logger.info("[客户端初始化] OpenAI 客户端创建成功")
         except Exception as client_err:
-            logger.error(f"初始化 OpenAI 客户端失败: {str(client_err)}", exc_info=True)
+            logger.error(f"[客户端初始化失败] {str(client_err)}")
+            traceback.print_exc()
             return jsonify({
                 'success': False,
                 'error': f'初始化翻译客户端失败: {str(client_err)}'
             }), 500
 
-        # 6. 构建 System Prompt
+        # ========== 第六道防线：调用 LLM 翻译 ==========
         system_prompt = """You are an expert technical translator. Translate the provided HTML content from Chinese to English (or vice versa).
 
 CRITICAL RULES:
@@ -542,9 +568,10 @@ Example:
 Input: <code class="language-python"># 这是注释\nprint("你好")</code>
 Output: <code class="language-python"># This is a comment\nprint("Hello")</code>"""
 
-        # 7. 调用 LLM 进行翻译
         try:
-            logger.info(f"调用 LLM 翻译，模型: {Config.LLM_MODEL}")
+            logger.info(f"[LLM 调用] 开始调用模型: {Config.LLM_MODEL}")
+            logger.info(f"[LLM 调用] 请求参数 - temperature: 0.3, max_tokens: 8000")
+
             response = client.chat.completions.create(
                 model=Config.LLM_MODEL,
                 messages=[
@@ -555,12 +582,15 @@ Output: <code class="language-python"># This is a comment\nprint("Hello")</code>
                 max_tokens=8000
             )
 
+            logger.info("[LLM 调用] API 调用成功")
+
             translated_html = response.choices[0].message.content
+            logger.info(f"[翻译完成] 译文长度: {len(translated_html)} 字符")
 
-            # 8. 存入缓存（缓存 1 小时）
+            # 存入缓存（缓存 1 小时）
             cache.set(cache_key, translated_html, timeout=3600)
+            logger.info(f"[缓存写入] 翻译结果已缓存: {slug}")
 
-            logger.info(f"翻译完成: {slug}")
             return jsonify({
                 'success': True,
                 'content_html': translated_html,
@@ -568,15 +598,28 @@ Output: <code class="language-python"># This is a comment\nprint("Hello")</code>
             }), 200
 
         except Exception as llm_err:
-            logger.error(f"LLM 调用失败: {str(llm_err)}", exc_info=True)
+            logger.error(f"[LLM 调用失败] {str(llm_err)}")
+            logger.error(f"[错误类型] {type(llm_err).__name__}")
+            traceback.print_exc()
+
+            # 尝试提取更详细的错误信息
+            error_detail = str(llm_err)
+            if hasattr(llm_err, 'response'):
+                logger.error(f"[API 响应] {llm_err.response}")
+            if hasattr(llm_err, 'status_code'):
+                logger.error(f"[HTTP 状态码] {llm_err.status_code}")
+
             return jsonify({
                 'success': False,
-                'error': f'翻译服务调用失败: {str(llm_err)}'
+                'error': f'翻译服务调用失败: {error_detail}'
             }), 500
 
     except Exception as e:
-        # 捕获所有未预期的异常
-        logger.error(f"翻译 API 发生未知错误: {str(e)}", exc_info=True)
+        # ========== 最外层异常捕获 ==========
+        logger.error(f"[未知错误] 翻译 API 发生未预期的错误: {str(e)}")
+        logger.error(f"[错误类型] {type(e).__name__}")
+        traceback.print_exc()
+
         return jsonify({
             'success': False,
             'error': f'服务器内部错误: {str(e)}'
