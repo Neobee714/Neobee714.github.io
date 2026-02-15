@@ -458,6 +458,87 @@ def rss_feed():
     return response
 
 
+@app.route('/api/translate/<slug>', methods=['POST'])
+@limiter.limit("10 per hour")
+def translate_post(slug):
+    """
+    AI 翻译 API (AI Translation API)
+    使用 LLM 翻译文章内容，保留代码块语法，仅翻译注释
+    """
+    from flask import jsonify
+
+    # 检查是否配置了 LLM API
+    if not Config.LLM_API_KEY:
+        return jsonify({'error': '翻译功能未配置 (Translation feature not configured)'}), 503
+
+    # 检查缓存
+    cache_key = f'translated_{slug}'
+    cached_translation = cache.get(cache_key)
+    if cached_translation:
+        logger.info(f"返回缓存的翻译: {slug}")
+        return jsonify({'content_html': cached_translation})
+
+    try:
+        # 获取原始文章内容
+        post_data = get_post_content(slug)
+        if not post_data:
+            return jsonify({'error': '文章未找到 (Post not found)'}), 404
+
+        original_html = post_data.get('content_html', '')
+        if not original_html:
+            return jsonify({'error': '文章内容为空 (Post content is empty)'}), 400
+
+        # 调用 OpenAI API 进行翻译
+        try:
+            from openai import OpenAI
+        except ImportError:
+            return jsonify({'error': 'OpenAI 库未安装 (OpenAI library not installed)'}), 500
+
+        client = OpenAI(
+            api_key=Config.LLM_API_KEY,
+            base_url=Config.LLM_BASE_URL
+        )
+
+        logger.info(f"正在翻译文章: {slug}")
+
+        # 构建 System Prompt
+        system_prompt = """You are an expert technical translator. Translate the provided HTML content from Chinese to English (or vice versa).
+
+CRITICAL RULES:
+1. For any content inside <pre><code> tags, you MUST strictly preserve the programming language syntax, function names, and variables.
+2. You are ONLY allowed to translate the inline code comments (e.g., text after //, #, /* */) and explanatory string literals.
+3. Do not break the HTML structure. Keep all HTML tags intact.
+4. Preserve all class names, IDs, and attributes.
+5. For technical terms, use industry-standard English translations.
+
+Example:
+Input: <code class="language-python"># 这是注释\nprint("你好")</code>
+Output: <code class="language-python"># This is a comment\nprint("Hello")</code>"""
+
+        # 调用 LLM
+        response = client.chat.completions.create(
+            model=Config.LLM_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Translate this HTML content:\n\n{original_html}"}
+            ],
+            temperature=0.3,  # 降低温度以获得更一致的翻译
+            max_tokens=8000
+        )
+
+        translated_html = response.choices[0].message.content
+
+        # 存入缓存（缓存 1 小时）
+        cache.set(cache_key, translated_html, timeout=3600)
+
+        logger.info(f"翻译完成: {slug}")
+        return jsonify({'content_html': translated_html})
+
+    except Exception as e:
+        logger.error(f"翻译失败: {str(e)}", exc_info=True)
+        return jsonify({'error': f'翻译失败 (Translation failed): {str(e)}'}), 500
+
+
 if __name__ == '__main__':
     # 获取 Railway 分配的端口，如果没有则默认 5000
     port = int(os.environ.get("PORT", 5000))

@@ -62,6 +62,9 @@ Optional:
 - `SECRET_KEY`: Flask secret (defaults to dev key)
 - `FLASK_DEBUG`: Set to "false" for production
 - `GISCUS_REPO`, `GISCUS_REPO_ID`, `GISCUS_CATEGORY`, `GISCUS_CATEGORY_ID`: Comment system config
+- `LLM_API_KEY`: OpenAI-compatible API key for AI translation feature (optional)
+- `LLM_BASE_URL`: API base URL (defaults to https://api.openai.com/v1)
+- `LLM_MODEL`: Model name for translation (defaults to gpt-4o-mini)
 
 ## Notion Database Schema
 
@@ -122,6 +125,16 @@ Configured for Railway/Render with:
 `NotionRenderer` handles: heading_1/2/3, paragraph, bulleted_list_item, image, code. Unsupported blocks are silently skipped.
 
 Code blocks use Prism.js syntax highlighting with language mapping (e.g., "plain text" → "plaintext").
+
+## AI Translation Feature
+
+The blog includes an AI-powered translation feature on article detail pages:
+- **Route**: `/api/translate/<slug>` (POST)
+- **Rate Limit**: 10 requests per hour per IP
+- **Caching**: Translations are cached for 1 hour to reduce API costs
+- **Functionality**: Translates article content while preserving code block syntax and only translating code comments
+- **UI**: "AI 翻译" button in article header, toggles between original and translated content
+- **Requirements**: Requires `LLM_API_KEY` environment variable to be configured
 
 # UI/UX 与设计系统规范 (Design System Rules)
 1. **主题自适应 (Theme Adaptation):** 项目启用了 DaisyUI 的双主题切换（浅色 `lofi` / 深色 `business`）。**绝对不允许**在 Tailwind 类中使用固定的颜色值（如 `text-gray-500`, `bg-white`）。必须强制使用语义化变量（如 `text-base-content`, `bg-base-200`, `text-primary`）。

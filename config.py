@@ -23,6 +23,11 @@ class Config:
     GISCUS_REPO_ID = os.getenv('GISCUS_REPO_ID', '')
     GISCUS_CATEGORY = os.getenv('GISCUS_CATEGORY', '')
     GISCUS_CATEGORY_ID = os.getenv('GISCUS_CATEGORY_ID', '')
+
+    # LLM Translation API 配置（可选）
+    LLM_API_KEY = os.getenv('LLM_API_KEY', '')
+    LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://api.openai.com/v1')
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o-mini')
     
     @staticmethod
     def validate():

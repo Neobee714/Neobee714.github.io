@@ -71,6 +71,11 @@
             约 {{ post.reading_time }} 分钟阅读
           </span>
           {% endif %}
+          <!-- AI 翻译按钮 (AI Translation Button) -->
+          <button id="translate-btn" class="btn btn-sm btn-outline gap-2" title="AI 智能翻译">
+            <i class="fa-solid fa-language"></i>
+            <span>AI 翻译</span>
+          </button>
         </div>
         {% if post.tags %}
         <div class="flex flex-wrap gap-2 mt-3">
@@ -355,4 +360,143 @@
     })();
   </script>
   {% endif %}
+
+  <!-- AI 翻译功能 (AI Translation Feature) -->
+  <script>
+    (function() {
+      const translateBtn = document.getElementById('translate-btn');
+      const postContent = document.querySelector('.post-content');
+      const slug = '{{ post.slug }}';
+      let isTranslated = false;
+      let originalContent = '';
+
+      if (!translateBtn || !postContent) return;
+
+      // 保存原始内容
+      originalContent = postContent.innerHTML;
+
+      translateBtn.addEventListener('click', function() {
+        // 如果已经翻译，则恢复原文
+        if (isTranslated) {
+          postContent.innerHTML = originalContent;
+          translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
+          translateBtn.classList.remove('btn-active');
+          isTranslated = false;
+
+          // 重新初始化代码高亮和其他功能
+          reinitializeFeatures();
+          return;
+        }
+
+        // 开始翻译
+        translateBtn.disabled = true;
+        translateBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span><span>翻译中...</span>';
+
+        // 发送 AJAX 请求
+        fetch(`/api/translate/${slug}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(data => {
+              throw new Error(data.error || '翻译失败');
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 替换内容
+          postContent.innerHTML = data.content_html;
+          translateBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>恢复原文</span>';
+          translateBtn.classList.add('btn-active');
+          translateBtn.disabled = false;
+          isTranslated = true;
+
+          // 重新初始化代码高亮和其他功能
+          reinitializeFeatures();
+        })
+        .catch(error => {
+          console.error('翻译失败:', error);
+          alert(`翻译失败: ${error.message}`);
+          translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
+          translateBtn.disabled = false;
+        });
+      });
+
+      // 重新初始化页面功能（代码高亮、复制按钮等）
+      function reinitializeFeatures() {
+        // 重新应用 Prism 语法高亮
+        if (typeof Prism !== 'undefined') {
+          postContent.querySelectorAll('pre').forEach(function(pre) {
+            pre.classList.add('line-numbers');
+          });
+          Prism.highlightAllUnder(postContent);
+        }
+
+        // 重新添加代码复制按钮
+        postContent.querySelectorAll('pre').forEach(function(pre) {
+          // 检查是否已经有包装器
+          if (pre.parentNode.classList.contains('code-block-wrapper')) {
+            return;
+          }
+
+          // 创建包装器
+          const wrapper = document.createElement('div');
+          wrapper.className = 'code-block-wrapper';
+          pre.parentNode.insertBefore(wrapper, pre);
+          wrapper.appendChild(pre);
+
+          // 创建复制按钮
+          const btn = document.createElement('button');
+          btn.className = 'copy-code-btn btn btn-sm btn-ghost';
+          btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+          btn.setAttribute('aria-label', '复制代码');
+          btn.title = '复制代码';
+
+          btn.addEventListener('click', function() {
+            const code = pre.querySelector('code');
+            const text = code ? code.textContent : pre.textContent;
+
+            navigator.clipboard.writeText(text).then(function() {
+              btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+              btn.classList.add('copied');
+              setTimeout(function() {
+                btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+                btn.classList.remove('copied');
+              }, 2000);
+            }).catch(function(err) {
+              console.error('复制失败:', err);
+              btn.innerHTML = '<i class="fa-solid fa-xmark text-error"></i>';
+              setTimeout(function() {
+                btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+              }, 2000);
+            });
+          });
+
+          wrapper.appendChild(btn);
+        });
+
+        // 重新渲染 Mermaid 图表
+        if (typeof mermaid !== 'undefined') {
+          mermaid.init(undefined, postContent.querySelectorAll('.language-mermaid'));
+        }
+
+        // 重新渲染 KaTeX 数学公式
+        if (typeof renderMathInElement !== 'undefined') {
+          renderMathInElement(postContent, {
+            delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\[', right: '\\]', display: true},
+              {left: '\\(', right: '\\)', display: false}
+            ],
+            throwOnError: false
+          });
+        }
+      }
+    })();
+  </script>
 {% endblock %}
