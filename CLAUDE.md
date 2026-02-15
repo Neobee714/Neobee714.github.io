@@ -132,4 +132,4 @@ Code blocks use Prism.js syntax highlighting with language mapping (e.g., "plain
 1. **语言:** 请始终使用**中文**与我沟通和解释代码。
 2. **专业术语全称:** 对于所有的专业名词以及代码中的专业函数，请务必附上全称（全称，Full Name/Term）。例如：提到 LFI 时，请说明 Local File Inclusion；提到 `render_template` 时，解释其模板渲染的全称含义。
 
-git上传时，不要包含任何Claude的信息
+git上传时，不要包含任何Claude的信息：例如：Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
