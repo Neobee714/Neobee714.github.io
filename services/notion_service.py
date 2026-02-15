@@ -140,7 +140,7 @@ def get_posts(category=None):
             query_filter = {"and": [base_filter, {"property": "类型", "select": {"equals": category}}]}
         else:
             query_filter = base_filter
-        response = notion.databases.query(
+        response = notion.query_database(
             database_id=Config.NOTION_DATABASE_ID,
             filter=query_filter,
             sorts=[{"property": "日期", "direction": "descending"}]
@@ -358,7 +358,7 @@ def get_post_content(slug):
         {"property": "Slug", "rich_text": {"equals": slug}},
         {"property": "Slug", "title": {"equals": slug}},
     ):
-        response = notion.databases.query(
+        response = notion.query_database(
             database_id=Config.NOTION_DATABASE_ID,
             filter=filter_slug
         )
