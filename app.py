@@ -21,12 +21,17 @@ except Exception:
             return deco
 
 try:
-    from flask_wtf.csrf import CSRFProtect  # type: ignore
+    from flask_wtf.csrf import CSRFProtect, CSRFError, exempt as csrf_exempt  # type: ignore
 except Exception:
     # Fallback dummy CSRFProtect
     class CSRFProtect:
         def __init__(self, app=None):
             pass
+    class CSRFError(Exception):
+        pass
+    # Dummy csrf_exempt decorator
+    def csrf_exempt(f):
+        return f
 
 try:
     from flask_limiter import Limiter  # type: ignore
@@ -459,7 +464,7 @@ def rss_feed():
 
 
 @app.route('/api/translate/<slug>', methods=['POST'])
-@csrf.exempt  # API 端点，禁用 CSRF 保护
+@csrf_exempt  # API 端点，禁用 CSRF 保护
 @limiter.limit("10 per hour")
 def translate_post(slug):
     """
