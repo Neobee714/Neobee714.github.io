@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}标签 — Neobee's Blog{% endblock %}
+
+{% block content %}
+  <section class="px-4 md:px-6 py-12">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-4xl font-bold text-base-content mb-8">标签</h1>
+
+      {% if error %}
+      <div class="alert alert-error mb-6" role="alert">
+        <span>加载标签失败：{{ error }}</span>
+      </div>
+      {% endif %}
+
+      {% if tags %}
+        <!-- 标签云 (Tag Cloud) -->
+        <div class="mb-12 p-6 bg-base-200 rounded-lg">
+          <h2 class="text-2xl font-semibold text-base-content mb-4">标签云</h2>
+          <div class="flex flex-wrap gap-3">
+            {% for tag in tags %}
+            <a href="#tag-{{ tag.name | urlencode }}"
+               class="badge badge-lg hover:badge-primary transition-colors">
+              {{ tag.name }}
+              <span class="ml-1 opacity-60">({{ tag.count }})</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 标签详情列表 (Tag Details List) -->
+        <div class="space-y-12">
+          {% for tag in tags %}
+          <div id="tag-{{ tag.name | urlencode }}" class="scroll-mt-24">
+            <h2 class="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
+              <i class="fa-solid fa-tag"></i>
+              {{ tag.name }}
+              <span class="badge badge-lg">{{ tag.count }}</span>
+            </h2>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              {% for post in tag.posts %}
+              <a href="{{ url_for('post', slug=post.slug) if post.slug else '#' }}"
+                 class="block p-4 rounded-lg bg-base-200 hover:bg-base-300 transition-colors group">
+                <h3 class="text-lg font-semibold text-base-content group-hover:text-primary transition-colors mb-2">
+                  {{ post.title or '无标题' }}
+                </h3>
+                {% if post.summary %}
+                <p class="text-sm text-base-content/60 line-clamp-2 mb-2">{{ post.summary }}</p>
+                {% endif %}
+                <div class="flex items-center gap-4 text-xs text-base-content/50">
+                  <span>
+                    <i class="fa-regular fa-calendar"></i>
+                    {{ post.date[:10] if post.date else '未知日期' }}
+                  </span>
+                  <span>
+                    <i class="fa-regular fa-folder"></i>
+                    {{ post.category | default('Uncategorized') }}
+                  </span>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-12 text-base-content/60">
+          <i class="fa-solid fa-tags text-6xl mb-4 opacity-20"></i>
+          <p>暂无标签。</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -4,9 +4,10 @@ Neobee's Blog - Flask 主入口文件
 import os
 import traceback
 import logging
-from flask import Flask, render_template, abort, make_response, url_for
+from collections import defaultdict
+from flask import Flask, render_template, abort, make_response, url_for, request
 from config import Config
-from services.notion_service import get_posts, get_post_content, get_categories
+from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts
 try:
     from flask_caching import Cache  # type: ignore
 except Exception:
@@ -18,6 +19,30 @@ except Exception:
             def deco(f):
                 return f
             return deco
+
+try:
+    from flask_wtf.csrf import CSRFProtect  # type: ignore
+except Exception:
+    # Fallback dummy CSRFProtect
+    class CSRFProtect:
+        def __init__(self, app=None):
+            pass
+
+try:
+    from flask_limiter import Limiter  # type: ignore
+    from flask_limiter.util import get_remote_address  # type: ignore
+except Exception:
+    # Fallback dummy Limiter
+    class Limiter:
+        def __init__(self, *a, **k):
+            pass
+        def limit(self, *a, **k):
+            def deco(f):
+                return f
+            return deco
+    def get_remote_address():
+        return '127.0.0.1'
+
 import pkgutil
 import importlib.util
 
@@ -37,13 +62,27 @@ if not hasattr(pkgutil, 'get_loader'):
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# CSRF 保护 (CSRF Protection)
+csrf = CSRFProtect(app)
+
+# 速率限制 (Rate Limiting)
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 # 配置日志系统
 logging.basicConfig(
-    level=logging.INFO if not Config.DEBUG else logging.DEBUG,
+    level=logging.INFO if not getattr(Config, 'DEBUG', True) else logging.DEBUG,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    force=True  # 强制重新配置，覆盖之前的配置
 )
 logger = logging.getLogger(__name__)
+# 禁用 Werkzeug 的冗长日志
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 # 缓存配置：开发环境使用 SimpleCache，生产可改为 FileSystemCache
 if getattr(Config, 'DEBUG', True):
     cache_config = {    
@@ -75,14 +114,73 @@ def _get_cached_categories():
 
 
 @app.route('/')
-@cache.cached()
 def index():
-    """首页路由：渲染文章列表"""
+    """首页路由：渲染文章列表（支持搜索和分页，每页 15 篇）"""
     try:
-        logger.info("正在获取文章列表")
-        posts = get_posts()
-        logger.info(f"成功获取 {len(posts)} 篇文章")
-        return render_template('index.html', posts=posts)
+        # 获取页码参数，默认第 1 页
+        page = request.args.get('page', 1, type=int)
+        # 获取搜索关键词
+        search_query = request.args.get('q', '').strip()
+        per_page = 15  # 每页显示 15 篇文章
+
+        logger.info(f"正在获取文章列表 - 第 {page} 页，搜索词: '{search_query}'")
+        all_posts = get_posts()
+
+        # 搜索过滤（如果有搜索关键词）
+        if search_query:
+            search_lower = search_query.lower()
+            filtered_posts = []
+            for post in all_posts:
+                # 搜索标题
+                if search_lower in (post.get('title') or '').lower():
+                    filtered_posts.append(post)
+                    continue
+                # 搜索简介
+                if search_lower in (post.get('summary') or '').lower():
+                    filtered_posts.append(post)
+                    continue
+                # 搜索标签
+                tags = post.get('tags') or []
+                if any(search_lower in tag.lower() for tag in tags):
+                    filtered_posts.append(post)
+                    continue
+                # 搜索分类
+                if search_lower in (post.get('category') or '').lower():
+                    filtered_posts.append(post)
+                    continue
+            all_posts = filtered_posts
+            logger.info(f"搜索 '{search_query}' 找到 {len(all_posts)} 篇文章")
+
+        total_posts = len(all_posts)
+        logger.info(f"共 {total_posts} 篇文章")
+
+        # 计算总页数
+        total_pages = (total_posts + per_page - 1) // per_page if total_posts > 0 else 1
+
+        # 确保页码在有效范围内
+        if page < 1:
+            page = 1
+        elif page > total_pages and total_pages > 0:
+            page = total_pages
+
+        # 计算当前页的文章范围
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        posts = all_posts[start_idx:end_idx]
+
+        # 传递分页信息到模板
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total_posts': total_posts,
+            'total_pages': total_pages,
+            'has_prev': page > 1,
+            'has_next': page < total_pages,
+            'prev_page': page - 1 if page > 1 else None,
+            'next_page': page + 1 if page < total_pages else None
+        }
+
+        return render_template('index.html', posts=posts, pagination=pagination, q=search_query)
     except Exception as e:
         # 控制台打印完整错误，便于排查 500
         logger.error(f"获取文章列表失败: {str(e)}", exc_info=True)
@@ -92,7 +190,7 @@ def index():
 
 
 @app.route('/post/<slug>')
-@cache.cached()
+@cache.cached(timeout=300, key_prefix=lambda: f'post_{request.view_args.get("slug")}')
 def post(slug):
     """文章详情页：从 Notion 拉取正文并渲染"""
     logger.info(f"正在获取文章: {slug}")
@@ -101,7 +199,16 @@ def post(slug):
         logger.warning(f"文章未找到: {slug}")
         abort(404)
     logger.info(f"成功获取文章: {post_data.get('title', slug)}")
-    return render_template('post.html', post=post_data)
+
+    # 获取相关文章推荐
+    related = get_related_posts(
+        current_slug=slug,
+        tags=post_data.get('tags', []),
+        category=post_data.get('category', ''),
+        limit=3
+    )
+
+    return render_template('post.html', post=post_data, related_posts=related)
 
 @app.route('/about')
 def about():
@@ -109,7 +216,72 @@ def about():
     return render_template('about.html')
 
 
+@app.route('/archives')
+@cache.cached(timeout=600, key_prefix='archives_page')
+def archives():
+    """文章归档页面 (Archives page)"""
+    from collections import defaultdict
+    try:
+        posts = get_posts() or []
+        # 按年份和月份分组
+        archives_dict = defaultdict(lambda: defaultdict(list))
+        for post in posts:
+            date_str = post.get('date') or ''
+            if date_str:
+                year = date_str[:4]
+                month = date_str[5:7]
+                archives_dict[year][month].append(post)
+
+        # 转换为排序列表
+        archives_list = []
+        for year in sorted(archives_dict.keys(), reverse=True):
+            months_data = []
+            for month in sorted(archives_dict[year].keys(), reverse=True):
+                months_data.append({
+                    'month': month,
+                    'posts': archives_dict[year][month]
+                })
+            archives_list.append({
+                'year': year,
+                'months': months_data
+            })
+
+        return render_template('archives.html', archives=archives_list)
+    except Exception as e:
+        logger.error(f"获取归档失败: {str(e)}", exc_info=True)
+        return render_template('archives.html', archives=[], error=str(e))
+
+
+@app.route('/tags')
+@cache.cached(timeout=600, key_prefix='tags_page')
+def tags():
+    """标签页面 (Tags page)"""
+    from collections import Counter, defaultdict
+    try:
+        posts = get_posts() or []
+        # 统计所有标签
+        tag_counter = Counter()
+        tag_posts = defaultdict(list)
+
+        for post in posts:
+            for tag in (post.get('tags') or []):
+                tag_counter[tag] += 1
+                tag_posts[tag].append(post)
+
+        # 按文章数量排序
+        tags_list = [
+            {'name': tag, 'count': count, 'posts': tag_posts[tag]}
+            for tag, count in tag_counter.most_common()
+        ]
+
+        return render_template('tags.html', tags=tags_list)
+    except Exception as e:
+        logger.error(f"获取标签失败: {str(e)}", exc_info=True)
+        return render_template('tags.html', tags=[], error=str(e))
+
+
 @app.route('/category/<name>')
+@cache.cached(timeout=300, key_prefix=lambda: f'category_{request.view_args.get("name")}')
 def category(name):
     """按分类显示文章列表"""
     try:
@@ -207,6 +379,83 @@ def robots():
     resp = make_response(text)
     resp.headers['Content-Type'] = 'text/plain'
     return resp
+
+
+@app.route('/feed.xml')
+@app.route('/rss.xml')
+@app.route('/atom.xml')
+def rss_feed():
+    """动态生成 RSS Feed (RSS Feed generation)"""
+    from datetime import datetime
+    import html as html_module
+
+    posts = []
+    try:
+        posts = get_posts() or []
+    except Exception:
+        posts = []
+
+    # 只包含前 20 篇文章
+    posts = posts[:20]
+
+    # 构建 RSS XML
+    site_url = url_for('index', _external=True).rstrip('/')
+    site_title = "Neobee's Blog"
+    site_description = "Hack The Box Writeups & Cybersecurity Methodology"
+
+    def format_rfc822(date_str):
+        """将 ISO 日期转换为 RFC 822 格式"""
+        if not date_str:
+            return datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')
+        try:
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            return dt.strftime('%a, %d %b %Y %H:%M:%S +0000')
+        except Exception:
+            return datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')
+
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml_parts.append('<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">')
+    xml_parts.append('  <channel>')
+    xml_parts.append(f'    <title>{html_module.escape(site_title)}</title>')
+    xml_parts.append(f'    <link>{site_url}</link>')
+    xml_parts.append(f'    <description>{html_module.escape(site_description)}</description>')
+    xml_parts.append(f'    <language>zh-CN</language>')
+    xml_parts.append(f'    <lastBuildDate>{format_rfc822(posts[0].get("date") if posts else None)}</lastBuildDate>')
+    xml_parts.append(f'    <atom:link href="{site_url}/feed.xml" rel="self" type="application/rss+xml" />')
+
+    for post in posts:
+        slug = post.get('slug') or ''
+        if not slug:
+            continue
+
+        title = post.get('title') or '无标题'
+        link = url_for('post', slug=slug, _external=True)
+        description = post.get('summary') or ''
+        pub_date = format_rfc822(post.get('date'))
+        category = post.get('category') or ''
+
+        xml_parts.append('    <item>')
+        xml_parts.append(f'      <title>{html_module.escape(title)}</title>')
+        xml_parts.append(f'      <link>{link}</link>')
+        xml_parts.append(f'      <guid isPermaLink="true">{link}</guid>')
+        xml_parts.append(f'      <description>{html_module.escape(description)}</description>')
+        xml_parts.append(f'      <pubDate>{pub_date}</pubDate>')
+        if category:
+            xml_parts.append(f'      <category>{html_module.escape(category)}</category>')
+
+        # 添加标签
+        for tag in (post.get('tags') or []):
+            xml_parts.append(f'      <category>{html_module.escape(tag)}</category>')
+
+        xml_parts.append('    </item>')
+
+    xml_parts.append('  </channel>')
+    xml_parts.append('</rss>')
+
+    xml = '\n'.join(xml_parts)
+    response = make_response(xml)
+    response.headers['Content-Type'] = 'application/rss+xml; charset=utf-8'
+    return response
 
 
 if __name__ == '__main__':

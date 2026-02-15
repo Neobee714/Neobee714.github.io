@@ -15,6 +15,112 @@ def get_notion_client():
     return Client(auth=Config.NOTION_TOKEN)
 
 
+def _extract_title(properties):
+    """提取标题属性 (Extract title property)"""
+    title_prop = properties.get('机器名称') or {}
+    if (title_prop.get('type') or '') == 'title':
+        return ''.join([t.get('plain_text', '') for t in (title_prop.get('title') or [])])
+    return title_prop.get('title', '') or '无标题'
+
+
+def _extract_slug(properties):
+    """提取 Slug 属性 (Extract slug property)"""
+    slug_prop = properties.get('Slug') or {}
+    if (slug_prop.get('type') or '') == 'rich_text':
+        return ''.join([t.get('plain_text', '') for t in (slug_prop.get('rich_text') or [])])
+    return ''
+
+
+def _extract_date(properties):
+    """提取日期属性 (Extract date property)"""
+    date_prop = properties.get('日期') or {}
+    if (date_prop.get('type') or '') == 'date' and date_prop.get('date'):
+        return date_prop.get('date', {}).get('start', '')
+    return None
+
+
+def _extract_tags(properties):
+    """提取标签属性 (Extract tags property)"""
+    tags_prop = properties.get('标签') or {}
+    if (tags_prop.get('type') or '') == 'multi_select':
+        return [x.get('name', '') for x in (tags_prop.get('multi_select') or [])]
+    return []
+
+
+def _extract_summary(properties):
+    """提取简介属性 (Extract summary property)"""
+    summary_prop = properties.get('简介') or {}
+    if (summary_prop.get('type') or '') == 'rich_text':
+        return ''.join([t.get('plain_text', '') for t in (summary_prop.get('rich_text') or [])])
+    return ''
+
+
+def _extract_category(properties):
+    """提取类型属性 (Extract category property)"""
+    category_prop = properties.get('类型') or {}
+    if (category_prop.get('type') or '') == 'select' and category_prop.get('select'):
+        return (category_prop.get('select') or {}).get('name', '') or ''
+    return ''
+
+
+def _extract_os(properties):
+    """提取操作系统属性 (Extract OS property)"""
+    return ((properties.get('操作系统') or {}).get('select') or {}).get('name') or ''
+
+
+def _extract_difficulty(properties):
+    """提取难度属性 (Extract difficulty property)"""
+    return ((properties.get('难度') or {}).get('select') or {}).get('name') or ''
+
+
+def _extract_status(properties):
+    """提取状态属性 (Extract status property)"""
+    status_prop = properties.get('状态') or {}
+    if (status_prop.get('type') or '') == 'status' and status_prop.get('status'):
+        return (status_prop.get('status') or {}).get('name', '') or ''
+    return ''
+
+
+def _extract_icon(page):
+    """提取页面图标 (Extract page icon)"""
+    icon_prop = page.get('icon') or {}
+    icon_type = icon_prop.get('type') or ''
+    icon_val = ''
+    if icon_type == 'emoji':
+        icon_val = icon_prop.get('emoji') or ''
+    elif icon_type == 'external':
+        icon_val = (icon_prop.get('external') or {}).get('url') or ''
+    elif icon_type == 'file':
+        icon_val = (icon_prop.get('file') or {}).get('url') or ''
+    return icon_type, icon_val
+
+
+def calculate_reading_time(content_html):
+    """
+    计算阅读时间（分钟）(Calculate reading time in minutes)
+    假设中文阅读速度：300字/分钟，英文：200词/分钟
+    """
+    if not content_html:
+        return 1
+
+    import re
+    # 移除 HTML 标签
+    text = re.sub(r'<[^>]+>', '', content_html)
+    # 移除多余空白
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    # 统计中文字符数
+    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    # 统计英文单词数
+    english_words = len(re.findall(r'\b[a-zA-Z]+\b', text))
+
+    # 计算阅读时间（分钟）
+    reading_time = (chinese_chars / 300) + (english_words / 200)
+
+    # 至少1分钟
+    return max(1, round(reading_time))
+
+
 def get_posts(category=None):
     """
     从 Notion Database 获取状态为「已完成」或「已锁住」的文章（中文列名）。
@@ -44,73 +150,24 @@ def get_posts(category=None):
         posts = []
         for page in response.get('results', []):
             properties = page.get('properties') or {}
-            # 标题: properties['机器名称'] -> title
-            title_prop = properties.get('机器名称') or {}
-            if (title_prop.get('type') or '') == 'title':
-                title = ''.join([t.get('plain_text', '') for t in (title_prop.get('title') or [])])
-            else:
-                title = title_prop.get('title', '') or '无标题'
-            # Slug: properties['Slug'] -> rich_text
-            slug_prop = properties.get('Slug') or {}
-            slug = ''
-            if (slug_prop.get('type') or '') == 'rich_text':
-                slug = ''.join([t.get('plain_text', '') for t in (slug_prop.get('rich_text') or [])])
-            # 日期: properties['日期'] -> date.start
-            date_prop = properties.get('日期') or {}
-            date = None
-            if (date_prop.get('type') or '') == 'date' and date_prop.get('date'):
-                date = date_prop.get('date', {}).get('start', '')
-            # 标签: properties['标签'] -> multi_select 名字列表 (原 攻击向量)
-            tags_prop = properties.get('标签') or {}
-            tags = []
-            if (tags_prop.get('type') or '') == 'multi_select':
-                tags = [x.get('name', '') for x in (tags_prop.get('multi_select') or [])]
-            # 简介: properties['简介'] -> rich_text (作为列表页/摘要)
-            summary_prop = properties.get('简介') or {}
-            summary = ''
-            if (summary_prop.get('type') or '') == 'rich_text':
-                summary = ''.join([t.get('plain_text', '') for t in (summary_prop.get('rich_text') or [])])
-            # 类型: properties['类型'] -> select.name (关键字段)
-            category_prop = properties.get('类型') or {}
-            category = ''
-            if (category_prop.get('type') or '') == 'select' and category_prop.get('select'):
-                category = (category_prop.get('select') or {}).get('name', '') or ''
-            # 操作系统: properties['操作系统'] -> select.name
-            # 使用空值安全访问（可能存在 None）
-            os_name = ((properties.get('操作系统') or {}).get('select') or {}).get('name') or ''
-            # 难度: properties['难度'] -> select.name
-            difficulty = ((properties.get('难度') or {}).get('select') or {}).get('name') or ''
-            user = (properties.get('user') or {}).get('checkbox', False)
-            root = (properties.get('root') or {}).get('checkbox', False)
-            # 页面图标：page['icon']（非 properties）
-            icon_prop = page.get('icon') or {}
-            icon_type = icon_prop.get('type') or ''
-            icon_val = ''
-            if icon_type == 'emoji':
-                icon_val = icon_prop.get('emoji') or ''
-            elif icon_type == 'external':
-                icon_val = (icon_prop.get('external') or {}).get('url') or ''
-            elif icon_type == 'file':
-                icon_val = (icon_prop.get('file') or {}).get('url') or ''
-            # 状态: properties['状态'] -> status.name
-            status_prop = properties.get('状态') or {}
-            status = ''
-            if (status_prop.get('type') or '') == 'status' and status_prop.get('status'):
-                status = (status_prop.get('status') or {}).get('name', '') or ''
+
+            # 使用提取函数获取所有属性
+            icon_type, icon_val = _extract_icon(page)
+
             posts.append({
-                'title': title,
-                'slug': slug,
-                'date': date,
-                'tags': tags,
-                'summary': summary,
-                'category': category,
-                'os': os_name,
-                'difficulty': difficulty,
-                'user': user,
-                'root': root,
+                'title': _extract_title(properties),
+                'slug': _extract_slug(properties),
+                'date': _extract_date(properties),
+                'tags': _extract_tags(properties),
+                'summary': _extract_summary(properties),
+                'category': _extract_category(properties),
+                'os': _extract_os(properties),
+                'difficulty': _extract_difficulty(properties),
+                'user': (properties.get('user') or {}).get('checkbox', False),
+                'root': (properties.get('root') or {}).get('checkbox', False),
                 'icon_type': icon_type,
                 'icon_url_or_emoji': icon_val,
-                'status': status,
+                'status': _extract_status(properties),
             })
         logger.info(f"成功解析 {len(posts)} 篇文章")
         return posts
@@ -317,83 +374,72 @@ def get_post_content(slug):
     page_id = page['id']
     properties = page.get('properties', {})
 
-    def get_title():
-        p = properties.get('机器名称', {})
-        if (p.get('type') or '') == 'title':
-            return ''.join([t.get('plain_text', '') for t in (p.get('title') or [])])
-        return p.get('title', '') or '无标题'
-
-    def get_slug():
-        p = properties.get('Slug', {})
-        if p.get('type') == 'rich_text':
-            return ''.join([t.get('plain_text', '') for t in (p.get('rich_text') or [])])
-        return slug
-
-    def get_tags():
-        p = properties.get('标签', {})
-        if (p.get('type') or '') == 'multi_select':
-            return [x.get('name', '') for x in (p.get('multi_select') or [])]
-        return []
-
-    def get_date():
-        p = properties.get('日期', {})
-        if (p.get('type') or '') == 'date' and p.get('date'):
-            return p['date'].get('start', '')
-        return page.get('created_time', '')
-
-    def get_os():
-        # 空值安全访问，Methodology 可能没有该字段或字段为 None
-        return ((properties.get('操作系统') or {}).get('select') or {}).get('name') or ''
-
-    def get_difficulty():
-        return ((properties.get('难度') or {}).get('select') or {}).get('name') or ''
-
-    def get_user():
-        return (properties.get('user') or {}).get('checkbox', False)
-
-    def get_root():
-        return (properties.get('root') or {}).get('checkbox', False)
-
-    def get_summary():
-        p = properties.get('简介', {})
-        if (p.get('type') or '') == 'rich_text':
-            return ''.join([t.get('plain_text', '') for t in (p.get('rich_text') or [])])
-        return ''
-
-    def get_category():
-        p = properties.get('类型', {})
-        if (p.get('type') or '') == 'select' and p.get('select'):
-            return p['select'].get('name', '') or ''
-        return ''
-
-    def get_status():
-        p = properties.get('状态', {})
-        if (p.get('type') or '') == 'status' and p.get('status'):
-            return p['status'].get('name', '') or ''
-        return ''
+    # 使用提取函数获取所有属性
+    status = _extract_status(properties)
+    title = _extract_title(properties)
 
     # 获取状态，如果是"已锁住"则不渲染完整内容
-    status = get_status()
     content_html = ''
     if status != '已锁住':
-        logger.info(f"正在渲染文章内容: {get_title()}")
+        logger.info(f"正在渲染文章内容: {title}")
         renderer = NotionRenderer(notion)
         blocks = renderer._fetch_page_blocks(page_id)
         content_html = renderer.render_blocks(blocks)
     else:
-        logger.info(f"文章已锁住，跳过内容渲染: {get_title()}")
+        logger.info(f"文章已锁住，跳过内容渲染: {title}")
 
     return {
-        'title': get_title(),
-        'slug': get_slug(),
-        'tags': get_tags(),
-        'date': get_date(),
-        'summary': get_summary(),
-        'category': get_category(),
-        'os': get_os(),
-        'difficulty': get_difficulty(),
-        'user': get_user(),
-        'root': get_root(),
+        'title': title,
+        'slug': _extract_slug(properties) or slug,
+        'tags': _extract_tags(properties),
+        'date': _extract_date(properties) or page.get('created_time', ''),
+        'summary': _extract_summary(properties),
+        'category': _extract_category(properties),
+        'os': _extract_os(properties),
+        'difficulty': _extract_difficulty(properties),
+        'user': (properties.get('user') or {}).get('checkbox', False),
+        'root': (properties.get('root') or {}).get('checkbox', False),
         'status': status,
         'content_html': content_html,
+        'reading_time': calculate_reading_time(content_html),
     }
+
+
+def get_related_posts(current_slug, tags, category, limit=3):
+    """
+    获取相关文章推荐 (Get related posts recommendations)
+    基于标签和类别的相似度推荐
+    """
+    try:
+        all_posts = get_posts() or []
+        if not all_posts:
+            return []
+
+        # 过滤掉当前文章
+        candidates = [p for p in all_posts if p.get('slug') != current_slug]
+
+        # 计算相似度分数
+        def calculate_similarity(post):
+            score = 0
+            post_tags = set(post.get('tags') or [])
+            current_tags = set(tags or [])
+
+            # 标签匹配：每个匹配的标签 +2 分
+            common_tags = post_tags & current_tags
+            score += len(common_tags) * 2
+
+            # 类别匹配：+1 分
+            if post.get('category') == category:
+                score += 1
+
+            return score
+
+        # 按相似度排序
+        candidates.sort(key=calculate_similarity, reverse=True)
+
+        # 返回前 N 篇
+        return candidates[:limit]
+    except Exception as e:
+        logger.error(f"获取相关文章失败: {str(e)}", exc_info=True)
+        return []
+

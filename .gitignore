@@ -41,7 +41,7 @@ instance/
 # OS
 .DS_Store
 Thumbs.db
-#
+
 # Virtualenvs
 .venv/
 venv/
@@ -62,5 +62,11 @@ flask_cache/
 # node (if any frontend)
 node_modules/
 
-# Ignore README when committing to Git (optional)
-README.md
+# Claude Code
+.claude/
+
+# Test files
+test_routes.py
+
+# Logs
+*.log

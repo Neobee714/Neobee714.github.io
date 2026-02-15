@@ -6,7 +6,7 @@
 <style>
   .glitch {
     position: relative;
-    color: var(--tw-prose-headings);
+    color: hsl(var(--bc) / 1);
     font-weight: 900;
     letter-spacing: -0.04em;
   }
@@ -22,12 +22,12 @@
   }
   .glitch::before {
     animation: glitchTop 2s infinite linear;
-    color: rgba(255,0,50,0.8);
+    color: hsl(var(--er) / 0.8);
     z-index: -1;
   }
   .glitch::after {
     animation: glitchBottom 2.5s infinite linear;
-    color: rgba(0,150,255,0.8);
+    color: hsl(var(--in) / 0.8);
     z-index: -2;
   }
 
@@ -52,7 +52,7 @@
   .terminal {
     font-family: var(--font-mono);
     background: transparent;
-    color: var(--tw-prose-body);
+    color: hsl(var(--bc) / 0.9);
   }
 </style>
 {% endblock %}
