@@ -400,40 +400,38 @@
           }
         })
         .then(async response => {
-          // 先检查 HTTP 状态码
+          // 先读取响应体（只能读取一次）
+          const responseText = await response.text();
+
+          // 尝试解析为 JSON
+          let responseData;
+          try {
+            responseData = JSON.parse(responseText);
+          } catch (jsonError) {
+            // 如果不是 JSON，说明返回了 HTML 错误页面
+            console.error('服务器返回了非 JSON 响应:', responseText.substring(0, 500));
+            throw new Error(`服务器返回了非 JSON 响应 (HTTP ${response.status}): ${responseText.substring(0, 200)}...`);
+          }
+
+          // 检查 HTTP 状态码
           if (!response.ok) {
-            // 尝试解析为 JSON 获取错误信息
-            let errorMessage = `服务器错误 (HTTP ${response.status})`;
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorMessage;
-            } catch (jsonError) {
-              // 如果不是 JSON，读取文本内容（可能是 HTML 错误页面）
-              try {
-                const errorText = await response.text();
-                // 只显示前 200 个字符，避免显示整个 HTML 页面
-                errorMessage = `服务器返回了非 JSON 响应: ${errorText.substring(0, 200)}...`;
-              } catch (textError) {
-                errorMessage = `无法读取错误信息 (HTTP ${response.status})`;
-              }
-            }
+            const errorMessage = responseData.error || `服务器错误 (HTTP ${response.status})`;
             throw new Error(errorMessage);
           }
 
-          // 解析 JSON 响应
-          return response.json();
-        })
-        .then(data => {
           // 检查响应中的 success 字段
-          if (data.success === false) {
-            throw new Error(data.error || '翻译失败，但未返回具体错误信息');
+          if (responseData.success === false) {
+            throw new Error(responseData.error || '翻译失败，但未返回具体错误信息');
           }
 
           // 检查是否有翻译内容
-          if (!data.content_html) {
+          if (!responseData.content_html) {
             throw new Error('翻译响应中缺少 content_html 字段');
           }
 
+          return responseData;
+        })
+        .then(data => {
           // 替换内容
           postContent.innerHTML = data.content_html;
           translateBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>恢复原文</span>';
