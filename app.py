@@ -195,7 +195,7 @@ def index():
 
 
 @app.route('/post/<slug>')
-@cache.cached(timeout=1800, key_prefix=lambda: f'post_{request.view_args.get("slug")}')  # 缓存 30 分钟
+@cache.cached(timeout=3600, key_prefix=lambda: f'post_{request.view_args.get("slug")}')  # 缓存 1 小时
 def post(slug):
     """文章详情页：从 Notion 拉取正文并渲染"""
     logger.info(f"正在获取文章: {slug}")
