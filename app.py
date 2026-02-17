@@ -2,10 +2,11 @@
 Neobee's Blog - Flask 主入口文件
 """
 import os
+import time
 import traceback
 import logging
 from collections import defaultdict
-from flask import Flask, render_template, abort, make_response, url_for, request
+from flask import Flask, render_template, abort, make_response, url_for, request, g
 from config import Config
 from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts, sync_to_cache
 try:
@@ -117,6 +118,103 @@ def _get_cached_categories():
     return get_categories() or []
 
 
+# ==================== 性能监控 (Performance Profiling) ====================
+
+@app.before_request
+def before_request_handler():
+    """
+    请求前钩子：记录请求开始时间，检查缓存命中状态
+    """
+    # 记录请求开始时间
+    g.start_time = time.time()
+
+    # 尝试检测缓存命中状态
+    g.cache_hit = None  # None: 未知, True: 命中, False: 未命中
+
+    # 根据请求路径判断缓存键
+    path = request.path
+
+    # 首页
+    if path == '/' and not request.args:
+        cache_key = 'index_page'
+        g.cache_hit = cache.get(cache_key) is not None
+
+    # 文章详情页
+    elif path.startswith('/post/'):
+        slug = path.split('/post/')[-1]
+        cache_key = f'post_{slug}'
+        g.cache_hit = cache.get(cache_key) is not None
+
+    # 归档页面
+    elif path == '/archives':
+        cache_key = 'archives_page'
+        g.cache_hit = cache.get(cache_key) is not None
+
+    # 标签页面
+    elif path == '/tags':
+        cache_key = 'tags_page'
+        g.cache_hit = cache.get(cache_key) is not None
+
+    # 分类页面
+    elif path.startswith('/category/'):
+        category_name = path.split('/category/')[-1]
+        cache_key = f'category_{category_name}'
+        g.cache_hit = cache.get(cache_key) is not None
+
+
+@app.after_request
+def after_request_handler(response):
+    """
+    请求后钩子：计算请求耗时，添加响应头，输出性能日志
+    """
+    # 计算请求总耗时
+    if hasattr(g, 'start_time'):
+        elapsed = time.time() - g.start_time
+
+        # 添加响应头：X-Backend-Response-Time
+        response.headers['X-Backend-Response-Time'] = f"{elapsed:.4f}s"
+
+        # 判断缓存状态
+        cache_status = "UNKNOWN"
+        if g.cache_hit is True:
+            cache_status = "✅ CACHE HIT"
+        elif g.cache_hit is False:
+            cache_status = "❌ CACHE MISS"
+
+        # 输出性能日志（醒目格式）
+        method = request.method
+        path = request.path
+        status_code = response.status_code
+
+        # 根据耗时设置不同的日志级别和标记
+        if elapsed < 0.1:
+            perf_mark = "⚡ FAST"
+            log_level = logging.INFO
+        elif elapsed < 0.5:
+            perf_mark = "🟢 GOOD"
+            log_level = logging.INFO
+        elif elapsed < 2.0:
+            perf_mark = "🟡 SLOW"
+            log_level = logging.WARNING
+        else:
+            perf_mark = "🔴 VERY SLOW"
+            log_level = logging.WARNING
+
+        # 格式化日志输出
+        log_message = (
+            f"[PERFORMANCE] {perf_mark} | "
+            f"{method} {path} | "
+            f"Status: {status_code} | "
+            f"Time: {elapsed:.4f}s | "
+            f"Cache: {cache_status}"
+        )
+
+        logger.log(log_level, log_message)
+
+    return response
+
+
+# ==================== 路由定义 (Routes) ====================
 
 @app.route('/')
 @cache.cached(timeout=2592000, key_prefix='index_page')  # 30天缓存
