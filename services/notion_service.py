@@ -536,7 +536,7 @@ def sync_to_cache(app, cache_instance):
     全量同步 Notion 数据到缓存 (Full sync Notion data to cache)
     用于后台异步刷新缓存，避免访客触发实时 API 请求
 
-    关键修复：在应用上下文中使用 render_template 渲染 HTML 字符串后再存入缓存
+    关键修复：在应用上下文和请求上下文中使用 render_template 渲染 HTML 字符串后再存入缓存
     """
     import time
     from flask import render_template
@@ -545,138 +545,140 @@ def sync_to_cache(app, cache_instance):
     logger.info("[缓存同步] 开始全量同步 Notion 数据...")
 
     try:
-        # 必须在 Flask 应用上下文中执行
+        # 必须在 Flask 应用上下文和请求上下文中执行
         with app.app_context():
-            # 1. 同步首页文章列表（默认第一页，无搜索）
-            logger.info("[缓存同步] 正在同步首页文章列表...")
-            all_posts = get_posts()
+            # 创建一个测试请求上下文（用于 render_template 中的 url_for 等函数）
+            with app.test_request_context('/'):
+                # 1. 同步首页文章列表（默认第一页，无搜索）
+                logger.info("[缓存同步] 正在同步首页文章列表...")
+                all_posts = get_posts()
 
-            # 渲染首页 HTML
-            per_page = 15
-            total_posts = len(all_posts)
-            total_pages = (total_posts + per_page - 1) // per_page if total_posts > 0 else 1
-            posts_page1 = all_posts[:per_page]
+                # 渲染首页 HTML
+                per_page = 15
+                total_posts = len(all_posts)
+                total_pages = (total_posts + per_page - 1) // per_page if total_posts > 0 else 1
+                posts_page1 = all_posts[:per_page]
 
-            pagination = {
-                'page': 1,
-                'per_page': per_page,
-                'total_posts': total_posts,
-                'total_pages': total_pages,
-                'has_prev': False,
-                'has_next': total_pages > 1,
-                'prev_page': None,
-                'next_page': 2 if total_pages > 1 else None
-            }
+                pagination = {
+                    'page': 1,
+                    'per_page': per_page,
+                    'total_posts': total_posts,
+                    'total_pages': total_pages,
+                    'has_prev': False,
+                    'has_next': total_pages > 1,
+                    'prev_page': None,
+                    'next_page': 2 if total_pages > 1 else None
+                }
 
-            index_html = render_template('index.html', posts=posts_page1, pagination=pagination, q='')
-            cache_instance.set('index_page', index_html, timeout=2592000)
-            logger.info(f"[缓存同步] 首页 HTML 已缓存: {len(all_posts)} 篇文章")
+                index_html = render_template('index.html', posts=posts_page1, pagination=pagination, q='')
+                cache_instance.set('index_page', index_html, timeout=2592000)
+                logger.info(f"[缓存同步] 首页 HTML 已缓存: {len(all_posts)} 篇文章")
 
-            # 2. 同步每篇文章的详情页
-            success_count = 0
-            fail_count = 0
-            for idx, post in enumerate(all_posts, 1):
-                slug = post.get('slug')
-                if not slug:
-                    logger.warning(f"[缓存同步] 跳过无 slug 的文章: {post.get('title', '未知')}")
-                    fail_count += 1
-                    continue
-
-                try:
-                    logger.info(f"[缓存同步] ({idx}/{len(all_posts)}) 正在同步文章: {slug}")
-                    post_data = get_post_content(slug)
-                    if post_data:
-                        # 获取相关文章推荐
-                        related = get_related_posts(
-                            current_slug=slug,
-                            tags=post_data.get('tags', []),
-                            category=post_data.get('category', ''),
-                            limit=3
-                        )
-
-                        # 渲染文章详情页 HTML
-                        post_html = render_template('post.html', post=post_data, related_posts=related)
-                        cache_key = f'post_{slug}'
-                        cache_instance.set(cache_key, post_html, timeout=2592000)
-                        success_count += 1
-                        logger.info(f"[缓存同步] 文章 HTML 已缓存: {slug}")
-                    else:
-                        logger.warning(f"[缓存同步] 文章内容为空: {slug}")
+                # 2. 同步每篇文章的详情页
+                success_count = 0
+                fail_count = 0
+                for idx, post in enumerate(all_posts, 1):
+                    slug = post.get('slug')
+                    if not slug:
+                        logger.warning(f"[缓存同步] 跳过无 slug 的文章: {post.get('title', '未知')}")
                         fail_count += 1
-                except Exception as e:
-                    logger.error(f"[缓存同步] 同步文章失败 {slug}: {str(e)}", exc_info=True)
-                    fail_count += 1
+                        continue
 
-            # 3. 同步归档页面
-            logger.info("[缓存同步] 正在同步归档页面...")
-            from collections import defaultdict
-            archives_dict = defaultdict(lambda: defaultdict(list))
-            for post in all_posts:
-                date_str = post.get('date') or ''
-                if date_str:
-                    year = date_str[:4]
-                    month = date_str[5:7]
-                    archives_dict[year][month].append(post)
+                    try:
+                        logger.info(f"[缓存同步] ({idx}/{len(all_posts)}) 正在同步文章: {slug}")
+                        post_data = get_post_content(slug)
+                        if post_data:
+                            # 获取相关文章推荐
+                            related = get_related_posts(
+                                current_slug=slug,
+                                tags=post_data.get('tags', []),
+                                category=post_data.get('category', ''),
+                                limit=3
+                            )
 
-            archives_list = []
-            for year in sorted(archives_dict.keys(), reverse=True):
-                months_data = []
-                for month in sorted(archives_dict[year].keys(), reverse=True):
-                    months_data.append({
-                        'month': month,
-                        'posts': archives_dict[year][month]
+                            # 渲染文章详情页 HTML
+                            post_html = render_template('post.html', post=post_data, related_posts=related)
+                            cache_key = f'post_{slug}'
+                            cache_instance.set(cache_key, post_html, timeout=2592000)
+                            success_count += 1
+                            logger.info(f"[缓存同步] 文章 HTML 已缓存: {slug}")
+                        else:
+                            logger.warning(f"[缓存同步] 文章内容为空: {slug}")
+                            fail_count += 1
+                    except Exception as e:
+                        logger.error(f"[缓存同步] 同步文章失败 {slug}: {str(e)}", exc_info=True)
+                        fail_count += 1
+
+                # 3. 同步归档页面
+                logger.info("[缓存同步] 正在同步归档页面...")
+                from collections import defaultdict
+                archives_dict = defaultdict(lambda: defaultdict(list))
+                for post in all_posts:
+                    date_str = post.get('date') or ''
+                    if date_str:
+                        year = date_str[:4]
+                        month = date_str[5:7]
+                        archives_dict[year][month].append(post)
+
+                archives_list = []
+                for year in sorted(archives_dict.keys(), reverse=True):
+                    months_data = []
+                    for month in sorted(archives_dict[year].keys(), reverse=True):
+                        months_data.append({
+                            'month': month,
+                            'posts': archives_dict[year][month]
+                        })
+                    archives_list.append({
+                        'year': year,
+                        'months': months_data
                     })
-                archives_list.append({
-                    'year': year,
-                    'months': months_data
-                })
 
-            archives_html = render_template('archives.html', archives=archives_list)
-            cache_instance.set('archives_page', archives_html, timeout=2592000)
-            logger.info("[缓存同步] 归档页面 HTML 已缓存")
+                archives_html = render_template('archives.html', archives=archives_list)
+                cache_instance.set('archives_page', archives_html, timeout=2592000)
+                logger.info("[缓存同步] 归档页面 HTML 已缓存")
 
-            # 4. 同步标签页面
-            logger.info("[缓存同步] 正在同步标签页面...")
-            from collections import Counter
-            tag_counter = Counter()
-            tag_posts = defaultdict(list)
-            for post in all_posts:
-                for tag in (post.get('tags') or []):
-                    tag_counter[tag] += 1
-                    tag_posts[tag].append(post)
+                # 4. 同步标签页面
+                logger.info("[缓存同步] 正在同步标签页面...")
+                from collections import Counter
+                tag_counter = Counter()
+                tag_posts = defaultdict(list)
+                for post in all_posts:
+                    for tag in (post.get('tags') or []):
+                        tag_counter[tag] += 1
+                        tag_posts[tag].append(post)
 
-            tags_list = [
-                {'name': tag, 'count': count, 'posts': tag_posts[tag]}
-                for tag, count in tag_counter.most_common()
-            ]
+                tags_list = [
+                    {'name': tag, 'count': count, 'posts': tag_posts[tag]}
+                    for tag, count in tag_counter.most_common()
+                ]
 
-            tags_html = render_template('tags.html', tags=tags_list)
-            cache_instance.set('tags_page', tags_html, timeout=2592000)
-            logger.info(f"[缓存同步] 标签页面 HTML 已缓存: {len(tags_list)} 个标签")
+                tags_html = render_template('tags.html', tags=tags_list)
+                cache_instance.set('tags_page', tags_html, timeout=2592000)
+                logger.info(f"[缓存同步] 标签页面 HTML 已缓存: {len(tags_list)} 个标签")
 
-            # 5. 同步分类页面
-            logger.info("[缓存同步] 正在同步分类页面...")
-            categories = get_categories()
-            for category in categories:
-                category_posts = get_posts(category=category)
+                # 5. 同步分类页面
+                logger.info("[缓存同步] 正在同步分类页面...")
+                categories = get_categories()
+                for category in categories:
+                    category_posts = get_posts(category=category)
 
-                # 渲染分类页面 HTML（复用 index.html 模板）
-                category_html = render_template('index.html', posts=category_posts)
-                cache_key = f'category_{category}'
-                cache_instance.set(cache_key, category_html, timeout=2592000)
-                logger.info(f"[缓存同步] 分类 HTML 已缓存: {category} ({len(category_posts)} 篇)")
+                    # 渲染分类页面 HTML（复用 index.html 模板）
+                    category_html = render_template('index.html', posts=category_posts)
+                    cache_key = f'category_{category}'
+                    cache_instance.set(cache_key, category_html, timeout=2592000)
+                    logger.info(f"[缓存同步] 分类 HTML 已缓存: {category} ({len(category_posts)} 篇)")
 
-            elapsed = time.time() - start_time
-            logger.info(f"[缓存同步] ✅ 全量同步完成！耗时 {elapsed:.2f} 秒")
-            logger.info(f"[缓存同步] 统计: 成功 {success_count} 篇，失败 {fail_count} 篇")
+                elapsed = time.time() - start_time
+                logger.info(f"[缓存同步] ✅ 全量同步完成！耗时 {elapsed:.2f} 秒")
+                logger.info(f"[缓存同步] 统计: 成功 {success_count} 篇，失败 {fail_count} 篇")
 
-            return {
-                'success': True,
-                'total_posts': len(all_posts),
-                'success_count': success_count,
-                'fail_count': fail_count,
-                'elapsed': elapsed
-            }
+                return {
+                    'success': True,
+                    'total_posts': len(all_posts),
+                    'success_count': success_count,
+                    'fail_count': fail_count,
+                    'elapsed': elapsed
+                }
 
     except Exception as e:
         elapsed = time.time() - start_time
