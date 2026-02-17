@@ -195,7 +195,7 @@ def get_categories():
 
 
 def _rich_text_to_html(rich_text_list):
-    """将 Notion rich_text 数组转为内联 HTML（支持粗体、斜体、代码等）。"""
+    """将 Notion rich_text 数组转为内联 HTML（支持粗体、斜体、代码、删除线、下划线、链接等）。"""
     if not rich_text_list:
         return ''
     parts = []
@@ -204,20 +204,26 @@ def _rich_text_to_html(rich_text_list):
         if not text:
             continue
         annotations = span.get('annotations', {}) or {}
+
+        # 内联代码块（优先级最高）
         if annotations.get('code'):
-            parts.append(f'<code>{text}</code>')
+            parts.append(f'<code class="bg-base-300 px-1 rounded text-sm font-mono text-error">{text}</code>')
         else:
+            # 应用文本样式
             if annotations.get('bold'):
                 text = f'<strong>{text}</strong>'
             if annotations.get('italic'):
                 text = f'<em>{text}</em>'
             if annotations.get('strikethrough'):
-                text = f'<s>{text}</s>'
+                text = f'<del>{text}</del>'
             if annotations.get('underline'):
                 text = f'<u>{text}</u>'
+
+            # 链接（最外层）
             link = span.get('href')
             if link:
-                text = f'<a href="{html.escape(link)}" class="link link-hover" target="_blank" rel="noopener">{text}</a>'
+                text = f'<a href="{html.escape(link)}" class="link link-primary" target="_blank" rel="noopener">{text}</a>'
+
             parts.append(text)
     return ''.join(parts)
 
@@ -225,7 +231,12 @@ def _rich_text_to_html(rich_text_list):
 class NotionRenderer:
     """将 Notion Block 列表转换为 HTML。"""
 
-    SUPPORTED_TYPES = {'heading_1', 'heading_2', 'heading_3', 'paragraph', 'bulleted_list_item', 'numbered_list_item', 'image', 'code'}
+    SUPPORTED_TYPES = {
+        'heading_1', 'heading_2', 'heading_3',
+        'paragraph', 'bulleted_list_item', 'numbered_list_item',
+        'quote', 'callout', 'divider', 'to_do', 'toggle', 'bookmark',
+        'image', 'code'
+    }
 
     def __init__(self, notion_client):
         self.notion = notion_client
@@ -291,6 +302,7 @@ class NotionRenderer:
         block_id = block.get('id', '')
         payload = block.get(block_type) or {}
 
+        # 标题
         if block_type == 'heading_1':
             text = self._get_rich_text(payload)
             return f'<h1 class="text-3xl font-bold mt-8 mb-4 text-base-content" id="h-{block_id[:8]}">{text}</h1>' if text else ''
@@ -301,10 +313,12 @@ class NotionRenderer:
             text = self._get_rich_text(payload)
             return f'<h3 class="text-xl font-semibold mt-4 mb-2 text-base-content" id="h-{block_id[:8]}">{text}</h3>' if text else ''
 
+        # 段落
         if block_type == 'paragraph':
             text = self._get_rich_text(payload)
             return f'<p class="my-2 text-base-content/90 leading-relaxed">{text}</p>' if text else '<p class="my-2">&nbsp;</p>'
 
+        # 列表项（单个，稍后会被合并）
         if block_type == 'bulleted_list_item':
             text = self._get_rich_text(payload)
             return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
@@ -313,6 +327,46 @@ class NotionRenderer:
             text = self._get_rich_text(payload)
             return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
 
+        # 引用块
+        if block_type == 'quote':
+            text = self._get_rich_text(payload)
+            return f'<blockquote class="border-l-4 border-primary pl-4 py-2 my-4 bg-base-200/50 italic text-base-content/80">{text}</blockquote>' if text else ''
+
+        # 标注/提示框
+        if block_type == 'callout':
+            icon = (payload.get('icon') or {}).get('emoji', '💡')
+            text = self._get_rich_text(payload)
+            return f'<div class="alert shadow-lg my-4 bg-base-200"><span class="text-2xl">{html.escape(icon)}</span><span class="text-base-content/90">{text}</span></div>' if text else ''
+
+        # 分割线
+        if block_type == 'divider':
+            return '<hr class="my-8 border-base-300">'
+
+        # 待办事项
+        if block_type == 'to_do':
+            checked = payload.get('checked', False)
+            text = self._get_rich_text(payload)
+            checked_attr = 'checked' if checked else ''
+            text_class = 'line-through text-base-content/50' if checked else 'text-base-content/90'
+            return f'<div class="flex items-start gap-2 my-1"><input type="checkbox" class="checkbox checkbox-sm mt-1" disabled {checked_attr}><span class="{text_class}">{text}</span></div>' if text else ''
+
+        # 折叠列表
+        if block_type == 'toggle':
+            summary_text = self._get_rich_text(payload)
+            # 注意：toggle 的子内容需要在 render_blocks 中特殊处理
+            # 这里只渲染摘要部分，子内容会在后续处理
+            return f'<details class="collapse bg-base-200 my-4"><summary class="collapse-title text-base font-medium cursor-pointer">{summary_text}</summary><div class="collapse-content" data-toggle-id="{block_id}"></div></details>' if summary_text else ''
+
+        # 网页书签
+        if block_type == 'bookmark':
+            url = payload.get('url', '')
+            caption = payload.get('caption', [])
+            caption_text = ''.join([c.get('plain_text', '') for c in caption]) if caption else url
+            if url:
+                return f'<a href="{html.escape(url)}" class="card bg-base-200 border border-base-300 p-4 my-4 block hover:border-primary transition-colors" target="_blank" rel="noopener"><div class="flex items-center gap-2"><i class="fa-solid fa-bookmark text-primary"></i><span class="text-base-content/90 break-all">{html.escape(caption_text)}</span></div></a>'
+            return ''
+
+        # 图片
         if block_type == 'image':
             url = None
             if payload.get('external') and payload['external'].get('url'):
@@ -326,6 +380,7 @@ class NotionRenderer:
             cap_html = f'<figcaption class="text-sm text-base-content/60 mt-1">{html.escape(cap_text)}</figcaption>' if cap_text else ''
             return f'<figure class="my-4"><img src="{html.escape(url)}" alt="{html.escape(cap_text) or "image"}" class="rounded-lg max-w-full h-auto" loading="lazy"/>{cap_html}</figure>'
 
+        # 代码块
         if block_type == 'code':
             lang = (payload.get('language') or 'plain text').strip().lower()
             # 映射 Notion 语言到 Prism/Highlight.js 的 language-xxx
