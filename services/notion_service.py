@@ -530,3 +530,119 @@ def get_related_posts(current_slug, tags, category, limit=3):
         logger.error(f"获取相关文章失败: {str(e)}", exc_info=True)
         return []
 
+
+def sync_to_cache(cache_instance):
+    """
+    全量同步 Notion 数据到缓存 (Full sync Notion data to cache)
+    用于后台异步刷新缓存，避免访客触发实时 API 请求
+    """
+    import time
+    start_time = time.time()
+    logger.info("[缓存同步] 开始全量同步 Notion 数据...")
+
+    try:
+        # 1. 同步首页文章列表
+        logger.info("[缓存同步] 正在同步首页文章列表...")
+        all_posts = get_posts()
+        cache_instance.set('index_page', all_posts, timeout=2592000)
+        logger.info(f"[缓存同步] 首页文章列表已缓存: {len(all_posts)} 篇文章")
+
+        # 2. 同步每篇文章的详情页
+        success_count = 0
+        fail_count = 0
+        for idx, post in enumerate(all_posts, 1):
+            slug = post.get('slug')
+            if not slug:
+                logger.warning(f"[缓存同步] 跳过无 slug 的文章: {post.get('title', '未知')}")
+                fail_count += 1
+                continue
+
+            try:
+                logger.info(f"[缓存同步] ({idx}/{len(all_posts)}) 正在同步文章: {slug}")
+                post_data = get_post_content(slug)
+                if post_data:
+                    cache_key = f'post_{slug}'
+                    cache_instance.set(cache_key, post_data, timeout=2592000)
+                    success_count += 1
+                    logger.info(f"[缓存同步] 文章已缓存: {slug}")
+                else:
+                    logger.warning(f"[缓存同步] 文章内容为空: {slug}")
+                    fail_count += 1
+            except Exception as e:
+                logger.error(f"[缓存同步] 同步文章失败 {slug}: {str(e)}", exc_info=True)
+                fail_count += 1
+
+        # 3. 同步归档页面
+        logger.info("[缓存同步] 正在同步归档页面...")
+        from collections import defaultdict
+        archives_dict = defaultdict(lambda: defaultdict(list))
+        for post in all_posts:
+            date_str = post.get('date') or ''
+            if date_str:
+                year = date_str[:4]
+                month = date_str[5:7]
+                archives_dict[year][month].append(post)
+
+        archives_list = []
+        for year in sorted(archives_dict.keys(), reverse=True):
+            months_data = []
+            for month in sorted(archives_dict[year].keys(), reverse=True):
+                months_data.append({
+                    'month': month,
+                    'posts': archives_dict[year][month]
+                })
+            archives_list.append({
+                'year': year,
+                'months': months_data
+            })
+        cache_instance.set('archives_page', archives_list, timeout=2592000)
+        logger.info("[缓存同步] 归档页面已缓存")
+
+        # 4. 同步标签页面
+        logger.info("[缓存同步] 正在同步标签页面...")
+        from collections import Counter
+        tag_counter = Counter()
+        tag_posts = defaultdict(list)
+        for post in all_posts:
+            for tag in (post.get('tags') or []):
+                tag_counter[tag] += 1
+                tag_posts[tag].append(post)
+
+        tags_list = [
+            {'name': tag, 'count': count, 'posts': tag_posts[tag]}
+            for tag, count in tag_counter.most_common()
+        ]
+        cache_instance.set('tags_page', tags_list, timeout=2592000)
+        logger.info(f"[缓存同步] 标签页面已缓存: {len(tags_list)} 个标签")
+
+        # 5. 同步分类页面
+        logger.info("[缓存同步] 正在同步分类页面...")
+        categories = get_categories()
+        for category in categories:
+            category_posts = get_posts(category=category)
+            cache_key = f'category_{category}'
+            cache_instance.set(cache_key, category_posts, timeout=2592000)
+            logger.info(f"[缓存同步] 分类已缓存: {category} ({len(category_posts)} 篇)")
+
+        elapsed = time.time() - start_time
+        logger.info(f"[缓存同步] ✅ 全量同步完成！耗时 {elapsed:.2f} 秒")
+        logger.info(f"[缓存同步] 统计: 成功 {success_count} 篇，失败 {fail_count} 篇")
+
+        return {
+            'success': True,
+            'total_posts': len(all_posts),
+            'success_count': success_count,
+            'fail_count': fail_count,
+            'elapsed': elapsed
+        }
+
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(f"[缓存同步] ❌ 全量同步失败: {str(e)}", exc_info=True)
+        return {
+            'success': False,
+            'error': str(e),
+            'elapsed': elapsed
+        }
+
+

@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from flask import Flask, render_template, abort, make_response, url_for, request
 from config import Config
-from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts
+from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts, sync_to_cache
 try:
     from flask_caching import Cache  # type: ignore
 except Exception:
@@ -119,6 +119,7 @@ def _get_cached_categories():
 
 
 @app.route('/')
+@cache.cached(timeout=2592000, key_prefix='index_page')  # 30天缓存
 def index():
     """首页路由：渲染文章列表（支持搜索和分页，每页 15 篇）"""
     try:
@@ -195,7 +196,7 @@ def index():
 
 
 @app.route('/post/<slug>')
-@cache.cached(timeout=3600, key_prefix=lambda: f'post_{request.view_args.get("slug")}')  # 缓存 1 小时
+@cache.cached(timeout=2592000, key_prefix=lambda: f'post_{request.view_args.get("slug")}')  # 缓存 30 天
 def post(slug):
     """文章详情页：从 Notion 拉取正文并渲染"""
     logger.info(f"正在获取文章: {slug}")
@@ -222,7 +223,7 @@ def about():
 
 
 @app.route('/archives')
-@cache.cached(timeout=600, key_prefix='archives_page')
+@cache.cached(timeout=2592000, key_prefix='archives_page')  # 30天缓存
 def archives():
     """文章归档页面 (Archives page)"""
     from collections import defaultdict
@@ -258,7 +259,7 @@ def archives():
 
 
 @app.route('/tags')
-@cache.cached(timeout=600, key_prefix='tags_page')
+@cache.cached(timeout=2592000, key_prefix='tags_page')  # 30天缓存
 def tags():
     """标签页面 (Tags page)"""
     from collections import Counter, defaultdict
@@ -286,7 +287,7 @@ def tags():
 
 
 @app.route('/category/<name>')
-@cache.cached(timeout=300, key_prefix=lambda: f'category_{request.view_args.get("name")}')
+@cache.cached(timeout=2592000, key_prefix=lambda: f'category_{request.view_args.get("name")}')  # 30天缓存
 def category(name):
     """按分类显示文章列表"""
     try:
@@ -461,6 +462,46 @@ def rss_feed():
     response = make_response(xml)
     response.headers['Content-Type'] = 'application/rss+xml; charset=utf-8'
     return response
+
+
+@app.route('/api/force_sync', methods=['GET'])
+@csrf_exempt  # API 端点，禁用 CSRF 保护
+def force_sync():
+    """
+    强制同步缓存接口 (Force cache sync endpoint)
+    通过 Token 验证，触发后台异步全量同步 Notion 数据到缓存
+    用法: GET /api/force_sync?token=YOUR_SYNC_TOKEN
+    """
+    import threading
+    from flask import jsonify
+
+    # 验证 Token
+    provided_token = request.args.get('token', '')
+    expected_token = Config.SYNC_TOKEN
+
+    if not expected_token:
+        logger.error("[强制同步] SYNC_TOKEN 环境变量未配置")
+        return jsonify({
+            'success': False,
+            'error': 'Server configuration error: SYNC_TOKEN not set'
+        }), 500
+
+    if provided_token != expected_token:
+        logger.warning(f"[强制同步] Token 验证失败: {provided_token[:10]}...")
+        return jsonify({
+            'success': False,
+            'error': 'Invalid token'
+        }), 403
+
+    # 启动后台线程执行同步
+    logger.info("[强制同步] Token 验证通过，启动后台同步线程...")
+    sync_thread = threading.Thread(target=sync_to_cache, args=(cache,), daemon=True)
+    sync_thread.start()
+
+    return jsonify({
+        'success': True,
+        'message': '后台同步已启动，请稍后查看日志确认同步结果'
+    }), 200
 
 
 @app.route('/api/translate/<slug>', methods=['POST'])

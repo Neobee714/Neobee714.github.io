@@ -28,6 +28,9 @@ class Config:
     LLM_API_KEY = os.getenv('LLM_API_KEY', '')
     LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o-mini')
+
+    # 缓存同步 Token（用于 /api/force_sync 接口验证）
+    SYNC_TOKEN = os.getenv('SYNC_TOKEN', '')
     
     @staticmethod
     def validate():
