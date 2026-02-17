@@ -241,31 +241,45 @@ class NotionRenderer:
         """递归获取某 block 下的所有子 block（扁平顺序，深度优先）。"""
         result = []
         cursor = None
+        api_calls = 0
         while True:
+            api_calls += 1
             resp = self.notion.blocks.children.list(block_id=block_id, page_size=100, start_cursor=cursor)
             blocks = resp.get('results', [])
             for b in blocks:
                 result.append(b)
                 if b.get('has_children'):
-                    result.extend(self._fetch_children(b['id']))
+                    child_blocks, child_calls = self._fetch_children(b['id'])
+                    result.extend(child_blocks)
+                    api_calls += child_calls
             cursor = resp.get('next_cursor')
             if not cursor:
                 break
-        return result
+        return result, api_calls
 
     def _fetch_page_blocks(self, page_id):
         """获取页面下所有顶层 block，并递归展开有子节点的 block。"""
+        import time
+        start_time = time.time()
         blocks = []
         cursor = None
+        api_calls = 0
+
         while True:
+            api_calls += 1
             resp = self.notion.blocks.children.list(block_id=page_id, page_size=100, start_cursor=cursor)
             for b in resp.get('results', []):
                 blocks.append(b)
                 if b.get('has_children'):
-                    blocks.extend(self._fetch_children(b['id']))
+                    child_blocks, child_calls = self._fetch_children(b['id'])
+                    blocks.extend(child_blocks)
+                    api_calls += child_calls
             cursor = resp.get('next_cursor')
             if not cursor:
                 break
+
+        elapsed = time.time() - start_time
+        logger.info(f"获取 blocks 完成: {len(blocks)} 个 blocks, {api_calls} 次 API 调用, 耗时 {elapsed:.2f} 秒")
         return blocks
 
     def render_block(self, block):
