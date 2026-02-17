@@ -103,6 +103,13 @@ else:
     }
 cache = Cache(app, config=cache_config)
 
+# 全局同步状态跟踪 (Global sync status tracking)
+sync_status = {
+    'is_syncing': False,
+    'last_sync_time': None,
+    'last_sync_result': None
+}
+
 @app.context_processor
 def inject_categories():
     """将 categories 注入到所有模板中（从 Notion schema 自动读取）"""
@@ -573,6 +580,7 @@ def force_sync():
     """
     import threading
     from flask import jsonify
+    from datetime import datetime
 
     # 验证 Token
     provided_token = request.args.get('token', '')
@@ -592,22 +600,83 @@ def force_sync():
             'error': 'Invalid token'
         }), 403
 
+    # 检查是否正在同步
+    if sync_status['is_syncing']:
+        return jsonify({
+            'success': False,
+            'error': '同步任务正在进行中，请稍后再试',
+            'is_syncing': True
+        }), 409
+
     # 可选：先清空缓存
-    clear_cache = request.args.get('clear_cache', '').lower() == 'true'
-    if clear_cache:
+    clear_cache_flag = request.args.get('clear_cache', '').lower() == 'true'
+    if clear_cache_flag:
         logger.info("[强制同步] 正在清空所有缓存...")
         cache.clear()
         logger.info("[强制同步] ✅ 缓存已清空")
 
+    # 包装同步函数，添加状态跟踪
+    def sync_wrapper():
+        global sync_status
+        sync_status['is_syncing'] = True
+        sync_status['last_sync_time'] = datetime.now().isoformat()
+
+        try:
+            result = sync_to_cache(app, cache)
+            sync_status['last_sync_result'] = result
+            sync_status['is_syncing'] = False
+            logger.info(f"[强制同步] ✅ 同步完成: {result}")
+        except Exception as e:
+            sync_status['last_sync_result'] = {
+                'success': False,
+                'error': str(e)
+            }
+            sync_status['is_syncing'] = False
+            logger.error(f"[强制同步] ❌ 同步失败: {str(e)}", exc_info=True)
+
     # 启动后台线程执行同步
     logger.info("[强制同步] Token 验证通过，启动后台同步线程...")
-    sync_thread = threading.Thread(target=sync_to_cache, args=(app, cache), daemon=True)
+    sync_thread = threading.Thread(target=sync_wrapper, daemon=True)
     sync_thread.start()
 
     return jsonify({
         'success': True,
-        'message': '后台同步已启动，请稍后查看日志确认同步结果',
-        'cache_cleared': clear_cache
+        'message': '后台同步已启动，请访问 /api/sync_status?token=YOUR_TOKEN 查询进度',
+        'cache_cleared': clear_cache_flag,
+        'status_url': '/api/sync_status?token=' + provided_token
+    }), 200
+
+
+@app.route('/api/sync_status', methods=['GET'])
+@csrf_exempt  # API 端点，禁用 CSRF 保护
+def sync_status_endpoint():
+    """
+    查询同步状态接口 (Sync status query endpoint)
+    用法: GET /api/sync_status?token=YOUR_SYNC_TOKEN
+    """
+    from flask import jsonify
+
+    # 验证 Token
+    provided_token = request.args.get('token', '')
+    expected_token = Config.SYNC_TOKEN
+
+    if not expected_token:
+        return jsonify({
+            'success': False,
+            'error': 'Server configuration error: SYNC_TOKEN not set'
+        }), 500
+
+    if provided_token != expected_token:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid token'
+        }), 403
+
+    return jsonify({
+        'success': True,
+        'is_syncing': sync_status['is_syncing'],
+        'last_sync_time': sync_status['last_sync_time'],
+        'last_sync_result': sync_status['last_sync_result']
     }), 200
 
 
