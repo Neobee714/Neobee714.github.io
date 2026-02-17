@@ -471,6 +471,7 @@ def force_sync():
     强制同步缓存接口 (Force cache sync endpoint)
     通过 Token 验证，触发后台异步全量同步 Notion 数据到缓存
     用法: GET /api/force_sync?token=YOUR_SYNC_TOKEN
+    可选参数: clear_cache=true 先清空缓存再同步
     """
     import threading
     from flask import jsonify
@@ -493,14 +494,22 @@ def force_sync():
             'error': 'Invalid token'
         }), 403
 
+    # 可选：先清空缓存
+    clear_cache = request.args.get('clear_cache', '').lower() == 'true'
+    if clear_cache:
+        logger.info("[强制同步] 正在清空所有缓存...")
+        cache.clear()
+        logger.info("[强制同步] ✅ 缓存已清空")
+
     # 启动后台线程执行同步
     logger.info("[强制同步] Token 验证通过，启动后台同步线程...")
-    sync_thread = threading.Thread(target=sync_to_cache, args=(cache,), daemon=True)
+    sync_thread = threading.Thread(target=sync_to_cache, args=(app, cache), daemon=True)
     sync_thread.start()
 
     return jsonify({
         'success': True,
-        'message': '后台同步已启动，请稍后查看日志确认同步结果'
+        'message': '后台同步已启动，请稍后查看日志确认同步结果',
+        'cache_cleared': clear_cache
     }), 200
 
 
