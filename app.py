@@ -224,7 +224,7 @@ def after_request_handler(response):
 # ==================== 路由定义 (Routes) ====================
 
 @app.route('/')
-@cache.cached(timeout=2592000, key_prefix='index_page')  # 30天缓存
+@cache.cached(timeout=2592000, key_prefix=lambda: f'index_page_{request.args.get("page", 1)}_{request.args.get("q", "")}')  # 30天缓存，区分页码和搜索
 def index():
     """首页路由：渲染文章列表（支持搜索和分页，每页 15 篇）"""
     try:

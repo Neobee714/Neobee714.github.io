@@ -549,30 +549,37 @@ def sync_to_cache(app, cache_instance):
         with app.app_context():
             # 创建一个测试请求上下文（用于 render_template 中的 url_for 等函数）
             with app.test_request_context('/'):
-                # 1. 同步首页文章列表（默认第一页，无搜索）
-                logger.info("[缓存同步] 正在同步首页文章列表...")
+                # 1. 同步首页所有分页（无搜索）
+                logger.info("[缓存同步] 正在同步首页所有分页...")
                 all_posts = get_posts()
 
-                # 渲染首页 HTML
                 per_page = 15
                 total_posts = len(all_posts)
                 total_pages = (total_posts + per_page - 1) // per_page if total_posts > 0 else 1
-                posts_page1 = all_posts[:per_page]
 
-                pagination = {
-                    'page': 1,
-                    'per_page': per_page,
-                    'total_posts': total_posts,
-                    'total_pages': total_pages,
-                    'has_prev': False,
-                    'has_next': total_pages > 1,
-                    'prev_page': None,
-                    'next_page': 2 if total_pages > 1 else None
-                }
+                # 缓存每一页
+                for page_num in range(1, total_pages + 1):
+                    start_idx = (page_num - 1) * per_page
+                    end_idx = start_idx + per_page
+                    posts_page = all_posts[start_idx:end_idx]
 
-                index_html = render_template('index.html', posts=posts_page1, pagination=pagination, q='')
-                cache_instance.set('index_page', index_html, timeout=2592000)
-                logger.info(f"[缓存同步] 首页 HTML 已缓存: {len(all_posts)} 篇文章")
+                    pagination = {
+                        'page': page_num,
+                        'per_page': per_page,
+                        'total_posts': total_posts,
+                        'total_pages': total_pages,
+                        'has_prev': page_num > 1,
+                        'has_next': page_num < total_pages,
+                        'prev_page': page_num - 1 if page_num > 1 else None,
+                        'next_page': page_num + 1 if page_num < total_pages else None
+                    }
+
+                    index_html = render_template('index.html', posts=posts_page, pagination=pagination, q='')
+                    cache_key = f'index_page_{page_num}_'
+                    cache_instance.set(cache_key, index_html, timeout=2592000)
+                    logger.info(f"[缓存同步] 首页第 {page_num}/{total_pages} 页已缓存")
+
+                logger.info(f"[缓存同步] 首页所有分页已缓存: {total_pages} 页，共 {len(all_posts)} 篇文章")
 
                 # 2. 同步每篇文章的详情页
                 success_count = 0
