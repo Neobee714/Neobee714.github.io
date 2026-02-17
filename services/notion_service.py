@@ -225,7 +225,7 @@ def _rich_text_to_html(rich_text_list):
 class NotionRenderer:
     """将 Notion Block 列表转换为 HTML。"""
 
-    SUPPORTED_TYPES = {'heading_1', 'heading_2', 'heading_3', 'paragraph', 'bulleted_list_item', 'image', 'code'}
+    SUPPORTED_TYPES = {'heading_1', 'heading_2', 'heading_3', 'paragraph', 'bulleted_list_item', 'numbered_list_item', 'image', 'code'}
 
     def __init__(self, notion_client):
         self.notion = notion_client
@@ -309,6 +309,10 @@ class NotionRenderer:
             text = self._get_rich_text(payload)
             return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
 
+        if block_type == 'numbered_list_item':
+            text = self._get_rich_text(payload)
+            return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
+
         if block_type == 'image':
             url = None
             if payload.get('external') and payload['external'].get('url'):
@@ -334,12 +338,14 @@ class NotionRenderer:
         return ''
 
     def render_blocks(self, blocks):
-        """将 block 列表转为完整 HTML，并合并连续列表项为 <ul>。"""
+        """将 block 列表转为完整 HTML，并合并连续列表项为 <ul> 或 <ol>。"""
         out = []
         i = 0
         while i < len(blocks):
             block = blocks[i]
             btype = block.get('type') or ''
+
+            # 处理无序列表
             if btype == 'bulleted_list_item':
                 ul_items = []
                 while i < len(blocks) and (blocks[i].get('type') or '') == 'bulleted_list_item':
@@ -347,8 +353,20 @@ class NotionRenderer:
                     i += 1
                 combined = ''.join(ul_items)
                 if combined:
-                    out.append(f'<ul class="list-disc my-2 pl-6">{combined}</ul>')
+                    out.append(f'<ul class="list-disc list-outside ml-6 space-y-1 my-2 text-base-content/90">{combined}</ul>')
                 continue
+
+            # 处理有序列表
+            if btype == 'numbered_list_item':
+                ol_items = []
+                while i < len(blocks) and (blocks[i].get('type') or '') == 'numbered_list_item':
+                    ol_items.append(self.render_block(blocks[i]))
+                    i += 1
+                combined = ''.join(ol_items)
+                if combined:
+                    out.append(f'<ol class="list-decimal list-outside ml-6 space-y-1 my-2 text-base-content/90">{combined}</ol>')
+                continue
+
             html_fragment = self.render_block(block)
             if html_fragment:
                 out.append(html_fragment)
