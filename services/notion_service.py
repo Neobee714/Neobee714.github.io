@@ -388,7 +388,7 @@ class NotionRenderer:
             lang = lang_map.get(lang, lang)
             code_content = ''.join([span.get('plain_text', '') for span in (payload.get('rich_text') or [])])
             code_escaped = html.escape(code_content)
-            return f'<pre class="my-4 rounded-xl overflow-x-auto"><code class="language-{lang} font-mono text-sm">{code_escaped}</code></pre>'
+            return f'<pre class="bg-base-300 text-base-content p-4 my-4 rounded-xl overflow-x-auto"><code class="language-{lang} font-mono text-sm">{code_escaped}</code></pre>'
 
         return ''
 

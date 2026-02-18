@@ -13,8 +13,6 @@
 {% block og_description %}{{ post.summary | default('Hack The Box Writeup') | truncate(200) }}{% endblock %}
 
 {% block head %}
-  <!-- Prism.js 语法高亮：Dracula 主题，符合黑客审美 -->
-  <link href="https://cdn.jsdelivr.net/gh/PrismJS/prism-themes@master/themes/prism-dracula.min.css" rel="stylesheet">
   <!-- Prism.js 行号插件样式 -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet">
   <style>
@@ -27,8 +25,14 @@
     .post-content pre {
       margin: 1rem 0;
       border-radius: 0.75rem;
-      overflow: hidden;
+      overflow-x: auto;
       position: relative;
+      background-color: transparent !important;
+    }
+    /* 代码块使用 DaisyUI 主题色 */
+    .post-content pre code {
+      background-color: transparent !important;
+      color: inherit !important;
     }
     .post-content :first-child { margin-top: 0; }
     /* 代码复制按钮样式 (Code copy button styles) */
@@ -54,8 +58,8 @@
 
 {% block content %}
   <article class="px-4 md:px-6 py-8 md:py-12">
-    <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 gap-8">
-      <div class="lg:col-span-3">
+    <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 lg:gap-8">
+      <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
         <header class="mb-8">
         <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">{{ post.title | default('无标题') }}</h1>
         <div class="flex flex-wrap items-center gap-4 mt-3 text-base-content/50 text-sm">

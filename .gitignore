@@ -22,7 +22,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.gitignore
 
 
 # Flask
@@ -73,6 +72,10 @@ test_routes.py
 # Logs
 *.log
 
-clear_cache.py
+# Temporary files
 IMPROVEMENTS.md
+
+# Project-specific files to ignore
+.gitignore
 CLAUDE.md
+clear_cache.py
