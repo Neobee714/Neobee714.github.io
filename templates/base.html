@@ -40,6 +40,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- Prism.js 语法高亮主题 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.css">
   <!-- Tailwind CSS + DaisyUI (CDN) -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -47,9 +51,97 @@
     :root {
       --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
       --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+      /* 代码框自定义颜色变量 (Custom code block colors) */
+      --code-bg-light: oklch(25% 0.02 240);  /* 亮色主题：深蓝灰色（保持深色以配合 Prism 语法高亮） */
+      --code-bg-dark: oklch(20% 0.02 240);   /* 暗色主题：深蓝灰色 */
     }
+
+    /* 亮色主题（lofi）使用浅色背景 */
+    html[data-theme="lofi"] {
+      --code-bg: var(--code-bg-light);
+    }
+
+    /* 暗色主题（business）使用深色背景 */
+    html[data-theme="business"] {
+      --code-bg: var(--code-bg-dark);
+    }
+
     body { font-family: var(--font-sans); }
     .font-mono, code, pre { font-family: var(--font-mono); }
+
+    /* 1. 强制重写 Prism 容器背景和圆角 (使用自定义变量) */
+    div.code-toolbar > pre,
+    .prose pre[class*="language-"] {
+      background-color: var(--code-bg) !important;
+      border-radius: var(--rounded-box, 1rem) !important;
+      padding: 1rem 1rem 1rem 1rem !important;
+      margin-top: 1.5em;
+      margin-bottom: 1.5em;
+      overflow-x: auto !important;
+    }
+
+    /* 1.1 为带行号的代码块增加左侧 padding */
+    div.code-toolbar > pre.line-numbers,
+    .prose pre.line-numbers[class*="language-"] {
+      padding-left: 4.5rem !important; /* 为行号留出足够空间 */
+    }
+
+    /* 2. 剥夺内部代码的底色和文本颜色，防止叠加变黑 */
+    div.code-toolbar > pre > code,
+    .prose code[class*="language-"],
+    .prose code {
+      background-color: transparent !important;
+      color: inherit !important;
+      text-shadow: none !important;
+    }
+
+    /* 3. 修复 Prism Toolbar 和复制按钮定位 (使用 DaisyUI 变量) */
+    div.code-toolbar {
+      position: relative !important;
+    }
+    div.code-toolbar > .toolbar {
+      position: absolute !important;
+      top: 0.5rem !important;
+      right: 0.5rem !important;
+      opacity: 1 !important;
+      z-index: 20 !important;
+    }
+    div.code-toolbar > .toolbar button {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: rgba(255, 255, 255, 0.8) !important;
+      border-radius: 0.25rem !important;
+      padding: 0.25rem 0.5rem !important;
+      border: none !important;
+      cursor: pointer;
+      font-size: 0.75rem !important;
+    }
+    div.code-toolbar > .toolbar button:hover {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: rgba(255, 255, 255, 1) !important;
+    }
+
+    /* 统一代码复制按钮样式（覆盖 DaisyUI btn-ghost 类） */
+    .copy-code-btn {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: rgba(255, 255, 255, 0.8) !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .copy-code-btn:hover {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: rgba(255, 255, 255, 1) !important;
+    }
+    .copy-code-btn.copied {
+      background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    /* 4. 行号样式优化 (Line numbers styling) */
+    .line-numbers .line-numbers-rows {
+      border-right: 1px solid hsl(var(--bc) / 0.2) !important;
+      padding-right: 0.5rem !important;
+    }
+
     /* 代码块允许横向滚动而不是强制换行 (Allow horizontal scroll for code blocks) */
     pre {
       overflow-x: auto !important;
