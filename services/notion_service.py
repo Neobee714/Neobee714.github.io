@@ -3,6 +3,7 @@ Notion API 服务 - 处理与 Notion 数据库的交互
 """
 import html
 import logging
+import os
 from notion_client import Client
 from config import Config
 
@@ -12,6 +13,19 @@ logger = logging.getLogger(__name__)
 def get_notion_client():
     """创建并返回 Notion 客户端实例"""
     Config.validate()
+    
+    # 开发环境：禁用 SSL 验证（解决代理 SSL 握手问题）
+    if Config.DEBUG:
+        try:
+            import httpx
+            # 创建不验证 SSL 的客户端
+            http_client = httpx.Client(verify=False)
+            logger.warning("开发模式：已禁用 SSL 验证")
+            return Client(auth=Config.NOTION_TOKEN, client=http_client)
+        except Exception as e:
+            logger.warning(f"无法创建自定义 HTTP 客户端: {e}")
+    
+    # 生产环境：使用默认配置
     return Client(auth=Config.NOTION_TOKEN)
 
 

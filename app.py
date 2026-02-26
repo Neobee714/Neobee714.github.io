@@ -6,9 +6,10 @@ import time
 import traceback
 import logging
 from collections import defaultdict
-from flask import Flask, render_template, abort, make_response, url_for, request, g
+from flask import Flask, render_template, abort, make_response, url_for, request, g, session, redirect
 from config import Config
 from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts, sync_to_cache
+from services.analytics import Analytics
 try:
     from flask_caching import Cache  # type: ignore
 except Exception:
@@ -103,6 +104,9 @@ else:
     }
 cache = Cache(app, config=cache_config)
 
+# 初始化访问统计 (Initialize Analytics)
+analytics = Analytics(db_path='analytics.db')
+
 # 全局同步状态跟踪 (Global sync status tracking)
 sync_status = {
     'is_syncing': False,
@@ -130,10 +134,26 @@ def _get_cached_categories():
 @app.before_request
 def before_request_handler():
     """
-    请求前钩子：记录请求开始时间，检查缓存命中状态
+    请求前钩子：记录请求开始时间，检查缓存命中状态，记录访问量
     """
     # 记录请求开始时间
     g.start_time = time.time()
+    
+    # 记录访问量（排除静态文件和后台路径）
+    if not request.path.startswith('/static/') and not request.path.startswith('/admin/'):
+        try:
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if ip and ',' in ip:
+                ip = ip.split(',')[0].strip()
+            
+            analytics.record_view(
+                path=request.path,
+                ip=ip,
+                user_agent=request.headers.get('User-Agent'),
+                referer=request.headers.get('Referer')
+            )
+        except Exception as e:
+            logger.error(f"记录访问量失败: {e}")
 
     # 尝试检测缓存命中状态
     g.cache_hit = None  # None: 未知, True: 命中, False: 未命中
@@ -848,6 +868,75 @@ Output: <code class="language-python"># This is a comment\nprint("Hello")</code>
             'success': False,
             'error': f'服务器内部错误: {str(e)}'
         }), 500
+
+
+# ==================== 后台管理 (Admin Dashboard) ====================
+
+# 简单的密码认证（生产环境建议用更安全的方式）
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'neobee2026')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """后台登录页面"""
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect('/admin/dashboard')
+        else:
+            return render_template('admin_login.html', error='密码错误')
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    """退出登录"""
+    session.pop('admin_logged_in', None)
+    return redirect('/admin/login')
+
+def require_admin():
+    """检查是否已登录"""
+    if not session.get('admin_logged_in'):
+        return redirect('/admin/login')
+    return None
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    """后台仪表盘"""
+    auth_check = require_admin()
+    if auth_check:
+        return auth_check
+    
+    try:
+        # 获取统计数据
+        stats = analytics.get_stats_summary()
+        top_posts = analytics.get_top_posts(limit=20)
+        recent_views = analytics.get_recent_views(limit=50)
+        daily_stats = analytics.get_daily_stats(days=30)
+        
+        # 获取文章标题（从 Notion，使用 null-safe 访问）
+        try:
+            all_posts = get_posts() or []
+            post_titles = {
+                (post.get('slug') or ''): (post.get('title') or '无标题')
+                for post in all_posts
+            }
+        except Exception as e:
+            logger.error(f"获取文章列表失败: {e}")
+            post_titles = {}
+        
+        # 为 top_posts 添加标题（null-safe）
+        for post in top_posts:
+            slug = post.get('slug') or ''
+            post['title'] = post_titles.get(slug, slug or '未知文章')
+        
+        return render_template('admin_dashboard.html',
+                             stats=stats,
+                             top_posts=top_posts,
+                             recent_views=recent_views,
+                             daily_stats=daily_stats)
+    except Exception as e:
+        logger.error(f"获取后台数据失败: {e}", exc_info=True)
+        return f"Error: {e}", 500
 
 
 if __name__ == '__main__':
