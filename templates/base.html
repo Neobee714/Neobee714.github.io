@@ -87,10 +87,10 @@
       padding-left: 4.5rem !important; /* 为行号留出足够空间 */
     }
 
-    /* 2. 剥夺内部代码的底色和文本颜色，防止叠加变黑 */
+    /* 2. 剥夺内部代码的底色和文本颜色，防止叠加变黑（排除 notion-inline-code）*/
     div.code-toolbar > pre > code,
     .prose code[class*="language-"],
-    .prose code {
+    .prose pre code {
       background-color: transparent !important;
       color: inherit !important;
       text-shadow: none !important;
@@ -194,6 +194,215 @@
       .content-with-sidebar {
         margin-left: 280px;
       }
+    }
+
+    /* Notion 文本颜色样式 - 主题自适应 (Notion text colors - theme adaptive) */
+    /* 内联代码颜色 - 默认橙色 */
+    .notion-inline-code {
+      color: #ea580c !important; /* 橙色 - 浅色主题 */
+    }
+    html[data-theme="business"] .notion-inline-code {
+      color: #fb923c !important; /* 橙色 - 深色主题 */
+    }
+
+    /* 内联代码的颜色覆盖（当同时有 code 和 color 标注时）- 浅色主题 */
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #6b7280 !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #92400e !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #ea580c !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #ca8a04 !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="green"] { color: #16a34a !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #2563eb !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #9333ea !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #db2777 !important; }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="red"] { color: #dc2626 !important; }
+
+    /* 内联代码的颜色覆盖 - 深色主题 */
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #9ca3af !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #d97706 !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #fb923c !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #fbbf24 !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="green"] { color: #4ade80 !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #60a5fa !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #c084fc !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #f472b6 !important; }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="red"] { color: #f87171 !important; }
+
+    /* 内联代码的背景色覆盖 - 浅色主题 */
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
+      background-color: #f3f4f6 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
+      background-color: #fef3c7 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
+      background-color: #ffedd5 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
+      background-color: #fef9c3 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
+      background-color: #dcfce7 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
+      background-color: #dbeafe !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
+      background-color: #f3e8ff !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
+      background-color: #fce7f3 !important;
+    }
+    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
+      background-color: #fee2e2 !important;
+      color: #991b1b !important;
+    }
+
+    /* 内联代码的背景色覆盖 - 深色主题 */
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
+      background-color: rgba(107, 114, 128, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
+      background-color: rgba(217, 119, 6, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
+      background-color: rgba(251, 146, 60, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
+      background-color: rgba(251, 191, 36, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
+      background-color: rgba(74, 222, 128, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
+      background-color: rgba(96, 165, 250, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
+      background-color: rgba(192, 132, 252, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
+      background-color: rgba(244, 114, 182, 0.3) !important;
+    }
+    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
+      background-color: rgba(248, 113, 113, 0.3) !important;
+      color: #fca5a5 !important;
+    }
+
+    /* 文本颜色 - 浅色主题 (lofi) */
+    html[data-theme="lofi"] .notion-text[data-notion-color="gray"] { color: #6b7280; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="brown"] { color: #92400e; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="orange"] { color: #ea580c; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="yellow"] { color: #ca8a04; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="green"] { color: #16a34a; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="blue"] { color: #2563eb; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="purple"] { color: #9333ea; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="pink"] { color: #db2777; }
+    html[data-theme="lofi"] .notion-text[data-notion-color="red"] { color: #dc2626; }
+
+    /* 文本颜色 - 深色主题 (business) */
+    html[data-theme="business"] .notion-text[data-notion-color="gray"] { color: #9ca3af; }
+    html[data-theme="business"] .notion-text[data-notion-color="brown"] { color: #d97706; }
+    html[data-theme="business"] .notion-text[data-notion-color="orange"] { color: #fb923c; }
+    html[data-theme="business"] .notion-text[data-notion-color="yellow"] { color: #fbbf24; }
+    html[data-theme="business"] .notion-text[data-notion-color="green"] { color: #4ade80; }
+    html[data-theme="business"] .notion-text[data-notion-color="blue"] { color: #60a5fa; }
+    html[data-theme="business"] .notion-text[data-notion-color="purple"] { color: #c084fc; }
+    html[data-theme="business"] .notion-text[data-notion-color="pink"] { color: #f472b6; }
+    html[data-theme="business"] .notion-text[data-notion-color="red"] { color: #f87171; }
+
+    /* 背景色 - 浅色主题 (lofi) */
+    html[data-theme="lofi"] .notion-text[data-notion-color="gray-bg"] {
+      background-color: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="brown-bg"] {
+      background-color: #fef3c7;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="orange-bg"] {
+      background-color: #ffedd5;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="yellow-bg"] {
+      background-color: #fef9c3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="green-bg"] {
+      background-color: #dcfce7;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="blue-bg"] {
+      background-color: #dbeafe;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="purple-bg"] {
+      background-color: #f3e8ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="pink-bg"] {
+      background-color: #fce7f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="lofi"] .notion-text[data-notion-color="red-bg"] {
+      background-color: #fee2e2;
+      color: #991b1b;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* 背景色 - 深色主题 (business) */
+    html[data-theme="business"] .notion-text[data-notion-color="gray-bg"] {
+      background-color: rgba(107, 114, 128, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="brown-bg"] {
+      background-color: rgba(217, 119, 6, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="orange-bg"] {
+      background-color: rgba(251, 146, 60, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="yellow-bg"] {
+      background-color: rgba(251, 191, 36, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="green-bg"] {
+      background-color: rgba(74, 222, 128, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="blue-bg"] {
+      background-color: rgba(96, 165, 250, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="purple-bg"] {
+      background-color: rgba(192, 132, 252, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="pink-bg"] {
+      background-color: rgba(244, 114, 182, 0.2);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    html[data-theme="business"] .notion-text[data-notion-color="red-bg"] {
+      background-color: rgba(248, 113, 113, 0.2);
+      color: #fca5a5;
+      padding: 2px 6px;
+      border-radius: 3px;
     }
   </style>
   {% block head %}{% endblock %}

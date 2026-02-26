@@ -209,19 +209,51 @@ def get_categories():
 
 
 def _rich_text_to_html(rich_text_list):
-    """将 Notion rich_text 数组转为内联 HTML（支持粗体、斜体、代码、删除线、下划线、链接等）。"""
+    """将 Notion rich_text 数组转为内联 HTML（支持粗体、斜体、代码、删除线、下划线、链接、颜色等）。"""
     if not rich_text_list:
         return ''
+
+    # Notion 颜色映射到 CSS 类（使用 data-* 属性实现主题自适应）
+    # 通过 CSS 变量和 data-color 属性，在 CSS 中根据 data-theme 切换颜色
+    COLOR_ATTRS = {
+        'default': '',
+        'gray': 'data-notion-color="gray"',
+        'brown': 'data-notion-color="brown"',
+        'orange': 'data-notion-color="orange"',
+        'yellow': 'data-notion-color="yellow"',
+        'green': 'data-notion-color="green"',
+        'blue': 'data-notion-color="blue"',
+        'purple': 'data-notion-color="purple"',
+        'pink': 'data-notion-color="pink"',
+        'red': 'data-notion-color="red"',
+        # 背景色（_background 后缀）
+        'gray_background': 'data-notion-color="gray-bg"',
+        'brown_background': 'data-notion-color="brown-bg"',
+        'orange_background': 'data-notion-color="orange-bg"',
+        'yellow_background': 'data-notion-color="yellow-bg"',
+        'green_background': 'data-notion-color="green-bg"',
+        'blue_background': 'data-notion-color="blue-bg"',
+        'purple_background': 'data-notion-color="purple-bg"',
+        'pink_background': 'data-notion-color="pink-bg"',
+        'red_background': 'data-notion-color="red-bg"',
+    }
+
     parts = []
     for span in rich_text_list:
         text = html.escape(span.get('plain_text', ''))
         if not text:
             continue
         annotations = span.get('annotations', {}) or {}
+        color = annotations.get('color', 'default')
 
-        # 内联代码块（优先级最高）
+        # 内联代码块（优先级最高，但也要支持颜色）
         if annotations.get('code'):
-            parts.append(f'<code class="bg-base-300 px-1 rounded text-sm font-mono text-error">{text}</code>')
+            # 如果内联代码同时有颜色标注，添加 data-notion-color 属性
+            color_attr = COLOR_ATTRS.get(color, '')
+            if color_attr:
+                parts.append(f'<code class="notion-inline-code notion-text bg-base-300 px-1 rounded text-sm font-mono" {color_attr}>{text}</code>')
+            else:
+                parts.append(f'<code class="notion-inline-code bg-base-300 px-1 rounded text-sm font-mono">{text}</code>')
         else:
             # 应用文本样式
             if annotations.get('bold'):
@@ -232,6 +264,11 @@ def _rich_text_to_html(rich_text_list):
                 text = f'<del>{text}</del>'
             if annotations.get('underline'):
                 text = f'<u>{text}</u>'
+
+            # 应用颜色/背景色（使用 data 属性）
+            color_attr = COLOR_ATTRS.get(color, '')
+            if color_attr:
+                text = f'<span class="notion-text" {color_attr}>{text}</span>'
 
             # 链接（最外层）
             link = span.get('href')
@@ -400,9 +437,9 @@ class NotionRenderer:
             # 映射 Notion 语言到 Prism/Highlight.js 的 language-xxx
             lang_map = {'plain text': 'plaintext', 'plain': 'plaintext'}
             lang = lang_map.get(lang, lang)
-            code_content = ''.join([span.get('plain_text', '') for span in (payload.get('rich_text') or [])])
-            code_escaped = html.escape(code_content)
-            return f'<pre class="bg-base-300 text-base-content p-4 my-4 rounded-xl overflow-x-auto"><code class="language-{lang} font-mono text-sm">{code_escaped}</code></pre>'
+            # 使用 _rich_text_to_html 来支持代码块中的颜色
+            code_html = _rich_text_to_html(payload.get('rich_text') or [])
+            return f'<pre class="bg-base-300 text-base-content p-4 my-4 rounded-xl overflow-x-auto"><code class="language-{lang} font-mono text-sm">{code_html}</code></pre>'
 
         return ''
 

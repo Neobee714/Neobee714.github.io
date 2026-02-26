@@ -944,4 +944,5 @@ if __name__ == '__main__':
     # 获取 Railway 分配的端口，如果没有则默认 5000
     port = int(os.environ.get("PORT", 5000))
     # 必须 host='0.0.0.0'
-    app.run(host='0.0.0.0', port=port)
+    # use_reloader=False 防止 Windows 上 Ctrl+C 后进程残留
+    app.run(host='0.0.0.0', port=port, use_reloader=False)
