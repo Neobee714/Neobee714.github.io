@@ -140,18 +140,20 @@ def before_request_handler():
     g.start_time = time.time()
     
     # 记录访问量（排除静态文件和后台路径）
+    # 使用异步方式避免阻塞请求
     if not request.path.startswith('/static/') and not request.path.startswith('/admin/'):
         try:
             ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if ip and ',' in ip:
                 ip = ip.split(',')[0].strip()
-            
-            analytics.record_view(
-                path=request.path,
-                ip=ip,
-                user_agent=request.headers.get('User-Agent'),
-                referer=request.headers.get('Referer')
-            )
+
+            # 异步记录，不阻塞主请求
+            import threading
+            threading.Thread(
+                target=analytics.record_view,
+                args=(request.path, ip, request.headers.get('User-Agent'), request.headers.get('Referer')),
+                daemon=True
+            ).start()
         except Exception as e:
             logger.error(f"记录访问量失败: {e}")
 
@@ -244,8 +246,7 @@ def after_request_handler(response):
 # ==================== 路由定义 (Routes) ====================
 
 @app.route('/')
-# 暂时禁用首页缓存，因为后台同步的 HTML 有问题
-# @cache.cached(timeout=2592000, key_prefix=lambda: f'index_page_{request.args.get("page", 1)}_{request.args.get("q", "")}')
+@cache.cached(timeout=300, key_prefix=lambda: f'index_page_{request.args.get("page", 1)}_{request.args.get("q", "")}')
 def index():
     """首页路由：渲染文章列表（支持搜索和分页，每页 15 篇）"""
     try:
