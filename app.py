@@ -8,8 +8,36 @@ import logging
 from collections import defaultdict
 from flask import Flask, render_template, abort, make_response, url_for, request, g, session, redirect
 from config import Config
-from services.notion_service import get_posts, get_post_content, get_categories, get_related_posts, sync_to_cache
+from services.notion_service import get_posts as get_posts_notion, get_post_content as get_post_content_notion, get_categories as get_categories_notion, get_related_posts as get_related_posts_notion, sync_to_cache
+from services.local_data_service import LocalDataService
 from services.analytics import Analytics
+
+# 数据源选择：优先使用本地数据，如果不可用则回退到 Notion API
+def get_posts(category=None):
+    """获取文章列表（优先本地数据）"""
+    if LocalDataService.is_available():
+        logger.info("使用本地数据源")
+        return LocalDataService.get_posts(category)
+    logger.info("本地数据不可用，使用 Notion API")
+    return get_posts_notion(category)
+
+def get_post_content(slug):
+    """获取文章内容（优先本地数据）"""
+    if LocalDataService.is_available():
+        return LocalDataService.get_post_content(slug)
+    return get_post_content_notion(slug)
+
+def get_categories():
+    """获取分类列表（优先本地数据）"""
+    if LocalDataService.is_available():
+        return LocalDataService.get_categories()
+    return get_categories_notion()
+
+def get_related_posts(current_slug, tags, category, limit=3):
+    """获取相关文章（优先本地数据）"""
+    if LocalDataService.is_available():
+        return LocalDataService.get_related_posts(current_slug, tags, category, limit)
+    return get_related_posts_notion(current_slug, tags, category, limit)
 try:
     from flask_caching import Cache  # type: ignore
 except Exception:
@@ -50,6 +78,13 @@ except Exception:
     def get_remote_address():
         return '127.0.0.1'
 
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
+    from apscheduler.triggers.interval import IntervalTrigger  # type: ignore
+    SCHEDULER_AVAILABLE = True
+except Exception:
+    SCHEDULER_AVAILABLE = False
+
 import pkgutil
 import importlib.util
 
@@ -68,6 +103,15 @@ if not hasattr(pkgutil, 'get_loader'):
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# 配置静态文件路由 - 提供本地下载的图片
+from flask import send_from_directory
+
+@app.route('/static/images/<path:filename>')
+def serve_image(filename):
+    """提供本地下载的图片"""
+    images_dir = os.path.join(os.path.dirname(__file__), 'blog-data', 'images')
+    return send_from_directory(images_dir, filename)
 
 # CSRF 保护 (CSRF Protection)
 csrf = CSRFProtect(app)
@@ -90,6 +134,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 # 禁用 Werkzeug 的冗长日志
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+# 检查 APScheduler 可用性
+if not SCHEDULER_AVAILABLE:
+    logger.warning("APScheduler 未安装，定时同步功能不可用")
+
 # 缓存配置：开发环境使用 SimpleCache，生产可改为 FileSystemCache
 if getattr(Config, 'DEBUG', True):
     cache_config = {    
@@ -906,14 +955,14 @@ def admin_dashboard():
     auth_check = require_admin()
     if auth_check:
         return auth_check
-    
+
     try:
         # 获取统计数据
         stats = analytics.get_stats_summary()
         top_posts = analytics.get_top_posts(limit=20)
         recent_views = analytics.get_recent_views(limit=50)
         daily_stats = analytics.get_daily_stats(days=30)
-        
+
         # 获取文章标题（从 Notion，使用 null-safe 访问）
         try:
             all_posts = get_posts() or []
@@ -924,20 +973,149 @@ def admin_dashboard():
         except Exception as e:
             logger.error(f"获取文章列表失败: {e}")
             post_titles = {}
-        
+
         # 为 top_posts 添加标题（null-safe）
         for post in top_posts:
             slug = post.get('slug') or ''
             post['title'] = post_titles.get(slug, slug or '未知文章')
-        
+
+        # 获取同步状态
+        metadata = LocalDataService.get_metadata()
+        last_sync = metadata.get('last_sync') if metadata else None
+
         return render_template('admin_dashboard.html',
                              stats=stats,
                              top_posts=top_posts,
                              recent_views=recent_views,
-                             daily_stats=daily_stats)
+                             daily_stats=daily_stats,
+                             last_sync=last_sync,
+                             sync_status=sync_status)
     except Exception as e:
         logger.error(f"获取后台数据失败: {e}", exc_info=True)
         return f"Error: {e}", 500
+
+
+@app.route('/admin/sync', methods=['POST'])
+def admin_sync():
+    """手动触发同步"""
+    auth_check = require_admin()
+    if auth_check:
+        return auth_check
+
+    try:
+        # 检查是否正在同步
+        if sync_status['is_syncing']:
+            return {'success': False, 'message': '同步正在进行中，请稍候'}, 400
+
+        # 执行同步
+        import subprocess
+        import sys
+
+        sync_status['is_syncing'] = True
+        logger.info("开始手动同步...")
+
+        # 在后台执行同步脚本
+        result = subprocess.run(
+            [sys.executable, 'sync_notion.py'],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5分钟超时
+        )
+
+        sync_status['is_syncing'] = False
+        sync_status['last_sync_time'] = time.time()
+
+        if result.returncode == 0:
+            sync_status['last_sync_result'] = 'success'
+            logger.info("同步成功")
+
+            # 清除所有缓存
+            cache.clear()
+            logger.info("已清除缓存")
+
+            return {'success': True, 'message': '同步成功', 'output': result.stdout}
+        else:
+            sync_status['last_sync_result'] = 'failed'
+            logger.error(f"同步失败: {result.stderr}")
+            return {'success': False, 'message': '同步失败', 'error': result.stderr}, 500
+
+    except subprocess.TimeoutExpired:
+        sync_status['is_syncing'] = False
+        sync_status['last_sync_result'] = 'timeout'
+        logger.error("同步超时")
+        return {'success': False, 'message': '同步超时（超过5分钟）'}, 500
+    except Exception as e:
+        sync_status['is_syncing'] = False
+        sync_status['last_sync_result'] = 'error'
+        logger.error(f"同步出错: {e}", exc_info=True)
+        return {'success': False, 'message': f'同步出错: {str(e)}'}, 500
+
+
+# ==================== 定时同步任务 (Scheduled Sync Task) ====================
+
+def scheduled_sync_job():
+    """定时同步任务"""
+    if sync_status['is_syncing']:
+        logger.info("同步任务已在运行，跳过本次执行")
+        return
+
+    try:
+        sync_status['is_syncing'] = True
+        logger.info("开始定时同步...")
+
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, 'sync_notion.py'],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        sync_status['is_syncing'] = False
+        sync_status['last_sync_time'] = time.time()
+
+        if result.returncode == 0:
+            sync_status['last_sync_result'] = 'success'
+            logger.info("定时同步成功")
+
+            # 清除缓存
+            with app.app_context():
+                cache.clear()
+                logger.info("已清除缓存")
+        else:
+            sync_status['last_sync_result'] = 'failed'
+            logger.error(f"定时同步失败: {result.stderr}")
+
+    except Exception as e:
+        sync_status['is_syncing'] = False
+        sync_status['last_sync_result'] = 'error'
+        logger.error(f"定时同步出错: {e}", exc_info=True)
+
+
+# 初始化定时任务
+# Railway 环境下禁用定时同步（启动时已同步，且文件系统临时）
+is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+
+if SCHEDULER_AVAILABLE and not getattr(Config, 'DEBUG', True) and not is_railway:
+    scheduler = BackgroundScheduler()
+    # 每小时同步一次
+    scheduler.add_job(
+        func=scheduled_sync_job,
+        trigger=IntervalTrigger(hours=1),
+        id='sync_notion_job',
+        name='Sync Notion content',
+        replace_existing=True
+    )
+    scheduler.start()
+    logger.info("定时同步任务已启动（每小时执行一次）")
+
+    # 确保程序退出时关闭调度器
+    import atexit
+    atexit.register(lambda: scheduler.shutdown())
+elif is_railway:
+    logger.info("Railway 环境检测到，定时同步已禁用（启动时已同步）")
 
 
 if __name__ == '__main__':

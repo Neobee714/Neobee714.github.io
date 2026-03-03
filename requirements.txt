@@ -10,3 +10,7 @@ Flask-WTF>=1.2.0,<2.0.0
 Flask-Limiter>=3.5.0,<4.0.0
 # OpenAI library for LLM translation
 openai>=1.0.0,<2.0.0
+# Background task scheduler
+APScheduler>=3.10.0,<4.0.0
+# HTTP requests library (for image download)
+requests>=2.31.0,<3.0.0
