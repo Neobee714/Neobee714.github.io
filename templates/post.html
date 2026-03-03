@@ -12,6 +12,40 @@
 
 {% block og_description %}{{ post.summary | default('Hack The Box Writeup') | truncate(200) }}{% endblock %}
 
+{% block structured_data %}
+<!-- BlogPosting Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{ post.title | default('文章') }}",
+  "description": "{{ post.summary | default('') | truncate(200) }}",
+  "author": {
+    "@type": "Person",
+    "name": "Neobee",
+    "url": "{{ url_for('about', _external=True) }}"
+  },
+  "datePublished": "{{ post.date }}T00:00:00+08:00",
+  "dateModified": "{{ post.date }}T00:00:00+08:00",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Neobee's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "{{ url_for('static', filename='avatar.jpg', _external=True) }}"
+    }
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "{{ request.url }}"
+  },
+  "articleSection": "{{ post.category | default('Technology') }}",
+  "keywords": "{{ post.tags | join(', ') }}",
+  "inLanguage": "zh-CN"
+}
+</script>
+{% endblock %}
+
 {% block head %}
   <!-- Prism.js 行号插件样式 -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet">

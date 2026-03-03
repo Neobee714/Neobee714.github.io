@@ -34,6 +34,9 @@
   <!-- RSS Feed -->
   <link rel="alternate" type="application/rss+xml" title="Neobee's Blog RSS Feed" href="{{ url_for('rss_feed', _external=True) }}">
 
+  <!-- Canonical URL -->
+  <link rel="canonical" href="{% block canonical %}{{ request.url_root.rstrip('/') }}{{ request.path }}{% endblock %}">
+
   <!-- Google Fonts: Inter (正文) + JetBrains Mono (代码) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -405,6 +408,26 @@
       border-radius: 3px;
     }
   </style>
+
+  <!-- JSON-LD 结构化数据 (Structured Data) -->
+  {% block structured_data %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Neobee's Blog",
+    "url": "{{ request.url_root.rstrip('/') }}",
+    "description": "Hack The Box Writeups & Cybersecurity Methodology",
+    "author": {
+      "@type": "Person",
+      "name": "Neobee",
+      "url": "{{ url_for('about', _external=True) }}"
+    },
+    "inLanguage": "zh-CN"
+  }
+  </script>
+  {% endblock %}
+
   {% block head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-base-100">
