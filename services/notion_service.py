@@ -286,11 +286,13 @@ class NotionRenderer:
         'heading_1', 'heading_2', 'heading_3',
         'paragraph', 'bulleted_list_item', 'numbered_list_item',
         'quote', 'callout', 'divider', 'to_do', 'toggle', 'bookmark',
-        'image', 'code'
+        'image', 'code', 'equation', 'table', 'table_row', 'column_list', 'column',
+        'table_of_contents'
     }
 
     def __init__(self, notion_client):
         self.notion = notion_client
+        self.headings = []  # 存储所有标题用于生成目录
 
     def _get_rich_text(self, block, key='rich_text'):
         """从 block 的 type 下取 rich_text 或 title（heading 用 title）。"""
@@ -298,6 +300,35 @@ class NotionRenderer:
         payload = block or {}
         rt = payload.get(key) or payload.get('rich_text') or payload.get('text') or []
         return _rich_text_to_html(rt) if isinstance(rt, list) else html.escape(str(rt))
+
+    def _render_column_children(self, column_block):
+        """渲染列（column）内的子块内容"""
+        if not column_block.get('has_children') or 'children' not in column_block:
+            return ''
+
+        children = column_block.get('children', [])
+        children_html = [self.render_block(child) for child in children]
+        return ''.join(children_html)
+
+    def _collect_headings(self, blocks):
+        """递归收集所有标题块用于生成目录"""
+        for block in blocks:
+            block_type = block.get('type', '')
+            block_id = block.get('id', '')
+            payload = block.get(block_type, {})
+
+            # 收集标题（非折叠标题）
+            if block_type in ['heading_1', 'heading_2', 'heading_3']:
+                is_toggleable = payload.get('is_toggleable', False)
+                if not is_toggleable:  # 只收集非折叠标题
+                    text = self._get_rich_text(payload)
+                    if text:
+                        level = int(block_type[-1])  # 提取 1, 2, 3
+                        self.headings.append({'level': level, 'text': text, 'id': f"h-{block_id[:8]}"})
+
+            # 递归处理子块
+            if block.get('has_children') and 'children' in block:
+                self._collect_headings(block.get('children', []))
 
     def _fetch_children(self, block_id):
         """递归获取某 block 下的所有子 block（扁平顺序，深度优先）。"""
@@ -332,10 +363,14 @@ class NotionRenderer:
             resp = self.notion.blocks.children.list(block_id=page_id, page_size=100, start_cursor=cursor)
             for b in resp.get('results', []):
                 blocks.append(b)
+                # 对于有子节点的 block，获取子内容并附加到 children 字段
                 if b.get('has_children'):
                     child_blocks, child_calls = self._fetch_children(b['id'])
-                    blocks.extend(child_blocks)
+                    b['children'] = child_blocks  # 将子 block 附加到父 block
                     api_calls += child_calls
+                    # 对于列表项和 todo，继续扁平化展开（保持原有行为）
+                    if b.get('type') in ['bulleted_list_item', 'numbered_list_item', 'to_do']:
+                        blocks.extend(child_blocks)
             cursor = resp.get('next_cursor')
             if not cursor:
                 break
@@ -356,12 +391,35 @@ class NotionRenderer:
         # 标题
         if block_type == 'heading_1':
             text = self._get_rich_text(payload)
+            is_toggleable = payload.get('is_toggleable', False)
+            if is_toggleable and block.get('has_children') and 'children' in block:
+                # 可折叠的一级标题
+                children = block.get('children', [])
+                nested_items = [self.render_block(child) for child in children]
+                children_html = ''.join(nested_items) if nested_items else ''
+                return f'<details class="notion-toggle my-2"><summary class="cursor-pointer py-1 px-2 hover:bg-base-200 rounded flex items-center gap-2 text-3xl font-bold"><span class="toggle-arrow">▶</span><span>{text}</span></summary><div class="ml-6 mt-1">{children_html}</div></details>' if text else ''
             return f'<h1 class="text-3xl font-bold mt-8 mb-4 text-base-content" id="h-{block_id[:8]}">{text}</h1>' if text else ''
+
         if block_type == 'heading_2':
             text = self._get_rich_text(payload)
+            is_toggleable = payload.get('is_toggleable', False)
+            if is_toggleable and block.get('has_children') and 'children' in block:
+                # 可折叠的二级标题
+                children = block.get('children', [])
+                nested_items = [self.render_block(child) for child in children]
+                children_html = ''.join(nested_items) if nested_items else ''
+                return f'<details class="notion-toggle my-2"><summary class="cursor-pointer py-1 px-2 hover:bg-base-200 rounded flex items-center gap-2 text-2xl font-bold"><span class="toggle-arrow">▶</span><span>{text}</span></summary><div class="ml-6 mt-1">{children_html}</div></details>' if text else ''
             return f'<h2 class="text-2xl font-bold mt-6 mb-3 text-base-content" id="h-{block_id[:8]}">{text}</h2>' if text else ''
+
         if block_type == 'heading_3':
             text = self._get_rich_text(payload)
+            is_toggleable = payload.get('is_toggleable', False)
+            if is_toggleable and block.get('has_children') and 'children' in block:
+                # 可折叠的三级标题
+                children = block.get('children', [])
+                nested_items = [self.render_block(child) for child in children]
+                children_html = ''.join(nested_items) if nested_items else ''
+                return f'<details class="notion-toggle my-2"><summary class="cursor-pointer py-1 px-2 hover:bg-base-200 rounded flex items-center gap-2 text-xl font-semibold"><span class="toggle-arrow">▶</span><span>{text}</span></summary><div class="ml-6 mt-1">{children_html}</div></details>' if text else ''
             return f'<h3 class="text-xl font-semibold mt-4 mb-2 text-base-content" id="h-{block_id[:8]}">{text}</h3>' if text else ''
 
         # 段落
@@ -372,11 +430,27 @@ class NotionRenderer:
         # 列表项（单个，稍后会被合并）
         if block_type == 'bulleted_list_item':
             text = self._get_rich_text(payload)
-            return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
+            # 处理嵌套子项目（二级使用空心圆）
+            children_html = ''
+            if block.get('has_children') and 'children' in block:
+                children = block.get('children', [])
+                if children:
+                    nested_items = [self.render_block(child) for child in children if child.get('type') == 'bulleted_list_item']
+                    if nested_items:
+                        children_html = f'<ul class="list-[circle] list-outside ml-6 space-y-1 my-1">{"".join(nested_items)}</ul>'
+            return f'<li class="ml-4 my-1 text-base-content/90">{text}{children_html}</li>' if text else ''
 
         if block_type == 'numbered_list_item':
             text = self._get_rich_text(payload)
-            return f'<li class="ml-4 my-1 text-base-content/90">{text}</li>' if text else ''
+            # 处理嵌套子项目（二级使用小写字母）
+            children_html = ''
+            if block.get('has_children') and 'children' in block:
+                children = block.get('children', [])
+                if children:
+                    nested_items = [self.render_block(child) for child in children if child.get('type') == 'numbered_list_item']
+                    if nested_items:
+                        children_html = f'<ol class="list-[lower-alpha] list-outside ml-6 space-y-1 my-1">{"".join(nested_items)}</ol>'
+            return f'<li class="ml-4 my-1 text-base-content/90">{text}{children_html}</li>' if text else ''
 
         # 引用块
         if block_type == 'quote':
@@ -387,7 +461,10 @@ class NotionRenderer:
         if block_type == 'callout':
             icon = (payload.get('icon') or {}).get('emoji', '💡')
             text = self._get_rich_text(payload)
-            return f'<div class="alert shadow-lg my-4 bg-base-200"><span class="text-2xl">{html.escape(icon)}</span><span class="text-base-content/90">{text}</span></div>' if text else ''
+            # 获取背景色（Notion callout 支持颜色）
+            color = payload.get('color', 'gray_background')
+            # 使用 Notion 风格的提示框样式
+            return f'<div class="notion-callout my-4 p-4 rounded-lg border-l-4 flex gap-3 items-start" data-callout-color="{color}"><span class="text-2xl flex-shrink-0">{html.escape(icon)}</span><div class="flex-1 text-base-content/90">{text}</div></div>' if text else ''
 
         # 分割线
         if block_type == 'divider':
@@ -399,14 +476,32 @@ class NotionRenderer:
             text = self._get_rich_text(payload)
             checked_attr = 'checked' if checked else ''
             text_class = 'line-through text-base-content/50' if checked else 'text-base-content/90'
-            return f'<div class="flex items-start gap-2 my-1"><input type="checkbox" class="checkbox checkbox-sm mt-1" disabled {checked_attr}><span class="{text_class}">{text}</span></div>' if text else ''
+
+            # 处理嵌套子任务
+            children_html = ''
+            if block.get('has_children') and 'children' in block:
+                children = block.get('children', [])
+                if children:
+                    nested_items = [self.render_block(child) for child in children]
+                    if nested_items:
+                        children_html = f'<div class="ml-6 mt-1">{"".join(nested_items)}</div>'
+
+            checkbox_html = f'<input type="checkbox" class="checkbox checkbox-sm mt-1 todo-checkbox" {checked_attr}>'
+            return f'<div class="flex items-start gap-2 my-1">{checkbox_html}<div class="flex-1"><span class="todo-text {text_class}">{text}</span>{children_html}</div></div>' if text else ''
 
         # 折叠列表
         if block_type == 'toggle':
             summary_text = self._get_rich_text(payload)
-            # 注意：toggle 的子内容需要在 render_blocks 中特殊处理
-            # 这里只渲染摘要部分，子内容会在后续处理
-            return f'<details class="collapse bg-base-200 my-4"><summary class="collapse-title text-base font-medium cursor-pointer">{summary_text}</summary><div class="collapse-content" data-toggle-id="{block_id}"></div></details>' if summary_text else ''
+            # 处理嵌套子内容
+            children_html = ''
+            if block.get('has_children') and 'children' in block:
+                children = block.get('children', [])
+                if children:
+                    nested_items = [self.render_block(child) for child in children]
+                    if nested_items:
+                        children_html = ''.join(nested_items)
+            # 使用 Notion 风格的折叠块样式（标题加粗）
+            return f'<details class="notion-toggle my-2"><summary class="cursor-pointer py-1 px-2 hover:bg-base-200 rounded flex items-center gap-2 font-semibold"><span class="toggle-arrow">▶</span><span>{summary_text}</span></summary><div class="ml-6 mt-1">{children_html}</div></details>' if summary_text else ''
 
         # 网页书签
         if block_type == 'bookmark':
@@ -441,17 +536,103 @@ class NotionRenderer:
             code_html = _rich_text_to_html(payload.get('rich_text') or [])
             return f'<pre class="bg-base-300 text-base-content p-4 my-4 rounded-xl overflow-x-auto"><code class="language-{lang} font-mono text-sm">{code_html}</code></pre>'
 
+        # 块级公式 (Block-level Math Equation)
+        if block_type == 'equation':
+            expression = payload.get('expression', '')
+            if expression:
+                # 使用 KaTeX 渲染 LaTeX 公式（块级显示）
+                return f'<div class="notion-equation my-4 overflow-x-auto text-center"><span class="katex-block">{html.escape(expression)}</span></div>'
+            return ''
+
+        # 表格 (Table)
+        if block_type == 'table':
+            if not block.get('has_children') or 'children' not in block:
+                return ''
+
+            table_width = payload.get('table_width', 0)
+            has_column_header = payload.get('has_column_header', False)
+            has_row_header = payload.get('has_row_header', False)
+
+            rows_html = []
+            children = block.get('children', [])
+
+            for idx, child in enumerate(children):
+                if child.get('type') == 'table_row':
+                    cells = child.get('table_row', {}).get('cells', [])
+                    cells_html = []
+
+                    for cell_idx, cell in enumerate(cells):
+                        # cell 是 rich_text 数组
+                        cell_text = _rich_text_to_html(cell)
+
+                        # 判断是否为表头
+                        is_header = (idx == 0 and has_column_header) or (cell_idx == 0 and has_row_header)
+                        tag = 'th' if is_header else 'td'
+                        cell_class = 'border-2 border-base-content/30 px-4 py-2 bg-base-200' if is_header else 'border-2 border-base-content/30 px-4 py-2'
+
+                        cells_html.append(f'<{tag} class="{cell_class}">{cell_text}</{tag}>')
+
+                    rows_html.append(f'<tr>{"".join(cells_html)}</tr>')
+
+            table_html = f'<table class="table-auto border-collapse border-2 border-base-content/30 my-4 w-full">{"".join(rows_html)}</table>'
+            return f'<div class="overflow-x-auto">{table_html}</div>'
+
+        # 表格行 (Table Row) - 通常由 table 块处理，这里作为后备
+        if block_type == 'table_row':
+            return ''
+
+        # 分栏布局 (Column List)
+        if block_type == 'column_list':
+            if not block.get('has_children') or 'children' not in block:
+                return ''
+
+            children = block.get('children', [])
+            columns_html = []
+
+            for child in children:
+                if child.get('type') == 'column':
+                    column_content = self._render_column_children(child)
+                    columns_html.append(f'<div class="flex-1 px-2">{column_content}</div>')
+
+            return f'<div class="flex gap-4 my-4">{"".join(columns_html)}</div>'
+
+        # 单列 (Column) - 通常由 column_list 块处理，这里作为后备
+        if block_type == 'column':
+            return self._render_column_children(block)
+
+        # 目录 (Table of Contents)
+        if block_type == 'table_of_contents':
+            # 生成目录 HTML
+            if not self.headings:
+                return '<div class="notion-toc my-4 p-4 bg-base-200 rounded-lg"><p class="text-base-content/70">目录将在渲染完所有标题后显示</p></div>'
+
+            toc_items = []
+            for heading in self.headings:
+                level = heading['level']
+                text = heading['text']
+                heading_id = heading['id']
+                # 根据标题级别设置缩进
+                indent_class = f'ml-{(level - 1) * 4}'
+                toc_items.append(f'<li class="{indent_class} my-1"><a href="#{heading_id}" class="text-primary hover:underline">{text}</a></li>')
+
+            toc_html = f'<ul class="space-y-1">{"".join(toc_items)}</ul>'
+            return f'<div class="notion-toc my-4 p-4 bg-base-200 rounded-lg"><p class="text-sm font-semibold mb-2 text-base-content">目录</p>{toc_html}</div>'
+
         return ''
 
     def render_blocks(self, blocks):
         """将 block 列表转为完整 HTML，并合并连续列表项为 <ul> 或 <ol>。"""
+        # 预处理：先收集所有标题用于生成目录
+        self.headings = []  # 重置标题列表
+        self._collect_headings(blocks)
+
         out = []
         i = 0
         while i < len(blocks):
             block = blocks[i]
             btype = block.get('type') or ''
 
-            # 处理无序列表
+            # 处理无序列表（一级使用实心圆 disc）
             if btype == 'bulleted_list_item':
                 ul_items = []
                 while i < len(blocks) and (blocks[i].get('type') or '') == 'bulleted_list_item':
@@ -462,7 +643,7 @@ class NotionRenderer:
                     out.append(f'<ul class="list-disc list-outside ml-6 space-y-1 my-2 text-base-content/90">{combined}</ul>')
                 continue
 
-            # 处理有序列表
+            # 处理有序列表（一级使用数字 1,2,3）
             if btype == 'numbered_list_item':
                 ol_items = []
                 while i < len(blocks) and (blocks[i].get('type') or '') == 'numbered_list_item':

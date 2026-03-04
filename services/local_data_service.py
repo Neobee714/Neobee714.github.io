@@ -82,6 +82,7 @@ class LocalDataService:
                     'root': False,  # 本地数据暂不支持
                     'icon_type': post_data.get('icon', {}).get('type', ''),
                     'icon_url_or_emoji': post_data.get('icon', {}).get('value', ''),
+                    'cover': post_data.get('cover', ''),  # 封面图
                     'status': post_data.get('status', ''),
                 })
 

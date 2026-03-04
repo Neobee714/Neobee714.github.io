@@ -167,7 +167,7 @@ def process_blocks_images(blocks, images_dir):
 
 
 def sync_posts():
-    """同步所有文章到本地 JSON 文件"""
+    """同步所有文章到本地 JSON 文件（支持增量同步）"""
     logger.info("开始同步 Notion 内容...")
 
     if DOWNLOAD_IMAGES:
@@ -183,25 +183,70 @@ def sync_posts():
     notion = get_notion_client()
     renderer = NotionBlockRenderer(notion)
 
+    # 读取上次同步时间（用于增量同步）
+    metadata_file = os.path.join(DATA_DIR, 'metadata.json')
+    last_sync_time = None
+    existing_posts = {}
+
+    if os.path.exists(metadata_file):
+        try:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+                last_sync_time = metadata.get('last_sync_time')
+                # 读取现有文章列表
+                for post in metadata.get('posts', []):
+                    existing_posts[post['slug']] = post
+                if last_sync_time:
+                    logger.info(f"上次同步时间: {last_sync_time}")
+        except Exception as e:
+            logger.warning(f"读取元数据失败: {e}")
+
     # 查询所有已完成和已锁住的文章
     try:
+        query_filter = {
+            "or": [
+                {"property": "状态", "status": {"equals": "已完成"}},
+                {"property": "状态", "status": {"equals": "已锁住"}}
+            ]
+        }
+
+        # 如果有上次同步时间，只查询修改过的文章（增量同步）
+        if last_sync_time:
+            query_filter = {
+                "and": [
+                    query_filter,
+                    {"timestamp": "last_edited_time", "last_edited_time": {"after": last_sync_time}}
+                ]
+            }
+            logger.info("🔄 增量同步模式：只同步最近修改的文章")
+        else:
+            logger.info("📦 全量同步模式：首次同步所有文章")
+
         response = notion.databases.query(
             database_id=Config.NOTION_DATABASE_ID,
-            filter={
-                "or": [
-                    {"property": "状态", "status": {"equals": "已完成"}},
-                    {"property": "状态", "status": {"equals": "已锁住"}}
-                ]
-            },
+            filter=query_filter,
             sorts=[{"property": "日期", "direction": "descending"}]
         )
 
         posts = response.get('results', [])
-        logger.info(f"找到 {len(posts)} 篇文章")
+
+        if last_sync_time:
+            logger.info(f"找到 {len(posts)} 篇需要更新的文章")
+        else:
+            logger.info(f"找到 {len(posts)} 篇文章")
 
         synced_posts = []
         categories = set()
         all_tags = set()
+
+        # 如果是增量同步，先加载现有文章列表
+        if last_sync_time and existing_posts:
+            synced_posts = list(existing_posts.values())
+            # 收集现有的分类和标签
+            for post in synced_posts:
+                if post.get('category'):
+                    categories.add(post['category'])
+                all_tags.update(post.get('tags', []))
 
         for idx, page in enumerate(posts, 1):
             try:
@@ -244,6 +289,11 @@ def sync_posts():
                 # 提取图标信息
                 icon_type, icon_value = _extract_icon(page)
 
+                # 下载图标图片（如果是文件类型且启用了图片下载）
+                if icon_type in ['file', 'external'] and icon_value and DOWNLOAD_IMAGES:
+                    logger.info(f"  下载图标图片...")
+                    icon_value = download_image(icon_value, IMAGES_DIR)
+
                 # 构建文章数据
                 post_data = {
                     'id': page['id'],
@@ -283,12 +333,24 @@ def sync_posts():
                 with open(post_file, 'w', encoding='utf-8') as f:
                     json.dump(post_data, f, ensure_ascii=False, indent=2)
 
-                synced_posts.append({
+                # 更新或添加到文章列表
+                post_meta = {
                     'slug': slug,
                     'title': title,
                     'date': date,
                     'category': category,
-                })
+                }
+
+                # 如果是增量同步，更新现有文章
+                if last_sync_time and slug in existing_posts:
+                    # 找到并更新
+                    for i, p in enumerate(synced_posts):
+                        if p['slug'] == slug:
+                            synced_posts[i] = post_meta
+                            break
+                else:
+                    # 新文章，添加到列表
+                    synced_posts.append(post_meta)
 
                 logger.info(f"  ✓ 已保存到 {post_file}")
 
@@ -297,8 +359,10 @@ def sync_posts():
                 continue
 
         # 保存元数据
+        current_time = datetime.now().isoformat()
         metadata = {
-            'last_sync': datetime.now().isoformat(),
+            'last_sync': current_time,
+            'last_sync_time': current_time,  # 用于增量同步
             'total_posts': len(synced_posts),
             'categories': sorted(list(categories)),
             'tags': sorted(list(all_tags)),

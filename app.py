@@ -109,9 +109,13 @@ from flask import send_from_directory
 
 @app.route('/static/images/<path:filename>')
 def serve_image(filename):
-    """提供本地下载的图片"""
+    """提供本地下载的图片（带缓存）"""
     images_dir = os.path.join(os.path.dirname(__file__), 'blog-data', 'images')
-    return send_from_directory(images_dir, filename)
+    response = send_from_directory(images_dir, filename)
+    # 设置缓存头：浏览器缓存 30 天
+    response.cache_control.max_age = 2592000  # 30 天（秒）
+    response.cache_control.public = True
+    return response
 
 # CSRF 保护 (CSRF Protection)
 csrf = CSRFProtect(app)
@@ -1033,7 +1037,20 @@ def admin_sync():
             cache.clear()
             logger.info("已清除缓存")
 
-            return {'success': True, 'message': '同步成功', 'output': result.stdout}
+            # 读取同步后的文章数量
+            try:
+                metadata_file = os.path.join('blog-data', 'metadata.json')
+                if os.path.exists(metadata_file):
+                    with open(metadata_file, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                        post_count = metadata.get('total_posts', 0)
+                else:
+                    post_count = 0
+            except Exception as e:
+                logger.warning(f"读取文章数量失败: {e}")
+                post_count = 0
+
+            return {'success': True, 'message': '同步成功', 'count': post_count, 'output': result.stdout}
         else:
             sync_status['last_sync_result'] = 'failed'
             logger.error(f"同步失败: {result.stderr}")
@@ -1119,8 +1136,26 @@ elif is_railway:
 
 
 if __name__ == '__main__':
+    import signal
+    import sys
+
+    def signal_handler(sig, frame):
+        """处理 Ctrl+C 信号，确保所有进程正确退出"""
+        _ = sig, frame  # 忽略未使用的参数
+        logger.info("收到退出信号，正在关闭...")
+        # 关闭调度器
+        if scheduler and scheduler.running:
+            scheduler.shutdown(wait=False)
+        # 退出程序
+        sys.exit(0)
+
+    # 注册信号处理器
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # 获取 Railway 分配的端口，如果没有则默认 5000
     port = int(os.environ.get("PORT", 5000))
+    logger.info(f"Flask 应用启动在端口 {port}")
     # 必须 host='0.0.0.0'
     # use_reloader=False 防止 Windows 上 Ctrl+C 后进程残留
     app.run(host='0.0.0.0', port=port, use_reloader=False)

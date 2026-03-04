@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="lofi">
+<html lang="zh-CN" data-theme="business">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,6 +47,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.css">
+  <!-- KaTeX for Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
   <!-- Tailwind CSS + DaisyUI (CDN) -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -56,18 +60,7 @@
       --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
       /* 代码框自定义颜色变量 (Custom code block colors) */
-      --code-bg-light: oklch(25% 0.02 240);  /* 亮色主题：深蓝灰色（保持深色以配合 Prism 语法高亮） */
-      --code-bg-dark: oklch(20% 0.02 240);   /* 暗色主题：深蓝灰色 */
-    }
-
-    /* 亮色主题（lofi）使用浅色背景 */
-    html[data-theme="lofi"] {
-      --code-bg: var(--code-bg-light);
-    }
-
-    /* 暗色主题（business）使用深色背景 */
-    html[data-theme="business"] {
-      --code-bg: var(--code-bg-dark);
+      --code-bg: oklch(20% 0.02 240);   /* 暗色主题：深蓝灰色 */
     }
 
     body { font-family: var(--font-sans); }
@@ -199,213 +192,175 @@
       }
     }
 
-    /* Notion 文本颜色样式 - 主题自适应 (Notion text colors - theme adaptive) */
+    /* Notion 文本颜色样式 (Notion text colors) */
     /* 内联代码颜色 - 默认橙色 */
     .notion-inline-code {
-      color: #ea580c !important; /* 橙色 - 浅色主题 */
-    }
-    html[data-theme="business"] .notion-inline-code {
-      color: #fb923c !important; /* 橙色 - 深色主题 */
+      color: #fb923c !important;
     }
 
-    /* 内联代码的颜色覆盖（当同时有 code 和 color 标注时）- 浅色主题 */
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #6b7280 !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #92400e !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #ea580c !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #ca8a04 !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="green"] { color: #16a34a !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #2563eb !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #9333ea !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #db2777 !important; }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="red"] { color: #dc2626 !important; }
+    /* 内联代码的颜色覆盖（当同时有 code 和 color 标注时）*/
+    code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #9ca3af !important; }
+    code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #d97706 !important; }
+    code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #fb923c !important; }
+    code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #fbbf24 !important; }
+    code.notion-inline-code.notion-text[data-notion-color="green"] { color: #4ade80 !important; }
+    code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #60a5fa !important; }
+    code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #c084fc !important; }
+    code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #f472b6 !important; }
+    code.notion-inline-code.notion-text[data-notion-color="red"] { color: #f87171 !important; }
 
-    /* 内联代码的颜色覆盖 - 深色主题 */
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #9ca3af !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #d97706 !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #fb923c !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #fbbf24 !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="green"] { color: #4ade80 !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #60a5fa !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #c084fc !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #f472b6 !important; }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="red"] { color: #f87171 !important; }
-
-    /* 内联代码的背景色覆盖 - 浅色主题 */
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
-      background-color: #f3f4f6 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
-      background-color: #fef3c7 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
-      background-color: #ffedd5 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
-      background-color: #fef9c3 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
-      background-color: #dcfce7 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
-      background-color: #dbeafe !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
-      background-color: #f3e8ff !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
-      background-color: #fce7f3 !important;
-    }
-    html[data-theme="lofi"] code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
-      background-color: #fee2e2 !important;
-      color: #991b1b !important;
-    }
-
-    /* 内联代码的背景色覆盖 - 深色主题 */
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
+    /* 内联代码的背景色覆盖 */
+    code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
       background-color: rgba(107, 114, 128, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
       background-color: rgba(217, 119, 6, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
       background-color: rgba(251, 146, 60, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
       background-color: rgba(251, 191, 36, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
       background-color: rgba(74, 222, 128, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
       background-color: rgba(96, 165, 250, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
       background-color: rgba(192, 132, 252, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
       background-color: rgba(244, 114, 182, 0.3) !important;
     }
-    html[data-theme="business"] code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
+    code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
       background-color: rgba(248, 113, 113, 0.3) !important;
       color: #fca5a5 !important;
     }
 
-    /* 文本颜色 - 浅色主题 (lofi) */
-    html[data-theme="lofi"] .notion-text[data-notion-color="gray"] { color: #6b7280; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="brown"] { color: #92400e; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="orange"] { color: #ea580c; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="yellow"] { color: #ca8a04; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="green"] { color: #16a34a; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="blue"] { color: #2563eb; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="purple"] { color: #9333ea; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="pink"] { color: #db2777; }
-    html[data-theme="lofi"] .notion-text[data-notion-color="red"] { color: #dc2626; }
+    /* 文本颜色 */
+    .notion-text[data-notion-color="gray"] { color: #9ca3af; }
+    .notion-text[data-notion-color="brown"] { color: #d97706; }
+    .notion-text[data-notion-color="orange"] { color: #fb923c; }
+    .notion-text[data-notion-color="yellow"] { color: #fbbf24; }
+    .notion-text[data-notion-color="green"] { color: #4ade80; }
+    .notion-text[data-notion-color="blue"] { color: #60a5fa; }
+    .notion-text[data-notion-color="purple"] { color: #c084fc; }
+    .notion-text[data-notion-color="pink"] { color: #f472b6; }
+    .notion-text[data-notion-color="red"] { color: #f87171; }
 
-    /* 文本颜色 - 深色主题 (business) */
-    html[data-theme="business"] .notion-text[data-notion-color="gray"] { color: #9ca3af; }
-    html[data-theme="business"] .notion-text[data-notion-color="brown"] { color: #d97706; }
-    html[data-theme="business"] .notion-text[data-notion-color="orange"] { color: #fb923c; }
-    html[data-theme="business"] .notion-text[data-notion-color="yellow"] { color: #fbbf24; }
-    html[data-theme="business"] .notion-text[data-notion-color="green"] { color: #4ade80; }
-    html[data-theme="business"] .notion-text[data-notion-color="blue"] { color: #60a5fa; }
-    html[data-theme="business"] .notion-text[data-notion-color="purple"] { color: #c084fc; }
-    html[data-theme="business"] .notion-text[data-notion-color="pink"] { color: #f472b6; }
-    html[data-theme="business"] .notion-text[data-notion-color="red"] { color: #f87171; }
-
-    /* 背景色 - 浅色主题 (lofi) */
-    html[data-theme="lofi"] .notion-text[data-notion-color="gray-bg"] {
-      background-color: #f3f4f6;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="brown-bg"] {
-      background-color: #fef3c7;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="orange-bg"] {
-      background-color: #ffedd5;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="yellow-bg"] {
-      background-color: #fef9c3;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="green-bg"] {
-      background-color: #dcfce7;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="blue-bg"] {
-      background-color: #dbeafe;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="purple-bg"] {
-      background-color: #f3e8ff;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="pink-bg"] {
-      background-color: #fce7f3;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    html[data-theme="lofi"] .notion-text[data-notion-color="red-bg"] {
-      background-color: #fee2e2;
-      color: #991b1b;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-
-    /* 背景色 - 深色主题 (business) */
-    html[data-theme="business"] .notion-text[data-notion-color="gray-bg"] {
+    /* 背景色 */
+    .notion-text[data-notion-color="gray-bg"] {
       background-color: rgba(107, 114, 128, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="brown-bg"] {
+    .notion-text[data-notion-color="brown-bg"] {
       background-color: rgba(217, 119, 6, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="orange-bg"] {
+    .notion-text[data-notion-color="orange-bg"] {
       background-color: rgba(251, 146, 60, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="yellow-bg"] {
+    .notion-text[data-notion-color="yellow-bg"] {
       background-color: rgba(251, 191, 36, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="green-bg"] {
+    .notion-text[data-notion-color="green-bg"] {
       background-color: rgba(74, 222, 128, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="blue-bg"] {
+    .notion-text[data-notion-color="blue-bg"] {
       background-color: rgba(96, 165, 250, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="purple-bg"] {
+    .notion-text[data-notion-color="purple-bg"] {
       background-color: rgba(192, 132, 252, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="pink-bg"] {
+    .notion-text[data-notion-color="pink-bg"] {
       background-color: rgba(244, 114, 182, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
-    html[data-theme="business"] .notion-text[data-notion-color="red-bg"] {
+    .notion-text[data-notion-color="red-bg"] {
       background-color: rgba(248, 113, 113, 0.2);
       color: #fca5a5;
       padding: 2px 6px;
       border-radius: 3px;
+    }
+
+    /* 三级列表样式：实心方块 (Third-level list: square bullets) */
+    ul ul ul {
+      list-style-type: square !important;
+    }
+
+    /* 待办列表复选框样式优化 (Todo checkbox styling) */
+    .todo-checkbox {
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Notion 折叠块样式 (Notion toggle styling) */
+    .notion-toggle summary {
+      list-style: none;
+    }
+    .notion-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+    .notion-toggle .toggle-arrow {
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.75rem;
+    }
+    .notion-toggle[open] .toggle-arrow {
+      transform: rotate(90deg);
+    }
+
+    /* Notion 提示框颜色样式 (Notion callout colors) */
+    .notion-callout[data-callout-color="gray_background"] {
+      background-color: rgba(156, 163, 175, 0.2);
+      border-left-color: #9ca3af;
+    }
+    .notion-callout[data-callout-color="brown_background"] {
+      background-color: rgba(217, 119, 6, 0.2);
+      border-left-color: #d97706;
+    }
+    .notion-callout[data-callout-color="orange_background"] {
+      background-color: rgba(234, 88, 12, 0.2);
+      border-left-color: #fb923c;
+    }
+    .notion-callout[data-callout-color="yellow_background"] {
+      background-color: rgba(202, 138, 4, 0.2);
+      border-left-color: #fbbf24;
+    }
+    .notion-callout[data-callout-color="green_background"] {
+      background-color: rgba(22, 163, 74, 0.2);
+      border-left-color: #4ade80;
+    }
+    .notion-callout[data-callout-color="blue_background"] {
+      background-color: rgba(37, 99, 235, 0.2);
+      border-left-color: #60a5fa;
+    }
+    .notion-callout[data-callout-color="purple_background"] {
+      background-color: rgba(147, 51, 234, 0.2);
+      border-left-color: #c084fc;
+    }
+    .notion-callout[data-callout-color="pink_background"] {
+      background-color: rgba(219, 39, 119, 0.2);
+      border-left-color: #f472b6;
+    }
+    .notion-callout[data-callout-color="red_background"] {
+      background-color: rgba(220, 38, 38, 0.2);
+      border-left-color: #f87171;
     }
   </style>
 
@@ -448,15 +403,6 @@
         <p class="text-sm text-base-content/60 leading-relaxed">
           Red Teaming, HTB Writeups & Cybersecurity Methodology
         </p>
-      </div>
-
-      <!-- 主题切换按钮 (Theme Toggle) -->
-      <div class="flex justify-center mb-6">
-        <button type="button" id="theme-toggle" class="btn btn-ghost btn-sm gap-2" aria-label="切换日/夜模式">
-          <i class="fa-solid fa-sun theme-icon-light"></i>
-          <i class="fa-solid fa-moon theme-icon-dark hidden"></i>
-          <span class="text-xs">切换主题</span>
-        </button>
       </div>
 
       <!-- 导航菜单 (Navigation Menu) -->
@@ -571,35 +517,6 @@
     <i class="fa-solid fa-arrow-up"></i>
   </button>
 
-  <!-- 日/夜模式切换 + localStorage 记忆 -->
-  <script>
-    (function() {
-      const THEME_KEY = 'neobee-theme';
-      const LIGHT_THEME = 'lofi';
-      const DARK_THEME = 'business';
-
-      function getStoredTheme() {
-        return localStorage.getItem(THEME_KEY) || LIGHT_THEME;
-      }
-
-      function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem(THEME_KEY, theme);
-        const isDark = theme === DARK_THEME;
-        document.querySelectorAll('.theme-icon-light').forEach(el => el.classList.toggle('hidden', isDark));
-        document.querySelectorAll('.theme-icon-dark').forEach(el => el.classList.toggle('hidden', !isDark));
-      }
-
-      document.addEventListener('DOMContentLoaded', function() {
-        setTheme(getStoredTheme());
-        document.getElementById('theme-toggle').addEventListener('click', function() {
-          const current = document.documentElement.getAttribute('data-theme');
-          setTheme(current === DARK_THEME ? LIGHT_THEME : DARK_THEME);
-        });
-      });
-    })();
-  </script>
-
   <!-- 返回顶部按钮功能 (Back to top button functionality) -->
   <script>
     (function() {
@@ -644,6 +561,49 @@
         // fail silently
         console.error(e);
       }
+    });
+  </script>
+
+  <!-- 待办列表复选框行为控制 (Todo checkbox behavior control) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 为所有待办列表复选框添加事件监听
+      var checkboxes = document.querySelectorAll('input[type="checkbox"].todo-checkbox');
+      checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function(e) {
+          // 切换文本的删除线样式
+          var textSpan = this.parentElement.querySelector('.todo-text');
+          if (textSpan) {
+            if (this.checked) {
+              textSpan.classList.add('line-through', 'text-base-content/50');
+              textSpan.classList.remove('text-base-content/90');
+            } else {
+              textSpan.classList.remove('line-through', 'text-base-content/50');
+              textSpan.classList.add('text-base-content/90');
+            }
+          }
+        });
+      });
+    });
+  </script>
+
+  <!-- KaTeX 自动渲染数学公式 (KaTeX auto-render math formulas) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 渲染所有块级公式
+      var equations = document.querySelectorAll('.katex-block');
+      equations.forEach(function(eq) {
+        try {
+          var latex = eq.textContent;
+          katex.render(latex, eq, {
+            displayMode: true,  // 块级显示
+            throwOnError: false,
+            output: 'html'
+          });
+        } catch (e) {
+          console.error('KaTeX rendering error:', e);
+        }
+      });
     });
   </script>
   {% block scripts %}{% endblock %}
