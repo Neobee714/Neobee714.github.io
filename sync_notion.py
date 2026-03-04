@@ -10,6 +10,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
+from datetime import datetime, timezone
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -166,8 +167,12 @@ def process_blocks_images(blocks, images_dir):
             process_blocks_images(block['children'], images_dir)
 
 
-def sync_posts():
-    """同步所有文章到本地 JSON 文件（支持增量同步）"""
+def sync_posts(clean=True):
+    """同步所有文章到本地 JSON 文件（支持增量同步）
+
+    Args:
+        clean: 是否清理不存在的文章和图片文件（默认 True）
+    """
     logger.info("开始同步 Notion 内容...")
 
     if DOWNLOAD_IMAGES:
@@ -210,15 +215,20 @@ def sync_posts():
             ]
         }
 
-        # 如果有上次同步时间，只查询修改过的文章（增量同步）
+        # 如果有上次同步时间，只查询修改或新建的文章（增量同步）
         if last_sync_time:
             query_filter = {
                 "and": [
                     query_filter,
-                    {"timestamp": "last_edited_time", "last_edited_time": {"after": last_sync_time}}
+                    {
+                        "or": [
+                            {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": last_sync_time}},
+                            {"timestamp": "created_time", "created_time": {"on_or_after": last_sync_time}}
+                        ]
+                    }
                 ]
             }
-            logger.info("🔄 增量同步模式：只同步最近修改的文章")
+            logger.info("🔄 增量同步模式：只同步最近修改或新建的文章")
         else:
             logger.info("📦 全量同步模式：首次同步所有文章")
 
@@ -239,14 +249,23 @@ def sync_posts():
         categories = set()
         all_tags = set()
 
-        # 如果是增量同步，先加载现有文章列表
-        if last_sync_time and existing_posts:
-            synced_posts = list(existing_posts.values())
-            # 收集现有的分类和标签
-            for post in synced_posts:
-                if post.get('category'):
-                    categories.add(post['category'])
-                all_tags.update(post.get('tags', []))
+        # 如果是增量同步，从本地文件加载现有文章列表
+        if last_sync_time:
+            for post_file in POSTS_DIR.glob('*.json'):
+                try:
+                    with open(post_file, 'r', encoding='utf-8') as f:
+                        post_data = json.load(f)
+                        synced_posts.append({
+                            'slug': post_data['slug'],
+                            'title': post_data['title'],
+                            'date': post_data['date'],
+                            'category': post_data['category'],
+                        })
+                        if post_data.get('category'):
+                            categories.add(post_data['category'])
+                        all_tags.update(post_data.get('tags', []))
+                except Exception as e:
+                    logger.warning(f"读取文章文件失败 {post_file}: {e}")
 
         for idx, page in enumerate(posts, 1):
             try:
@@ -341,15 +360,16 @@ def sync_posts():
                     'category': category,
                 }
 
-                # 如果是增量同步，更新现有文章
-                if last_sync_time and slug in existing_posts:
-                    # 找到并更新
+                # 如果是增量同步，更新现有文章；否则添加
+                found = False
+                if last_sync_time:
                     for i, p in enumerate(synced_posts):
                         if p['slug'] == slug:
                             synced_posts[i] = post_meta
+                            found = True
                             break
-                else:
-                    # 新文章，添加到列表
+
+                if not found:
                     synced_posts.append(post_meta)
 
                 logger.info(f"  ✓ 已保存到 {post_file}")
@@ -358,8 +378,70 @@ def sync_posts():
                 logger.error(f"同步文章失败: {e}", exc_info=True)
                 continue
 
+        # 清理不存在的文章文件（需要 --clean 参数）
+        if clean:
+            valid_slugs = {post['slug'] for post in synced_posts}
+            for post_file in POSTS_DIR.glob('*.json'):
+                file_slug = post_file.stem
+                if file_slug not in valid_slugs:
+                    logger.info(f"删除旧文章文件: {post_file.name}")
+                    post_file.unlink()
+
+        # 清理未使用的图片文件（需要 --clean 参数）
+        if clean and DOWNLOAD_IMAGES:
+            logger.info("检查未使用的图片...")
+            used_images = set()
+
+            # 扫描所有文章，收集使用的图片
+            for post_file in POSTS_DIR.glob('*.json'):
+                try:
+                    with open(post_file, 'r', encoding='utf-8') as f:
+                        post_data = json.load(f)
+
+                        # 检查封面图
+                        cover = post_data.get('cover', '')
+                        if cover and cover.startswith('/static/images/'):
+                            used_images.add(cover.replace('/static/images/', ''))
+
+                        # 检查图标
+                        icon = post_data.get('icon', {})
+                        if icon.get('value', '').startswith('/static/images/'):
+                            used_images.add(icon['value'].replace('/static/images/', ''))
+
+                        # 递归检查 blocks 中的图片
+                        def collect_images(blocks):
+                            for block in blocks:
+                                if block.get('type') == 'image':
+                                    img_data = block.get('image', {})
+                                    url = ''
+                                    if img_data.get('type') == 'file':
+                                        url = img_data.get('file', {}).get('url', '')
+                                    elif img_data.get('type') == 'external':
+                                        url = img_data.get('external', {}).get('url', '')
+
+                                    if url and url.startswith('/static/images/'):
+                                        used_images.add(url.replace('/static/images/', ''))
+
+                                if block.get('children'):
+                                    collect_images(block['children'])
+
+                        collect_images(post_data.get('blocks', []))
+                except Exception as e:
+                    logger.warning(f"扫描图片失败 {post_file}: {e}")
+
+            # 删除未使用的图片
+            deleted_count = 0
+            for img_file in IMAGES_DIR.glob('*'):
+                if img_file.is_file() and img_file.name not in used_images:
+                    logger.info(f"  删除未使用的图片: {img_file.name}")
+                    img_file.unlink()
+                    deleted_count += 1
+
+            if deleted_count > 0:
+                logger.info(f"已删除 {deleted_count} 个未使用的图片")
+
         # 保存元数据
-        current_time = datetime.now().isoformat()
+        current_time = datetime.now(timezone.utc).isoformat()
         metadata = {
             'last_sync': current_time,
             'last_sync_time': current_time,  # 用于增量同步
@@ -386,5 +468,10 @@ def sync_posts():
 
 
 if __name__ == '__main__':
-    success = sync_posts()
+    import argparse
+    parser = argparse.ArgumentParser(description='同步 Notion 内容到本地')
+    parser.add_argument('--clean', action='store_true', help='清理不存在的文章和图片文件')
+    args = parser.parse_args()
+
+    success = sync_posts(clean=args.clean)
     sys.exit(0 if success else 1)

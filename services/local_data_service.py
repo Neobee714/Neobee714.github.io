@@ -87,6 +87,8 @@ class LocalDataService:
                 })
 
             logger.info(f"从本地读取 {len(posts)} 篇文章（分类: {category or '全部'}）")
+            # 按日期降序排序（最新的在前）
+            posts.sort(key=lambda x: x.get('date') or '', reverse=True)
             return posts
 
         except Exception as e:

@@ -87,6 +87,12 @@
     .copy-code-btn.copied {
       opacity: 1 !important;
     }
+    /* 移动端始终显示复制按钮 (Always show copy button on mobile) */
+    @media (max-width: 1024px) {
+      .copy-code-btn {
+        opacity: 1 !important;
+      }
+    }
   </style>
 {% endblock %}
 
@@ -110,7 +116,11 @@
           </span>
           {% endif %}
           <!-- AI 翻译按钮 (AI Translation Button) -->
-          <button id="translate-btn" class="btn btn-sm btn-outline gap-2" title="AI 智能翻译">
+          <button id="translate-btn"
+                  class="btn btn-sm btn-outline gap-2"
+                  title="AI 智能翻译"
+                  aria-label="AI 智能翻译文章内容"
+                  aria-pressed="false">
             <i class="fa-solid fa-language"></i>
             <span>AI 翻译</span>
           </button>
@@ -419,6 +429,7 @@
           postContent.innerHTML = originalContent;
           translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
           translateBtn.classList.remove('btn-active');
+          translateBtn.setAttribute('aria-pressed', 'false');
           isTranslated = false;
 
           // 重新初始化代码高亮和其他功能
@@ -474,6 +485,7 @@
           postContent.innerHTML = data.content_html;
           translateBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>恢复原文</span>';
           translateBtn.classList.add('btn-active');
+          translateBtn.setAttribute('aria-pressed', 'true');
           translateBtn.disabled = false;
           isTranslated = true;
 
@@ -488,7 +500,7 @@
         .catch(error => {
           console.error('翻译失败:', error);
 
-          // 显示用户友好的错误提示
+          // 显示用户友好的错误提示（使用 Toast）
           let userMessage = '翻译失败';
           if (error.message.includes('未配置')) {
             userMessage = '翻译功能未配置，请联系管理员';
@@ -502,7 +514,12 @@
             userMessage = `翻译失败: ${error.message}`;
           }
 
-          alert(userMessage);
+          // 使用 Toast 通知替代 alert
+          if (typeof window.showToast === 'function') {
+            window.showToast(userMessage, 'error', 5000);
+          } else {
+            alert(userMessage);
+          }
 
           // 恢复按钮状态
           translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';

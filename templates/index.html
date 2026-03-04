@@ -5,17 +5,18 @@
 {% block content %}
   <!-- 搜索栏 (Search Bar) -->
   <div class="mb-8">
-    <form method="GET" action="{{ url_for('index') }}" class="flex items-center gap-3 bg-base-200 rounded-lg px-4 py-3 border border-base-content/10">
-      <i class="fa-solid fa-search text-base-content/60"></i>
+    <form method="GET" action="{{ url_for('index') }}" class="flex items-center gap-3 bg-base-200 rounded-lg px-4 py-3 border border-base-content/10" role="search">
+      <i class="fa-solid fa-search text-base-content/60" aria-hidden="true"></i>
       <input id="searchInput"
              type="search"
              name="q"
              value="{{ q | default('') }}"
              placeholder="Search posts, tags, or categories..."
+             aria-label="搜索文章、标签或分类"
              class="flex-1 bg-transparent outline-none text-base-content placeholder:text-base-content/40" />
-      <button type="submit" class="btn btn-primary btn-sm">搜索</button>
+      <button type="submit" class="btn btn-primary btn-sm" aria-label="执行搜索">搜索</button>
       {% if q %}
-      <a href="{{ url_for('index') }}" class="btn btn-ghost btn-sm">清除</a>
+      <a href="{{ url_for('index') }}" class="btn btn-ghost btn-sm" aria-label="清除搜索">清除</a>
       {% endif %}
     </form>
   </div>
@@ -56,18 +57,22 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {% for post in posts %}
       <a href="{{ url_for('post', slug=post.slug) if post.slug else '#' }}"
-         class="card bg-base-200 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group post-card">
+         class="card bg-base-200 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group post-card"
+         aria-label="阅读文章：{{ post.title or '无标题' }}"
+         role="article">
 
         <!-- 卡片封面图 (Card Cover Image) -->
         <figure class="relative h-48 bg-base-300 overflow-hidden flex items-center justify-center">
           {% if post.cover %}
           <img src="{{ post.cover }}"
                alt="{{ post.title }}"
+               loading="lazy"
                class="w-full h-full object-cover"
                onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200\'><span class=\'text-6xl font-bold text-base-content/30\'>{{ post.title[0] if post.title else "?" }}</span></div>'">
           {% elif post.icon_type in ['external', 'file'] and post.icon_url_or_emoji %}
           <img src="{{ post.icon_url_or_emoji }}"
                alt="{{ post.title }}"
+               loading="lazy"
                class="w-full h-full object-contain">
           {% else %}
           <!-- 默认封面：根据类型显示图标 (Default Cover) -->
@@ -214,7 +219,7 @@
 {% block scripts %}
   <!-- 隐藏骨架屏 (Hide Skeleton Loader) -->
   <script>
-    window.addEventListener('load', function() {
+    document.addEventListener('DOMContentLoaded', function() {
       var s = document.getElementById('skeleton-loader');
       if (s) s.style.display = 'none';
     });
