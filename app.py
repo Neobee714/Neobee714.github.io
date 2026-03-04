@@ -684,12 +684,7 @@ def force_sync():
             'is_syncing': True
         }), 409
 
-    # 可选：先清空缓存
-    clear_cache_flag = request.args.get('clear_cache', '').lower() == 'true'
-    if clear_cache_flag:
-        logger.info("[强制同步] 正在清空所有缓存...")
-        cache.clear()
-        logger.info("[强制同步] ✅ 缓存已清空")
+    # 注意：缓存会在同步成功后自动清除，不需要提前清空
 
     # 包装同步函数，添加状态跟踪
     def sync_wrapper():
@@ -698,10 +693,45 @@ def force_sync():
         sync_status['last_sync_time'] = datetime.now().isoformat()
 
         try:
-            result = sync_to_cache(app, cache)
-            sync_status['last_sync_result'] = result
+            # 使用 subprocess 调用 sync_notion.py 脚本（等同于 python sync_notion.py --clean）
+            import subprocess
+            import sys
+
+            logger.info("[强制同步] 开始执行完整同步（包含清理）...")
+            result = subprocess.run(
+                [sys.executable, 'sync_notion.py', '--clean'],
+                capture_output=True,
+                text=True,
+                timeout=300  # 5分钟超时
+            )
+
+            if result.returncode == 0:
+                # 同步成功后清除 Flask 缓存
+                cache.clear()
+                logger.info("[强制同步] ✅ 缓存已清除")
+
+                sync_status['last_sync_result'] = {
+                    'success': True,
+                    'message': '同步成功',
+                    'output': result.stdout
+                }
+                logger.info(f"[强制同步] ✅ 同步完成")
+            else:
+                sync_status['last_sync_result'] = {
+                    'success': False,
+                    'error': result.stderr
+                }
+                logger.error(f"[强制同步] ❌ 同步失败: {result.stderr}")
+
             sync_status['is_syncing'] = False
-            logger.info(f"[强制同步] ✅ 同步完成: {result}")
+
+        except subprocess.TimeoutExpired:
+            sync_status['last_sync_result'] = {
+                'success': False,
+                'error': '同步超时（超过5分钟）'
+            }
+            sync_status['is_syncing'] = False
+            logger.error("[强制同步] ❌ 同步超时")
         except Exception as e:
             sync_status['last_sync_result'] = {
                 'success': False,
@@ -717,8 +747,7 @@ def force_sync():
 
     return jsonify({
         'success': True,
-        'message': '后台同步已启动，请访问 /api/sync_status?token=YOUR_TOKEN 查询进度',
-        'cache_cleared': clear_cache_flag,
+        'message': '后台同步已启动（完整同步 + 清理），请访问 /api/sync_status?token=YOUR_TOKEN 查询进度',
         'status_url': '/api/sync_status?token=' + provided_token
     }), 200
 
