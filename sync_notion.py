@@ -442,6 +442,11 @@ def sync_posts(clean=True):
 
         # 保存元数据
         current_time = datetime.now(timezone.utc).isoformat()
+
+        # 去重并按日期排序
+        unique_posts = {post['slug']: post for post in synced_posts}
+        synced_posts = sorted(unique_posts.values(), key=lambda x: x.get('date') or '', reverse=True)
+
         metadata = {
             'last_sync': current_time,
             'last_sync_time': current_time,  # 用于增量同步

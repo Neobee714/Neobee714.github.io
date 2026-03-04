@@ -7,7 +7,7 @@ echo "=========================================="
 
 # 1. 同步 Notion 数据到本地
 echo "步骤 1: 同步 Notion 数据..."
-python sync_notion.py
+python sync_notion.py --clean
 
 if [ $? -eq 0 ]; then
     echo "✓ 数据同步成功"
