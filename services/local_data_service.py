@@ -130,11 +130,12 @@ class LocalDataService:
                 renderer = NotionRenderer(notion_client)
                 content_html = renderer.render_blocks(blocks)
 
-            from services.notion_service import calculate_reading_time
-            reading_time = calculate_reading_time(content_html)
-        except (ImportError, Exception) as e:
-            logger.warning(f"无法计算阅读时间: {e}")
-            reading_time = "5 min"
+            try:
+                from services.notion_service import calculate_reading_time
+                reading_time = calculate_reading_time(content_html)
+            except (ImportError, Exception) as e:
+                logger.warning(f"无法计算阅读时间: {e}")
+                reading_time = "5 min"
 
             return {
                 'title': post_data.get('title', ''),
