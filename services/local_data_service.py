@@ -37,7 +37,7 @@ class LocalDataService:
     @staticmethod
     def get_posts(category: Optional[str] = None) -> List[Dict]:
         """
-        获取文章列表
+        获取文章列表 (高性能版本：直接从元数据读取)
         Args:
             category: 分类过滤（可选）
         Returns:
@@ -50,44 +50,32 @@ class LocalDataService:
                 return []
 
             posts = []
+            # 元数据中已经包含了 slug, title, date, category 等核心字段
             for post_info in metadata.get('posts', []):
-                slug = post_info.get('slug')
-                if not slug:
+                # 如果有分类过滤需求
+                if category and post_info.get('category') != category:
                     continue
-
-                # 读取文章文件
-                post_file = POSTS_DIR / f"{slug}.json"
-                if not post_file.exists():
-                    logger.warning(f"文章文件不存在: {post_file}")
-                    continue
-
-                with open(post_file, 'r', encoding='utf-8') as f:
-                    post_data = json.load(f)
-
-                # 分类过滤
-                if category and post_data.get('category') != category:
-                    continue
-
-                # 转换为与 notion_service.get_posts() 相同的格式
+                
+                # 构造基础文章对象，避免读取详情 JSON 文件
+                # 注意：这里我们信任 metadata.json 中的数据已经足够展示列表
                 posts.append({
-                    'title': post_data.get('title', ''),
-                    'slug': post_data.get('slug', ''),
-                    'date': post_data.get('date'),
-                    'tags': post_data.get('tags', []),
-                    'summary': post_data.get('summary', ''),
-                    'category': post_data.get('category', ''),
-                    'os': post_data.get('os', ''),
-                    'difficulty': post_data.get('difficulty', ''),
-                    'user': False,  # 本地数据暂不支持
-                    'root': False,  # 本地数据暂不支持
-                    'icon_type': post_data.get('icon', {}).get('type', ''),
-                    'icon_url_or_emoji': post_data.get('icon', {}).get('value', ''),
-                    'cover': post_data.get('cover', ''),  # 封面图
-                    'status': post_data.get('status', ''),
+                    'title': post_info.get('title', ''),
+                    'slug': post_info.get('slug', ''),
+                    'date': post_info.get('date'),
+                    'category': post_info.get('category', ''),
+                    'tags': post_info.get('tags', []),     # metadata 中可能不含 tags，取决于同步逻辑
+                    'summary': post_info.get('summary', ''), # metadata 中可能不含 summary
+                    'status': post_info.get('status', '已完成'),
+                    'icon_type': post_info.get('icon', {}).get('type', 'emoji'),
+                    'icon_url_or_emoji': post_info.get('icon', {}).get('value', '📝'),
+                    'cover': post_info.get('cover', ''),
                 })
 
-            logger.info(f"从本地读取 {len(posts)} 篇文章（分类: {category or '全部'}）")
-            # 按日期降序排序（最新的在前）
+            # 如果发现 metadata 中的 tags/summary 为空，且文章数量不多，可以考虑按需补全
+            # 但为了性能，列表页通常不需要过于详细的信息
+            
+            logger.info(f"从元数据读取 {len(posts)} 篇文章（分类: {category or '全部'}）")
+            # 按日期降序排序
             posts.sort(key=lambda x: x.get('date') or '', reverse=True)
             return posts
 
@@ -130,8 +118,12 @@ class LocalDataService:
             blocks = post_data.get('blocks', [])
 
             if blocks and post_data.get('status') == '已完成':
-                # 导入渲染器（延迟导入避免循环依赖）
-                from services.notion_service import NotionRenderer, get_notion_client
+                # 导入渲染器
+                try:
+                    from services.notion_service import NotionRenderer, get_notion_client
+                except ImportError:
+                    logger.error("无法从 services.notion_service 导入 NotionRenderer 或 get_notion_client")
+                    return None
 
                 # 使用 NotionRenderer 渲染 blocks
                 # 注意：这里仍需要 notion_client，但只用于渲染，不调用 API
@@ -139,9 +131,11 @@ class LocalDataService:
                 renderer = NotionRenderer(notion_client)
                 content_html = renderer.render_blocks(blocks)
 
-            # 计算阅读时间
             from services.notion_service import calculate_reading_time
             reading_time = calculate_reading_time(content_html)
+        except (ImportError, Exception) as e:
+            logger.warning(f"无法计算阅读时间: {e}")
+            reading_time = "5 min"
 
             return {
                 'title': post_data.get('title', ''),
@@ -199,11 +193,8 @@ class LocalDataService:
 
                 return score
 
-            # 按相似度排序
-            candidates.sort(key=calculate_similarity, reverse=True)
-
             # 返回前 N 篇
-            return candidates[:limit]
+            return candidates[:limit] if limit > 0 else []
 
         except Exception as e:
             logger.error(f"获取相关文章失败: {e}")

@@ -90,7 +90,7 @@
       --code-header-bg: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
       --code-border: rgba(0, 0, 0, 0.05);
 
-      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-bg: rgba(255, 255, 255, 0.8);
       --glass-border: rgba(0, 0, 0, 0.05);
       --glass-text-strong: #1f2937;
       --glass-text-dim: #6b7280;
@@ -115,11 +115,13 @@
 
     body {
       font-family: var(--font-sans);
-      transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+      transition: background-color 0.4s ease, color 0.4s ease;
     }
 
-    * {
-      transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    .btn,
+    .sidebar-link,
+    .nav-item {
+      transition: all 0.2s ease;
     }
 
     .font-mono,
