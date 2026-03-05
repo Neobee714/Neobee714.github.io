@@ -56,15 +56,14 @@ class LocalDataService:
                 if category and post_info.get('category') != category:
                     continue
                 
-                # 构造基础文章对象，避免读取详情 JSON 文件
-                # 注意：这里我们信任 metadata.json 中的数据已经足够展示列表
+                # 构造基础文章对象，直接使用 metadata 中的详细信息
                 posts.append({
                     'title': post_info.get('title', ''),
                     'slug': post_info.get('slug', ''),
                     'date': post_info.get('date'),
                     'category': post_info.get('category', ''),
-                    'tags': post_info.get('tags', []),     # metadata 中可能不含 tags，取决于同步逻辑
-                    'summary': post_info.get('summary', ''), # metadata 中可能不含 summary
+                    'tags': post_info.get('tags', []),     # 优先从 metadata 读取
+                    'summary': post_info.get('summary', ''), # 优先从 metadata 读取
                     'status': post_info.get('status', '已完成'),
                     'icon_type': post_info.get('icon', {}).get('type', 'emoji'),
                     'icon_url_or_emoji': post_info.get('icon', {}).get('value', '📝'),

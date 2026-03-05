@@ -352,12 +352,17 @@ def sync_posts(clean=True):
                 with open(post_file, 'w', encoding='utf-8') as f:
                     json.dump(post_data, f, ensure_ascii=False, indent=2)
 
-                # 更新或添加到文章列表
+                # 更新或添加到文章列表 (包含完整元数据以支撑高性能列表展示)
                 post_meta = {
                     'slug': slug,
                     'title': title,
                     'date': date,
                     'category': category,
+                    'tags': tags,
+                    'summary': summary,
+                    'icon': {'type': icon_type, 'value': icon_value},
+                    'cover': cover_url,
+                    'status': status
                 }
 
                 # 如果是增量同步，更新现有文章；否则添加
