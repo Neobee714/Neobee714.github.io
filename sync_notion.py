@@ -43,8 +43,8 @@ POSTS_DIR = DATA_DIR / 'posts'
 IMAGES_DIR = DATA_DIR / 'images'
 METADATA_FILE = DATA_DIR / 'metadata.json'
 
-# 是否下载图片到本地（设置为 True 启用）
-DOWNLOAD_IMAGES = os.environ.get('DOWNLOAD_IMAGES', 'false').lower() == 'true'
+# 是否下载图片到本地（默认开启，避免 Notion AWS 临时链接过期）
+DOWNLOAD_IMAGES = os.environ.get('DOWNLOAD_IMAGES', 'true').lower() == 'true'
 
 
 class NotionBlockRenderer:

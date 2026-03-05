@@ -169,18 +169,32 @@ sync_status = {
 }
 
 @app.context_processor
-def inject_categories():
-    """将 categories 注入到所有模板中（从 Notion schema 自动读取）"""
+def inject_global_vars():
+    """将 categories 和 recent_posts 注入到所有模板中（从数据源自动读取，并使用缓存）"""
     try:
         cats = _get_cached_categories()
     except Exception:
         cats = []
-    return {'categories': cats}
+        
+    try:
+        recent = _get_cached_recent_posts()
+    except Exception:
+        recent = []
+        
+    return {'categories': cats, 'recent_posts': recent}
 
 @cache.cached(timeout=600, key_prefix='categories')
 def _get_cached_categories():
     """缓存的分类获取函数"""
     return get_categories() or []
+
+@cache.cached(timeout=600, key_prefix='recent_posts')
+def _get_cached_recent_posts():
+    """缓存的最新文章获取函数（取前 5 篇且排除已锁住的）"""
+    # 假设 get_posts 返回按日期倒序的列表
+    posts = get_posts() or []
+    visible_posts = [p for p in posts if p.get('status') != '已锁住']
+    return visible_posts[:5]
 
 
 # ==================== 性能监控 (Performance Profiling) ====================
@@ -1142,6 +1156,8 @@ def scheduled_sync_job():
 
 
 # 初始化定时任务
+scheduler = None
+
 # Railway 环境下禁用定时同步（启动时已同步，且文件系统临时）
 is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
 

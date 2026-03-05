@@ -47,61 +47,44 @@
 {% endblock %}
 
 {% block head %}
-  <!-- Prism.js 行号插件样式 -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet">
-  <style>
-    /* 所有代码块强制使用 JetBrains Mono */
-    pre[class*="language-"],
-    code[class*="language-"] {
-      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
-      font-size: 0.875rem;
-    }
-    .post-content pre {
-      margin: 1rem 0;
-      border-radius: 0.75rem;
-      overflow-x: auto;
-      position: relative;
-      background-color: transparent !important;
-    }
-    /* 代码块使用 DaisyUI 主题色 */
-    .post-content pre code {
-      background-color: transparent !important;
-      color: inherit !important;
-    }
-    .post-content :first-child { margin-top: 0; }
-    /* 代码复制按钮样式 (Code copy button styles) */
-    .code-block-wrapper {
-      position: relative;
-    }
-    .copy-code-btn {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 10;
-    }
-    .code-block-wrapper:hover .copy-code-btn {
-      opacity: 1;
-    }
-    .copy-code-btn.copied {
-      opacity: 1 !important;
-    }
-    /* 移动端始终显示复制按钮 (Always show copy button on mobile) */
-    @media (max-width: 1024px) {
-      .copy-code-btn {
-        opacity: 1 !important;
-      }
-    }
-  </style>
+<!-- Prism.js 行号插件样式 -->
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css"
+  rel="stylesheet">
+<style>
+  /* 所有代码块强制使用 JetBrains Mono */
+  pre[class*="language-"],
+  code[class*="language-"] {
+    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+    font-size: 0.875rem;
+  }
+
+  .post-content pre {
+    margin: 0;
+    border-radius: 0 0 0.75rem 0.75rem;
+    overflow-x: auto;
+    position: relative;
+    background-color: transparent !important;
+  }
+
+  /* 代码块使用 DaisyUI 主题色 */
+  .post-content pre code {
+    background-color: transparent !important;
+    color: inherit !important;
+  }
+
+  .post-content :first-child {
+    margin-top: 0;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-  <article class="px-4 md:px-6 py-8 md:py-12">
-    <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 lg:gap-8">
-      <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
-        <header class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">{{ post.title | default('无标题') }}</h1>
+<article class="px-4 md:px-6 py-8 md:py-12">
+  <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 lg:gap-8">
+    <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
+      <header class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">{{ post.title | default('无标题') }}
+        </h1>
         <div class="flex flex-wrap items-center gap-4 mt-3 text-base-content/50 text-sm">
           {% if post.date %}
           <span class="flex items-center gap-2">
@@ -116,11 +99,8 @@
           </span>
           {% endif %}
           <!-- AI 翻译按钮 (AI Translation Button) -->
-          <button id="translate-btn"
-                  class="btn btn-sm btn-outline gap-2"
-                  title="AI 智能翻译"
-                  aria-label="AI 智能翻译文章内容"
-                  aria-pressed="false">
+          <button id="translate-btn" class="btn btn-sm btn-outline gap-2" title="AI 智能翻译" aria-label="AI 智能翻译文章内容"
+            aria-pressed="false">
             <i class="fa-solid fa-language"></i>
             <span>AI 翻译</span>
           </button>
@@ -134,320 +114,425 @@
         {% endif %}
       </header>
 
-        <div class="post-content prose prose-base max-w-none text-base-content/90 leading-relaxed">
+      <div class="post-content prose prose-base max-w-none text-base-content/90 leading-relaxed">
 
-          <!-- 简介引言区 (Summary Quote) - 无条件显示 -->
-          {% if post.summary %}
-          <blockquote class="text-base-content/70 italic mb-8 border-l-4 border-primary pl-4 bg-base-200 py-3 rounded-r-lg">
-            {{ post.summary }}
-          </blockquote>
-          {% endif %}
+        <!-- 简介引言区 (Summary Quote) - 无条件显示 -->
+        {% if post.summary %}
+        <blockquote
+          class="text-base-content/70 italic mb-8 border-l-4 border-primary pl-4 bg-base-200 py-3 rounded-r-lg">
+          {{ post.summary }}
+        </blockquote>
+        {% endif %}
 
-          <!-- 内容渲染逻辑：根据状态判断 (Content Rendering Logic) -->
-          {% if post.status == '已锁住' %}
-          <!-- 已锁住状态：显示终端报错风格警告 (Locked Status Warning) -->
-          <div class="bg-base-300 rounded-lg p-6 my-8 border-l-4 border-error">
-            <div class="flex items-center gap-3 mb-4">
-              <i class="fa-solid fa-lock text-error text-2xl"></i>
-              <h3 class="text-xl font-bold font-mono text-error">ACCESS DENIED</h3>
-            </div>
-            <div class="font-mono text-sm text-error space-y-2">
-              <p>[ ERROR ] This machine is still active on Hack The Box.</p>
-              <p>[ INFO ] Full writeup will be published after retirement.</p>
-              <p class="text-base-content/60 mt-4">
-                <i class="fa-solid fa-info-circle"></i>
-                该靶机尚未退役，完整 Writeup 将在退役后发布。
-              </p>
-            </div>
+        <!-- 内容渲染逻辑：根据状态判断 (Content Rendering Logic) -->
+        {% if post.status == '已锁住' %}
+        <!-- 已锁住状态：显示终端报错风格警告 (Locked Status Warning) -->
+        <div class="bg-base-300 rounded-lg p-6 my-8 border-l-4 border-error">
+          <div class="flex items-center gap-3 mb-4">
+            <i class="fa-solid fa-lock text-error text-2xl"></i>
+            <h3 class="text-xl font-bold font-mono text-error">ACCESS DENIED</h3>
           </div>
-          {% else %}
-          <!-- 正常状态：渲染完整内容 (Normal Status: Render Full Content) -->
-          {% if post.content_html %}
-          {{ post.content_html | safe }}
-          {% else %}
-          <p class="text-base-content/60">暂无正文。</p>
-          {% endif %}
-          {% endif %}
+          <div class="font-mono text-sm text-error space-y-2">
+            <p>[ ERROR ] This machine is still active on Hack The Box.</p>
+            <p>[ INFO ] Full writeup will be published after retirement.</p>
+            <p class="text-base-content/60 mt-4">
+              <i class="fa-solid fa-info-circle"></i>
+              该靶机尚未退役，完整 Writeup 将在退役后发布。
+            </p>
+          </div>
         </div>
-
-        <!-- Giscus 评论：需在 .env 中配置 GISCUS_REPO / GISCUS_REPO_ID / GISCUS_CATEGORY / GISCUS_CATEGORY_ID -->
-        <div class="giscus mt-12 pt-8 border-t border-base-content/10" id="giscus-container"></div>
-
-        <footer class="mt-12 pt-6 border-t border-base-content/10">
-          <a href="{{ url_for('index') }}" class="link link-hover text-sm text-base-content/70">← 返回首页</a>
-        </footer>
+        {% else %}
+        <!-- 正常状态：渲染完整内容 (Normal Status: Render Full Content) -->
+        {% if post.content_html %}
+        {{ post.content_html | safe }}
+        {% else %}
+        <p class="text-base-content/60">暂无正文。</p>
+        {% endif %}
+        {% endif %}
       </div>
 
-      <!-- Table of Contents (右侧) -->
-      <aside class="hidden lg:block lg:col-span-1">
-        <div class="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto p-4 bg-base-300 rounded-md">
-          <h4 class="font-bold text-lg mb-4 text-base-content">目录</h4>
-          <ul id="toc-list" class="space-y-2"></ul>
-        </div>
-      </aside>
+      <!-- Giscus 评论：需在 .env 中配置 GISCUS_REPO / GISCUS_REPO_ID / GISCUS_CATEGORY / GISCUS_CATEGORY_ID -->
+      <div class="giscus mt-12 pt-8 border-t border-base-content/10" id="giscus-container"></div>
 
+      <footer class="mt-12 pt-6 border-t border-base-content/10">
+        <a href="{{ url_for('index') }}" class="link link-hover text-sm text-base-content/70">← 返回首页</a>
+      </footer>
     </div>
-  </article>
 
-  <!-- Prism.js 核心 + 常用语言 -->
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+    <!-- 侧边栏 (右侧) -->
+    <aside class="hidden lg:block lg:col-span-1 space-y-12">
 
-  <!-- Mermaid 图表支持 (Mermaid diagram support) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+      <!-- 最新动态 (Recent Posts) - 无边框极简设计 -->
+      {% if recent_posts %}
+      <div class="px-2 transition-all duration-300">
+        <h4 class="font-bold text-lg mb-6 flex items-center gap-2" style="color: var(--glass-text-strong);">
+          <i class="fa-solid fa-clock-rotate-left text-sm" style="color: var(--glass-icon);"></i>最新动态
+        </h4>
+        <ul class="space-y-5">
+          {% for rp in recent_posts %}
+          <li>
+            <a href="{{ url_for('post', slug=rp.slug) }}" class="block group">
+              <h5 class="text-sm font-medium line-clamp-2 transition-colors group-hover:text-primary leading-snug"
+                style="color: var(--glass-text-strong);">
+                {{ rp.title }}
+              </h5>
+              <div class="text-xs mt-1.5 flex items-center gap-2" style="color: var(--glass-text-dim);">
+                <i class="fa-regular fa-calendar-days text-[10px]"></i>
+                {{ rp.date[:10] if rp.date else '' }}
+              </div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
 
-  <!-- KaTeX 数学公式支持 (KaTeX math formula support) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+      <!-- 目录面板 (TOC Panel) - 独立 Sticky + 无边框 -->
+      <div class="sticky top-24 px-2 transition-all duration-300">
+        <h4 class="font-bold text-lg mb-6 flex items-center gap-2" style="color: var(--glass-text-strong);">
+          <i class="fa-solid fa-list-ul text-sm" style="color: var(--glass-icon);"></i>内容目录
+        </h4>
+        <ul id="toc-list" class="space-y-3 text-sm" style="color: var(--glass-text-dim);"></ul>
+      </div>
+    </aside>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Prism 语法高亮 + 行号
-      if (typeof Prism !== 'undefined') {
-        // 为所有 pre 添加 line-numbers 类
-        document.querySelectorAll('.post-content pre').forEach(function(pre) {
-          pre.classList.add('line-numbers');
-        });
-        Prism.highlightAll();
-      }
+  </div>
+</article>
 
-      // Mermaid 图表初始化
-      if (typeof mermaid !== 'undefined') {
-        mermaid.initialize({
-          startOnLoad: true,
-          theme: document.documentElement.getAttribute('data-theme') === 'business' ? 'dark' : 'default'
-        });
-      }
+<!-- Prism.js 核心 + 常用语言 -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
 
-      // KaTeX 数学公式渲染
-      if (typeof renderMathInElement !== 'undefined') {
-        renderMathInElement(document.body, {
-          delimiters: [
-            {left: '$$', right: '$$', display: true},
-            {left: '$', right: '$', display: false},
-            {left: '\\[', right: '\\]', display: true},
-            {left: '\\(', right: '\\)', display: false}
-          ],
-          throwOnError: false
-        });
-      }
+<!-- Mermaid 图表支持 (Mermaid diagram support) -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
-      // 为所有代码块添加复制按钮 (Add copy button to all code blocks)
-      document.querySelectorAll('.post-content pre').forEach(function(pre) {
-        // 创建包装器
-        const wrapper = document.createElement('div');
-        wrapper.className = 'code-block-wrapper';
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
+<!-- KaTeX 数学公式支持 (KaTeX math formula support) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
-        // 创建复制按钮
-        const btn = document.createElement('button');
-        btn.className = 'copy-code-btn btn btn-sm btn-ghost';
-        btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-        btn.setAttribute('aria-label', '复制代码');
-        btn.title = '复制代码';
-
-        btn.addEventListener('click', function() {
-          const code = pre.querySelector('code');
-          const text = code ? code.textContent : pre.textContent;
-
-          navigator.clipboard.writeText(text).then(function() {
-            btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
-            btn.classList.add('copied');
-            setTimeout(function() {
-              btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-              btn.classList.remove('copied');
-            }, 2000);
-          }).catch(function(err) {
-            console.error('复制失败:', err);
-            btn.innerHTML = '<i class="fa-solid fa-xmark text-error"></i>';
-            setTimeout(function() {
-              btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-            }, 2000);
-          });
-        });
-
-        wrapper.appendChild(btn);
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Prism 语法高亮 + 行号
+    if (typeof Prism !== 'undefined') {
+      // 为所有 pre 添加 line-numbers 类
+      document.querySelectorAll('.post-content pre').forEach(function (pre) {
+        pre.classList.add('line-numbers');
       });
+      Prism.highlightAll();
+    }
+
+    // Mermaid 图表初始化
+    if (typeof mermaid !== 'undefined') {
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: document.documentElement.getAttribute('data-theme') === 'business' ? 'dark' : 'default'
+      });
+    }
+
+    // KaTeX 数学公式渲染
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(document.body, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
+    // 语言名称映射表 (Language display name map)
+    var langMap = {
+      'python': 'Python', 'py': 'Python',
+      'javascript': 'JavaScript', 'js': 'JavaScript',
+      'typescript': 'TypeScript', 'ts': 'TypeScript',
+      'bash': 'Bash', 'sh': 'Shell', 'shell': 'Shell', 'zsh': 'Zsh',
+      'powershell': 'PowerShell', 'ps1': 'PowerShell',
+      'json': 'JSON', 'xml': 'XML', 'yaml': 'YAML', 'yml': 'YAML',
+      'html': 'HTML', 'css': 'CSS', 'scss': 'SCSS',
+      'sql': 'SQL', 'graphql': 'GraphQL',
+      'java': 'Java', 'kotlin': 'Kotlin', 'swift': 'Swift',
+      'c': 'C', 'cpp': 'C++', 'csharp': 'C#', 'cs': 'C#',
+      'go': 'Go', 'rust': 'Rust', 'ruby': 'Ruby', 'php': 'PHP', 'perl': 'Perl',
+      'lua': 'Lua', 'r': 'R', 'matlab': 'MATLAB',
+      'dockerfile': 'Dockerfile', 'docker': 'Docker',
+      'nginx': 'Nginx', 'apache': 'Apache',
+      'ini': 'INI', 'toml': 'TOML', 'env': '.env',
+      'markdown': 'Markdown', 'md': 'Markdown',
+      'plaintext': 'Text', 'text': 'Text', 'txt': 'Text',
+      'markup': 'HTML'
+    };
+
+    // 语言图标映射 (Language icon map)
+    var langIcons = {
+      'Python': 'fa-brands fa-python',
+      'JavaScript': 'fa-brands fa-js',
+      'TypeScript': 'fa-brands fa-js',
+      'HTML': 'fa-brands fa-html5',
+      'CSS': 'fa-brands fa-css3-alt',
+      'Java': 'fa-brands fa-java',
+      'PHP': 'fa-brands fa-php',
+      'Go': 'fa-brands fa-golang',
+      'Rust': 'fa-brands fa-rust',
+      'Ruby': 'fa-solid fa-gem',
+      'Docker': 'fa-brands fa-docker',
+      'Dockerfile': 'fa-brands fa-docker',
+      'Bash': 'fa-solid fa-terminal',
+      'Shell': 'fa-solid fa-terminal',
+      'Zsh': 'fa-solid fa-terminal',
+      'PowerShell': 'fa-solid fa-terminal',
+      'SQL': 'fa-solid fa-database',
+      'JSON': 'fa-solid fa-brackets-curly',
+    };
+
+    // 为所有代码块添加语言标签栏和复制按钮 (Add language header + copy button)
+    document.querySelectorAll('.post-content pre').forEach(function (pre) {
+      // 检查是否已经有包装器
+      if (pre.parentNode.classList.contains('code-block-wrapper')) return;
+
+      // 提取语言
+      var code = pre.querySelector('code');
+      var lang = 'Code';
+      if (code) {
+        var classes = code.className.split(/\s+/);
+        for (var i = 0; i < classes.length; i++) {
+          var match = classes[i].match(/^language-(\w+)$/);
+          if (match) {
+            lang = langMap[match[1].toLowerCase()] || match[1];
+            break;
+          }
+        }
+      }
+
+      // 创建包装器
+      var wrapper = document.createElement('div');
+      wrapper.className = 'code-block-wrapper';
+      pre.parentNode.insertBefore(wrapper, pre);
+
+      // 创建语言标签栏 header
+      var header = document.createElement('div');
+      header.className = 'code-header';
+
+      // 左侧：语言 pill
+      var langPill = document.createElement('span');
+      langPill.className = 'code-lang';
+      var iconClass = langIcons[lang] || 'fa-solid fa-code';
+      langPill.innerHTML = '<i class="' + iconClass + '"></i>' + lang;
+      header.appendChild(langPill);
+
+      // 右侧：复制按钮
+      var btn = document.createElement('button');
+      btn.className = 'copy-code-btn btn btn-sm btn-ghost';
+      btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+      btn.setAttribute('aria-label', '复制代码');
+      btn.title = '复制代码';
+
+      btn.addEventListener('click', function () {
+        var codeEl = pre.querySelector('code');
+        var text = codeEl ? codeEl.textContent : pre.textContent;
+
+        navigator.clipboard.writeText(text).then(function () {
+          btn.innerHTML = '<i class="fa-solid fa-check" style="color: var(--primary-color)"></i>';
+          btn.classList.add('copied');
+          setTimeout(function () {
+            btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+            btn.classList.remove('copied');
+          }, 2000);
+        }).catch(function (err) {
+          console.error('复制失败:', err);
+          btn.innerHTML = '<i class="fa-solid fa-xmark text-error"></i>';
+          setTimeout(function () {
+            btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+          }, 2000);
+        });
+      });
+
+      header.appendChild(btn);
+
+      // 组装：header + pre
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
     });
-  </script>
+  });
+</script>
 
-  <!-- TOC generation + Scroll Spy -->
-  <script>
-    (function() {
-      function slugify(s) {
-        return s.trim().toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w\-]+/g, '');
+<!-- TOC generation + Scroll Spy -->
+<script>
+  (function () {
+    function slugify(s) {
+      return s.trim().toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w\-]+/g, '');
+    }
+
+    function buildTOC() {
+      var content = document.querySelector('.post-content');
+      var container = document.getElementById('toc-list');
+      if (!content || !container) return;
+      var headings = Array.from(content.querySelectorAll('h1,h2,h3'));
+      if (!headings.length) {
+        container.innerHTML = '<li class="text-sm text-base-content/60">本文暂无目录。</li>';
+        return;
       }
+      container.innerHTML = '';
+      var items = [];
+      headings.forEach(function (h, idx) {
+        var level = parseInt(h.tagName.substring(1), 10);
+        var id = h.id || slugify(h.textContent || ('heading-' + idx));
+        // ensure unique id
+        var base = id, i = 1;
+        while (document.getElementById(id)) { id = base + '-' + (i++); }
+        h.id = id;
 
-      function buildTOC() {
-        var content = document.querySelector('.post-content');
-        var container = document.getElementById('toc-list');
-        if (!content || !container) return;
-        var headings = Array.from(content.querySelectorAll('h1,h2,h3'));
-        if (!headings.length) {
-          container.innerHTML = '<li class="text-sm text-base-content/60">本文暂无目录。</li>';
-          return;
-        }
-        container.innerHTML = '';
-        var items = [];
-        headings.forEach(function(h, idx) {
-          var level = parseInt(h.tagName.substring(1), 10);
-          var id = h.id || slugify(h.textContent || ('heading-' + idx));
-          // ensure unique id
-          var base = id, i = 1;
-          while (document.getElementById(id)) { id = base + '-' + (i++); }
-          h.id = id;
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.href = '#' + id;
+        a.textContent = h.textContent.trim();
+        // default classes: block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all
+        a.className = 'block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all';
+        // indentation based on level
+        if (level === 2) a.classList.add('pl-4');
+        if (level === 3) a.classList.add('pl-8');
 
-          var li = document.createElement('li');
-          var a = document.createElement('a');
-          a.href = '#' + id;
-          a.textContent = h.textContent.trim();
-          // default classes: block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all
-          a.className = 'block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all';
-          // indentation based on level
-          if (level === 2) a.classList.add('pl-4');
-          if (level === 3) a.classList.add('pl-8');
+        // store reference for scrollspy
+        items.push({ id: id, node: a, heading: h });
 
-          // store reference for scrollspy
-          items.push({id: id, node: a, heading: h});
-
-          a.addEventListener('click', function(e) {
-            e.preventDefault();
-            var target = document.getElementById(id);
-            if (target) {
-              var top = target.getBoundingClientRect().top + window.pageYOffset - 96;
-              window.scrollTo({top: top, behavior: 'smooth'});
-            }
-          });
-
-          li.appendChild(a);
-          container.appendChild(li);
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var target = document.getElementById(id);
+          if (target) {
+            var top = target.getBoundingClientRect().top + window.pageYOffset - 96;
+            window.scrollTo({ top: top, behavior: 'smooth' });
+          }
         });
 
-        // Scroll spy
-        function onScroll() {
-          var fromTop = window.scrollY + 110;
-          var current = null;
-          for (var i = 0; i < items.length; i++) {
-            var rect = items[i].heading.getBoundingClientRect();
-            var offset = items[i].heading.offsetTop;
-            if (items[i].heading.offsetTop <= fromTop) current = items[i];
-            else break;
-          }
-          // clear all
-          items.forEach(function(it) {
-            it.node.classList.remove('text-primary', 'font-bold', 'border-l-4', 'pl-3');
-            // ensure base left padding remains for level 2/3
-            // remove pl-3 if present, restore pl-4/8 if needed
-          });
-          if (current) {
-            current.node.classList.add('text-primary', 'font-bold', 'border-l-4', 'pl-3');
-          }
-        }
-
-        window.addEventListener('scroll', onScroll, {passive: true});
-        window.addEventListener('resize', onScroll);
-        // initial highlight
-        setTimeout(onScroll, 200);
-      }
-
-      document.addEventListener('DOMContentLoaded', buildTOC);
-    })();
-  </script>
-
-  <!-- Giscus：根据当前页主题动态设置 data-theme，并在切换日/夜时更新 -->
-  {% if config.GISCUS_REPO and config.GISCUS_REPO_ID %}
-  <script>
-    (function() {
-      function getGiscusTheme() {
-        var theme = document.documentElement.getAttribute('data-theme') || 'lofi';
-        // map site themes to giscus themes
-        return theme === 'business' ? 'dark' : 'light';
-      }
-      function loadGiscus() {
-        var s = document.createElement('script');
-        s.src = 'https://giscus.app/client.js';
-        s.setAttribute('data-repo', '{{ config.GISCUS_REPO }}');
-        s.setAttribute('data-repo-id', '{{ config.GISCUS_REPO_ID }}');
-        s.setAttribute('data-category', '{{ config.GISCUS_CATEGORY }}');
-        s.setAttribute('data-category-id', '{{ config.GISCUS_CATEGORY_ID }}');
-        s.setAttribute('data-mapping', 'pathname');
-        s.setAttribute('data-strict', '0');
-        s.setAttribute('data-reactions-enabled', '1');
-        s.setAttribute('data-emit-metadata', '0');
-        s.setAttribute('data-input-position', 'bottom');
-        s.setAttribute('data-theme', getGiscusTheme());
-        s.setAttribute('data-lang', 'zh-CN');
-        s.crossOrigin = 'anonymous';
-        s.async = true;
-        document.body.appendChild(s);
-      }
-      function updateGiscusTheme(theme) {
-        var iframe = document.querySelector('iframe.giscus-frame');
-        if (!iframe || !iframe.contentWindow) return;
-        iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: theme } } }, 'https://giscus.app');
-      }
-      document.addEventListener('DOMContentLoaded', function() {
-        loadGiscus();
-        var observer = new MutationObserver(function(mutations) {
-          mutations.forEach(function(m) {
-            if (m.attributeName === 'data-theme') {
-              updateGiscusTheme(getGiscusTheme());
-            }
-          });
-        });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        li.appendChild(a);
+        container.appendChild(li);
       });
-    })();
-  </script>
-  {% endif %}
 
-  <!-- AI 翻译功能 (AI Translation Feature) -->
-  <script>
-    (function() {
-      const translateBtn = document.getElementById('translate-btn');
-      const postContent = document.querySelector('.post-content');
-      const slug = '{{ post.slug }}';
-      let isTranslated = false;
-      let originalContent = '';
-
-      if (!translateBtn || !postContent) return;
-
-      // 保存原始内容
-      originalContent = postContent.innerHTML;
-
-      translateBtn.addEventListener('click', function() {
-        // 如果已经翻译，则恢复原文
-        if (isTranslated) {
-          postContent.innerHTML = originalContent;
-          translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
-          translateBtn.classList.remove('btn-active');
-          translateBtn.setAttribute('aria-pressed', 'false');
-          isTranslated = false;
-
-          // 重新初始化代码高亮和其他功能
-          reinitializeFeatures();
-          return;
+      // Scroll spy
+      function onScroll() {
+        var fromTop = window.scrollY + 110;
+        var current = null;
+        for (var i = 0; i < items.length; i++) {
+          var rect = items[i].heading.getBoundingClientRect();
+          var offset = items[i].heading.offsetTop;
+          if (items[i].heading.offsetTop <= fromTop) current = items[i];
+          else break;
         }
+        // clear all
+        items.forEach(function (it) {
+          it.node.classList.remove('text-primary', 'font-bold', 'border-l-4', 'pl-3');
+          // ensure base left padding remains for level 2/3
+          // remove pl-3 if present, restore pl-4/8 if needed
+        });
+        if (current) {
+          current.node.classList.add('text-primary', 'font-bold', 'border-l-4', 'pl-3');
+        }
+      }
 
-        // 开始翻译
-        translateBtn.disabled = true;
-        translateBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span><span>翻译中...</span>';
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      // initial highlight
+      setTimeout(onScroll, 200);
+    }
 
-        // 发送 AJAX 请求
-        fetch(`/api/translate/${slug}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+    document.addEventListener('DOMContentLoaded', buildTOC);
+  })();
+</script>
+
+<!-- Giscus：根据当前页主题动态设置 data-theme，并在切换日/夜时更新 -->
+{% if config.GISCUS_REPO and config.GISCUS_REPO_ID %}
+<script>
+  (function () {
+    function getGiscusTheme() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'lofi';
+      // map site themes to giscus themes
+      return theme === 'business' ? 'dark' : 'light';
+    }
+    function loadGiscus() {
+      var s = document.createElement('script');
+      s.src = 'https://giscus.app/client.js';
+      s.setAttribute('data-repo', '{{ config.GISCUS_REPO }}');
+      s.setAttribute('data-repo-id', '{{ config.GISCUS_REPO_ID }}');
+      s.setAttribute('data-category', '{{ config.GISCUS_CATEGORY }}');
+      s.setAttribute('data-category-id', '{{ config.GISCUS_CATEGORY_ID }}');
+      s.setAttribute('data-mapping', 'pathname');
+      s.setAttribute('data-strict', '0');
+      s.setAttribute('data-reactions-enabled', '1');
+      s.setAttribute('data-emit-metadata', '0');
+      s.setAttribute('data-input-position', 'bottom');
+      s.setAttribute('data-theme', getGiscusTheme());
+      s.setAttribute('data-lang', 'zh-CN');
+      s.crossOrigin = 'anonymous';
+      s.async = true;
+      document.body.appendChild(s);
+    }
+    function updateGiscusTheme(theme) {
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (!iframe || !iframe.contentWindow) return;
+      iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: theme } } }, 'https://giscus.app');
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      loadGiscus();
+      var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          if (m.attributeName === 'data-theme') {
+            updateGiscusTheme(getGiscusTheme());
           }
-        })
+        });
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    });
+  })();
+</script>
+{% endif %}
+
+<!-- AI 翻译功能 (AI Translation Feature) -->
+<script>
+  (function () {
+    const translateBtn = document.getElementById('translate-btn');
+    const postContent = document.querySelector('.post-content');
+    const slug = '{{ post.slug }}';
+    let isTranslated = false;
+    let originalContent = '';
+
+    if (!translateBtn || !postContent) return;
+
+    // 保存原始内容
+    originalContent = postContent.innerHTML;
+
+    translateBtn.addEventListener('click', function () {
+      // 如果已经翻译，则恢复原文
+      if (isTranslated) {
+        postContent.innerHTML = originalContent;
+        translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
+        translateBtn.classList.remove('btn-active');
+        translateBtn.setAttribute('aria-pressed', 'false');
+        isTranslated = false;
+
+        // 重新初始化代码高亮和其他功能
+        reinitializeFeatures();
+        return;
+      }
+
+      // 开始翻译
+      translateBtn.disabled = true;
+      translateBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span><span>翻译中...</span>';
+
+      // 发送 AJAX 请求
+      fetch(`/api/translate/${slug}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
         .then(async response => {
           // 先读取响应体（只能读取一次）
           const responseText = await response.text();
@@ -525,79 +610,109 @@
           translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
           translateBtn.disabled = false;
         });
-      });
+    });
 
-      // 重新初始化页面功能（代码高亮、复制按钮等）
-      function reinitializeFeatures() {
-        // 重新应用 Prism 语法高亮
-        if (typeof Prism !== 'undefined') {
-          postContent.querySelectorAll('pre').forEach(function(pre) {
-            pre.classList.add('line-numbers');
-          });
-          Prism.highlightAllUnder(postContent);
+    // 重新初始化页面功能（代码高亮、复制按钮等）
+    function reinitializeFeatures() {
+      // 重新应用 Prism 语法高亮
+      if (typeof Prism !== 'undefined') {
+        postContent.querySelectorAll('pre').forEach(function (pre) {
+          pre.classList.add('line-numbers');
+        });
+        Prism.highlightAllUnder(postContent);
+      }
+
+      // 重新添加语言标签栏和复制按钮
+      postContent.querySelectorAll('pre').forEach(function (pre) {
+        // 检查是否已经有包装器
+        if (pre.parentNode.classList.contains('code-block-wrapper')) {
+          return;
         }
 
-        // 重新添加代码复制按钮
-        postContent.querySelectorAll('pre').forEach(function(pre) {
-          // 检查是否已经有包装器
-          if (pre.parentNode.classList.contains('code-block-wrapper')) {
-            return;
+        // 提取语言
+        var code = pre.querySelector('code');
+        var lang = 'Code';
+        if (code) {
+          var classes = code.className.split(/\s+/);
+          for (var ci = 0; ci < classes.length; ci++) {
+            var match = classes[ci].match(/^language-(\w+)$/);
+            if (match) {
+              var langMap = {
+                'python': 'Python', 'py': 'Python',
+                'javascript': 'JavaScript', 'js': 'JavaScript',
+                'bash': 'Bash', 'sh': 'Shell', 'shell': 'Shell',
+                'json': 'JSON', 'html': 'HTML', 'css': 'CSS',
+                'markup': 'HTML'
+              };
+              lang = langMap[match[1].toLowerCase()] || match[1];
+              break;
+            }
           }
+        }
 
-          // 创建包装器
-          const wrapper = document.createElement('div');
-          wrapper.className = 'code-block-wrapper';
-          pre.parentNode.insertBefore(wrapper, pre);
-          wrapper.appendChild(pre);
+        // 创建包装器
+        var wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+        pre.parentNode.insertBefore(wrapper, pre);
 
-          // 创建复制按钮
-          const btn = document.createElement('button');
-          btn.className = 'copy-code-btn btn btn-sm btn-ghost';
-          btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-          btn.setAttribute('aria-label', '复制代码');
-          btn.title = '复制代码';
+        // 创建 header
+        var header = document.createElement('div');
+        header.className = 'code-header';
 
-          btn.addEventListener('click', function() {
-            const code = pre.querySelector('code');
-            const text = code ? code.textContent : pre.textContent;
+        var langPill = document.createElement('span');
+        langPill.className = 'code-lang';
+        langPill.innerHTML = '<i class="fa-solid fa-code"></i>' + lang;
+        header.appendChild(langPill);
 
-            navigator.clipboard.writeText(text).then(function() {
-              btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
-              btn.classList.add('copied');
-              setTimeout(function() {
-                btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-                btn.classList.remove('copied');
-              }, 2000);
-            }).catch(function(err) {
-              console.error('复制失败:', err);
-              btn.innerHTML = '<i class="fa-solid fa-xmark text-error"></i>';
-              setTimeout(function() {
-                btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-              }, 2000);
-            });
+        var btn = document.createElement('button');
+        btn.className = 'copy-code-btn btn btn-sm btn-ghost';
+        btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+        btn.setAttribute('aria-label', '复制代码');
+        btn.title = '复制代码';
+
+        btn.addEventListener('click', function () {
+          var codeEl = pre.querySelector('code');
+          var text = codeEl ? codeEl.textContent : pre.textContent;
+
+          navigator.clipboard.writeText(text).then(function () {
+            btn.innerHTML = '<i class="fa-solid fa-check" style="color: var(--primary-color)"></i>';
+            btn.classList.add('copied');
+            setTimeout(function () {
+              btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+              btn.classList.remove('copied');
+            }, 2000);
+          }).catch(function (err) {
+            console.error('复制失败:', err);
+            btn.innerHTML = '<i class="fa-solid fa-xmark text-error"></i>';
+            setTimeout(function () {
+              btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+            }, 2000);
           });
-
-          wrapper.appendChild(btn);
         });
 
-        // 重新渲染 Mermaid 图表
-        if (typeof mermaid !== 'undefined') {
-          mermaid.init(undefined, postContent.querySelectorAll('.language-mermaid'));
-        }
+        header.appendChild(btn);
+        wrapper.appendChild(header);
+        wrapper.appendChild(pre);
+      });
 
-        // 重新渲染 KaTeX 数学公式
-        if (typeof renderMathInElement !== 'undefined') {
-          renderMathInElement(postContent, {
-            delimiters: [
-              {left: '$$', right: '$$', display: true},
-              {left: '$', right: '$', display: false},
-              {left: '\\[', right: '\\]', display: true},
-              {left: '\\(', right: '\\)', display: false}
-            ],
-            throwOnError: false
-          });
-        }
+      // 重新渲染 Mermaid 图表
+      if (typeof mermaid !== 'undefined') {
+        mermaid.init(undefined, postContent.querySelectorAll('.language-mermaid'));
       }
-    })();
-  </script>
+
+      // 重新渲染 KaTeX 数学公式
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(postContent, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    }
+  })();
+</script>
 {% endblock %}

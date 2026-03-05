@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="business">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Neobee's Blog{% endblock %}</title>
 
   <!-- SEO Meta Tags -->
-  <meta name="description" content="{% block description %}Hack The Box Writeups & Cybersecurity Methodology - Neobee's personal blog{% endblock %}">
+  <meta name="description"
+    content="{% block description %}Hack The Box Writeups & Cybersecurity Methodology - Neobee's personal blog{% endblock %}">
   <meta name="author" content="Neobee">
-  <meta name="keywords" content="{% block keywords %}Hack The Box, HTB, Cybersecurity, Penetration Testing, CTF, Writeups{% endblock %}">
+  <meta name="keywords"
+    content="{% block keywords %}Hack The Box, HTB, Cybersecurity, Penetration Testing, CTF, Writeups{% endblock %}">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:url" content="{{ request.url }}">
   <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}{{ self.description() }}{% endblock %}">
-  <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
+  <meta property="og:image"
+    content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
   <meta property="og:site_name" content="Neobee's Blog">
 
   <!-- Twitter Card -->
@@ -26,13 +30,17 @@
   <meta name="twitter:image" content="{% block twitter_image %}{{ self.og_image() }}{% endblock %}">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}" onerror="this.remove()">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}" onerror="this.remove()">
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}" onerror="this.remove()">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}"
+    onerror="this.remove()">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}"
+    onerror="this.remove()">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}"
+    onerror="this.remove()">
   <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}" onerror="this.remove()">
 
   <!-- RSS Feed -->
-  <link rel="alternate" type="application/rss+xml" title="Neobee's Blog RSS Feed" href="{{ url_for('rss_feed', _external=True) }}">
+  <link rel="alternate" type="application/rss+xml" title="Neobee's Blog RSS Feed"
+    href="{{ url_for('rss_feed', _external=True) }}">
 
   <!-- Canonical URL -->
   <link rel="canonical" href="{% block canonical %}{{ request.url_root.rstrip('/') }}{{ request.path }}{% endblock %}">
@@ -40,17 +48,30 @@
   <!-- Google Fonts: Inter (正文) + JetBrains Mono (代码) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
   <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
-  <!-- Prism.js 语法高亮主题 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- Prism.js 语法高亮主题 (根据主题动态切换) -->
+  <link rel="stylesheet" id="prism-light" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css"
+    disabled>
+  <link rel="stylesheet" id="prism-dark"
+    href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.css">
   <!-- KaTeX for Math Rendering -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+    integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+    integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+    crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05"
+    crossorigin="anonymous"></script>
   <!-- Tailwind CSS + DaisyUI (CDN) -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -59,45 +80,155 @@
       --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
       --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-      /* 专业暗色配色方案 */
-      --primary-color: #10b981;      /* 翠绿 - 主色调 */
-      --secondary-color: #6366f1;    /* 靛蓝 - 次要色 */
-      --accent-color: #f59e0b;       /* 琥珀色 - 强调色 */
-      --code-bg: #1f2937;            /* 深灰 - 代码块背景 */
+      /* 默认亮色主题变量 (lofi 等) */
+      --primary-color: #10b981;
+      --secondary-color: #6366f1;
+      --accent-color: #f59e0b;
+
+      --sidebar-bg: #f8fafc;
+      --code-bg: #f1f5f9;
+      --code-header-bg: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+      --code-border: rgba(0, 0, 0, 0.05);
+
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(0, 0, 0, 0.05);
+      --glass-text-strong: #1f2937;
+      --glass-text-dim: #6b7280;
     }
 
-    body { font-family: var(--font-sans); }
-    .font-mono, code, pre { font-family: var(--font-mono); }
+    /* 暗色主题变量重写 (business) */
+    :root[data-theme="business"] {
+      --primary-color: #10b981;
+      --secondary-color: #6366f1;
+      --accent-color: #f59e0b;
+
+      --sidebar-bg: #0e1015;
+      --code-bg: #15171e;
+      --code-header-bg: linear-gradient(135deg, #1c1f26 0%, #22262f 100%);
+      --code-border: rgba(255, 255, 255, 0.08);
+
+      --glass-bg: rgba(26, 28, 36, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.05);
+      --glass-text-strong: #e5e7eb;
+      --glass-text-dim: #9ca3af;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+    }
+
+    * {
+      transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .font-mono,
+    code,
+    pre {
+      font-family: var(--font-mono);
+    }
 
     /* 应用自定义配色 */
-    a { color: var(--primary-color); }
-    a:hover { color: var(--secondary-color); }
-    .btn-primary { background-color: var(--primary-color) !important; border-color: var(--primary-color) !important; }
-    .btn-secondary { background-color: var(--secondary-color) !important; border-color: var(--secondary-color) !important; }
-    .badge-accent { background-color: var(--accent-color) !important; }
-    .text-primary { color: var(--primary-color) !important; }
-    .text-secondary { color: var(--secondary-color) !important; }
-    .text-accent { color: var(--accent-color) !important; }
+    a {
+      color: var(--primary-color);
+    }
+
+    a:hover {
+      color: var(--secondary-color);
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color) !important;
+      border-color: var(--primary-color) !important;
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary-color) !important;
+      border-color: var(--secondary-color) !important;
+    }
+
+    .badge-accent {
+      background-color: var(--accent-color) !important;
+    }
+
+    .text-primary {
+      color: var(--primary-color) !important;
+    }
+
+    .text-secondary {
+      color: var(--secondary-color) !important;
+    }
+
+    .text-accent {
+      color: var(--accent-color) !important;
+    }
 
     /* 1. 强制重写 Prism 容器背景和圆角 (使用自定义变量) */
-    div.code-toolbar > pre,
+    div.code-toolbar>pre,
     .prose pre[class*="language-"] {
       background-color: var(--code-bg) !important;
-      border-radius: var(--rounded-box, 1rem) !important;
+      border-radius: 0 0 0.75rem 0.75rem !important;
+      /* 顶部由 header 撑圆角 */
       padding: 1rem 1rem 1rem 1rem !important;
-      margin-top: 1.5em;
-      margin-bottom: 1.5em;
+      margin-top: 0 !important;
+      /* header 紧贴，去掉上间距 */
+      margin-bottom: 0 !important;
       overflow-x: auto !important;
+      border: 1px solid var(--code-border) !important;
+      border-top: none !important;
     }
 
     /* 1.1 为带行号的代码块增加左侧 padding */
-    div.code-toolbar > pre.line-numbers,
+    div.code-toolbar>pre.line-numbers,
     .prose pre.line-numbers[class*="language-"] {
-      padding-left: 4.5rem !important; /* 为行号留出足够空间 */
+      padding-left: 4.5rem !important;
+      /* 为行号留出足够空间 */
+    }
+
+    /* 代码块外部包装器 (Code block wrapper with glow) */
+    .code-block-wrapper {
+      position: relative;
+      margin-top: 1.5em;
+      margin-bottom: 1.5em;
+      border-radius: 0.75rem;
+    }
+
+    /* 语言标签栏 (Language header bar) */
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--code-header-bg);
+      border: 1px solid var(--code-border);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 0.75rem 0.75rem 0 0;
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    .code-header .code-lang {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      color: var(--glass-text-strong);
+      background: hsl(var(--bc) / 0.1);
+      border: 1px solid var(--code-border);
+      border-radius: 9999px;
+      padding: 0.2rem 0.625rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+    }
+
+    .code-header .code-lang i {
+      font-size: 0.6rem;
+      color: var(--glass-text-dim);
     }
 
     /* 2. 剥夺内部代码的底色和文本颜色，防止叠加变黑（排除 notion-inline-code）*/
-    div.code-toolbar > pre > code,
+    div.code-toolbar>pre>code,
     .prose code[class*="language-"],
     .prose pre code {
       background-color: transparent !important;
@@ -109,46 +240,63 @@
     div.code-toolbar {
       position: relative !important;
     }
-    div.code-toolbar > .toolbar {
+
+    div.code-toolbar>.toolbar {
       position: absolute !important;
       top: 0.5rem !important;
       right: 0.5rem !important;
       opacity: 1 !important;
       z-index: 20 !important;
     }
-    div.code-toolbar > .toolbar button {
-      background-color: rgba(255, 255, 255, 0.1) !important;
-      color: rgba(255, 255, 255, 0.8) !important;
-      border-radius: 0.25rem !important;
+
+    div.code-toolbar>.toolbar button {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      color: rgba(255, 255, 255, 0.6) !important;
+      border-radius: 0.375rem !important;
       padding: 0.25rem 0.5rem !important;
       border: none !important;
       cursor: pointer;
       font-size: 0.75rem !important;
+      transition: all 0.2s ease !important;
     }
-    div.code-toolbar > .toolbar button:hover {
-      background-color: rgba(255, 255, 255, 0.2) !important;
+
+    div.code-toolbar>.toolbar button:hover {
+      background-color: rgba(255, 255, 255, 0.15) !important;
       color: rgba(255, 255, 255, 1) !important;
     }
 
     /* 统一代码复制按钮样式（覆盖 DaisyUI btn-ghost 类） */
     .copy-code-btn {
-      background-color: rgba(255, 255, 255, 0.1) !important;
-      color: rgba(255, 255, 255, 0.8) !important;
+      background-color: rgba(255, 255, 255, 0.06) !important;
+      color: rgba(255, 255, 255, 0.5) !important;
       border: none !important;
       box-shadow: none !important;
+      border-radius: 0.375rem !important;
+      padding: 0.25rem 0.5rem !important;
+      font-size: 0.75rem !important;
+      transition: all 0.2s ease !important;
+      min-height: unset !important;
+      height: auto !important;
     }
+
     .copy-code-btn:hover {
-      background-color: rgba(255, 255, 255, 0.2) !important;
+      background-color: rgba(255, 255, 255, 0.15) !important;
       color: rgba(255, 255, 255, 1) !important;
     }
+
     .copy-code-btn.copied {
-      background-color: rgba(255, 255, 255, 0.15) !important;
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: rgba(255, 255, 255, 1) !important;
     }
 
     /* 4. 行号样式优化 (Line numbers styling) */
     .line-numbers .line-numbers-rows {
-      border-right: 1px solid hsl(var(--bc) / 0.2) !important;
-      padding-right: 0.5rem !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+      padding-right: 0.75rem !important;
+    }
+
+    .line-numbers .line-numbers-rows>span::before {
+      color: rgba(255, 255, 255, 0.2) !important;
     }
 
     /* 代码块允许横向滚动而不是强制换行 (Allow horizontal scroll for code blocks) */
@@ -156,9 +304,11 @@
       overflow-x: auto !important;
       white-space: pre !important;
     }
+
     code {
       white-space: pre !important;
     }
+
     /* 返回顶部按钮样式 (Back to top button styles) */
     #back-to-top {
       position: fixed;
@@ -169,28 +319,35 @@
       visibility: hidden;
       transition: opacity 0.3s, visibility 0.3s;
     }
+
     #back-to-top.show {
       opacity: 1;
       visibility: visible;
     }
+
     /* 侧边栏滚动条美化 (Sidebar scrollbar styling) */
     .sidebar-scroll {
       scrollbar-width: thin;
       scrollbar-color: hsl(var(--bc) / 0.2) transparent;
     }
+
     .sidebar-scroll::-webkit-scrollbar {
       width: 6px;
     }
+
     .sidebar-scroll::-webkit-scrollbar-track {
       background: transparent;
     }
+
     .sidebar-scroll::-webkit-scrollbar-thumb {
       background: hsl(var(--bc) / 0.2);
       border-radius: 3px;
     }
+
     .sidebar-scroll::-webkit-scrollbar-thumb:hover {
       background: hsl(var(--bc) / 0.3);
     }
+
     /* 侧边栏固定布局 (Fixed sidebar layout) */
     @media (min-width: 1024px) {
       .sidebar-fixed {
@@ -200,6 +357,7 @@
         height: 100vh;
         width: 280px;
       }
+
       .content-with-sidebar {
         margin-left: 280px;
       }
@@ -217,9 +375,11 @@
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
       }
+
       .sidebar-fixed.open {
         transform: translateX(0);
       }
+
       .mobile-overlay {
         position: fixed;
         top: 0;
@@ -232,6 +392,7 @@
         visibility: hidden;
         transition: opacity 0.3s, visibility 0.3s;
       }
+
       .mobile-overlay.show {
         opacity: 1;
         visibility: visible;
@@ -245,56 +406,116 @@
     }
 
     /* 内联代码的颜色覆盖（当同时有 code 和 color 标注时）*/
-    code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #9ca3af !important; }
-    code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #d97706 !important; }
-    code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #fb923c !important; }
-    code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #fbbf24 !important; }
-    code.notion-inline-code.notion-text[data-notion-color="green"] { color: #4ade80 !important; }
-    code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #60a5fa !important; }
-    code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #c084fc !important; }
-    code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #f472b6 !important; }
-    code.notion-inline-code.notion-text[data-notion-color="red"] { color: #f87171 !important; }
+    code.notion-inline-code.notion-text[data-notion-color="gray"] {
+      color: #9ca3af !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="brown"] {
+      color: #d97706 !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="orange"] {
+      color: #fb923c !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="yellow"] {
+      color: #fbbf24 !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="green"] {
+      color: #4ade80 !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="blue"] {
+      color: #60a5fa !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="purple"] {
+      color: #c084fc !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="pink"] {
+      color: #f472b6 !important;
+    }
+
+    code.notion-inline-code.notion-text[data-notion-color="red"] {
+      color: #f87171 !important;
+    }
 
     /* 内联代码的背景色覆盖 */
     code.notion-inline-code.notion-text[data-notion-color="gray-bg"] {
       background-color: rgba(107, 114, 128, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="brown-bg"] {
       background-color: rgba(217, 119, 6, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="orange-bg"] {
       background-color: rgba(251, 146, 60, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] {
       background-color: rgba(251, 191, 36, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="green-bg"] {
       background-color: rgba(74, 222, 128, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="blue-bg"] {
       background-color: rgba(96, 165, 250, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="purple-bg"] {
       background-color: rgba(192, 132, 252, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="pink-bg"] {
       background-color: rgba(244, 114, 182, 0.3) !important;
     }
+
     code.notion-inline-code.notion-text[data-notion-color="red-bg"] {
       background-color: rgba(248, 113, 113, 0.3) !important;
       color: #fca5a5 !important;
     }
 
     /* 文本颜色 */
-    .notion-text[data-notion-color="gray"] { color: #9ca3af; }
-    .notion-text[data-notion-color="brown"] { color: #d97706; }
-    .notion-text[data-notion-color="orange"] { color: #fb923c; }
-    .notion-text[data-notion-color="yellow"] { color: #fbbf24; }
-    .notion-text[data-notion-color="green"] { color: #4ade80; }
-    .notion-text[data-notion-color="blue"] { color: #60a5fa; }
-    .notion-text[data-notion-color="purple"] { color: #c084fc; }
-    .notion-text[data-notion-color="pink"] { color: #f472b6; }
-    .notion-text[data-notion-color="red"] { color: #f87171; }
+    .notion-text[data-notion-color="gray"] {
+      color: #9ca3af;
+    }
+
+    .notion-text[data-notion-color="brown"] {
+      color: #d97706;
+    }
+
+    .notion-text[data-notion-color="orange"] {
+      color: #fb923c;
+    }
+
+    .notion-text[data-notion-color="yellow"] {
+      color: #fbbf24;
+    }
+
+    .notion-text[data-notion-color="green"] {
+      color: #4ade80;
+    }
+
+    .notion-text[data-notion-color="blue"] {
+      color: #60a5fa;
+    }
+
+    .notion-text[data-notion-color="purple"] {
+      color: #c084fc;
+    }
+
+    .notion-text[data-notion-color="pink"] {
+      color: #f472b6;
+    }
+
+    .notion-text[data-notion-color="red"] {
+      color: #f87171;
+    }
 
     /* 背景色 */
     .notion-text[data-notion-color="gray-bg"] {
@@ -302,41 +523,49 @@
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="brown-bg"] {
       background-color: rgba(217, 119, 6, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="orange-bg"] {
       background-color: rgba(251, 146, 60, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="yellow-bg"] {
       background-color: rgba(251, 191, 36, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="green-bg"] {
       background-color: rgba(74, 222, 128, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="blue-bg"] {
       background-color: rgba(96, 165, 250, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="purple-bg"] {
       background-color: rgba(192, 132, 252, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="pink-bg"] {
       background-color: rgba(244, 114, 182, 0.2);
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .notion-text[data-notion-color="red-bg"] {
       background-color: rgba(248, 113, 113, 0.2);
       color: #fca5a5;
@@ -359,14 +588,17 @@
     .notion-toggle summary {
       list-style: none;
     }
+
     .notion-toggle summary::-webkit-details-marker {
       display: none;
     }
+
     .notion-toggle .toggle-arrow {
       display: inline-block;
       transition: transform 0.2s;
       font-size: 0.75rem;
     }
+
     .notion-toggle[open] .toggle-arrow {
       transform: rotate(90deg);
     }
@@ -376,34 +608,42 @@
       background-color: rgba(156, 163, 175, 0.2);
       border-left-color: #9ca3af;
     }
+
     .notion-callout[data-callout-color="brown_background"] {
       background-color: rgba(217, 119, 6, 0.2);
       border-left-color: #d97706;
     }
+
     .notion-callout[data-callout-color="orange_background"] {
       background-color: rgba(234, 88, 12, 0.2);
       border-left-color: #fb923c;
     }
+
     .notion-callout[data-callout-color="yellow_background"] {
       background-color: rgba(202, 138, 4, 0.2);
       border-left-color: #fbbf24;
     }
+
     .notion-callout[data-callout-color="green_background"] {
       background-color: rgba(22, 163, 74, 0.2);
       border-left-color: #4ade80;
     }
+
     .notion-callout[data-callout-color="blue_background"] {
       background-color: rgba(37, 99, 235, 0.2);
       border-left-color: #60a5fa;
     }
+
     .notion-callout[data-callout-color="purple_background"] {
       background-color: rgba(147, 51, 234, 0.2);
       border-left-color: #c084fc;
     }
+
     .notion-callout[data-callout-color="pink_background"] {
       background-color: rgba(219, 39, 119, 0.2);
       border-left-color: #f472b6;
     }
+
     .notion-callout[data-callout-color="red_background"] {
       background-color: rgba(220, 38, 38, 0.2);
       border-left-color: #f87171;
@@ -420,6 +660,7 @@
       gap: 0.5rem;
       max-width: 400px;
     }
+
     .toast {
       padding: 1rem 1.5rem;
       border-radius: 0.5rem;
@@ -431,42 +672,51 @@
       background: hsl(var(--b2));
       color: hsl(var(--bc));
     }
+
     .toast.success {
       background: hsl(var(--su));
       color: hsl(var(--suc));
     }
+
     .toast.error {
       background: hsl(var(--er));
       color: hsl(var(--erc));
     }
+
     .toast.warning {
       background: hsl(var(--wa));
       color: hsl(var(--wac));
     }
+
     .toast.info {
       background: hsl(var(--in));
       color: hsl(var(--inc));
     }
+
     @keyframes slideIn {
       from {
         transform: translateX(100%);
         opacity: 0;
       }
+
       to {
         transform: translateX(0);
         opacity: 1;
       }
     }
+
     @keyframes slideOut {
       from {
         transform: translateX(0);
         opacity: 1;
       }
+
       to {
         transform: translateX(100%);
         opacity: 0;
       }
     }
+
     .toast.removing {
       animation: slideOut 0.3s ease-out forwards;
     }
@@ -493,12 +743,14 @@
 
   {% block head %}{% endblock %}
 </head>
+
 <body class="min-h-screen bg-base-100">
   <!-- Toast 通知容器 (Toast notification container) -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- 移动端菜单按钮 (Mobile Menu Button) -->
-  <button id="mobile-menu-toggle" class="lg:hidden fixed top-4 right-4 z-[101] btn btn-circle btn-primary shadow-lg" aria-label="打开菜单">
+  <button id="mobile-menu-toggle" class="lg:hidden fixed top-4 right-4 z-[101] btn btn-circle btn-primary shadow-lg"
+    aria-label="打开菜单">
     <i class="fa-solid fa-bars text-lg"></i>
   </button>
 
@@ -506,16 +758,16 @@
   <div id="mobile-overlay" class="mobile-overlay lg:hidden"></div>
 
   <!-- 左侧固定侧边栏 (Fixed Left Sidebar) -->
-  <aside id="sidebar" class="sidebar-fixed w-full lg:w-80 bg-base-200 border-r border-base-content/10 overflow-y-auto sidebar-scroll">
+  <aside id="sidebar"
+    class="sidebar-fixed w-full lg:w-80 border-r border-base-content/10 overflow-y-auto sidebar-scroll"
+    style="background-color: var(--sidebar-bg); transition: background-color 0.3s;">
     <div class="flex flex-col h-full p-6">
       <!-- 头像 + 博客标题 (Avatar + Blog Title) -->
       <div class="flex flex-col items-center text-center mb-8">
         <a href="/" class="block mb-4">
           <img src="{{ url_for('static', filename='avatar.jpg') }}"
-               onerror="this.src='https://ui-avatars.com/api/?name=Neobee&background=random'"
-               alt="Neobee"
-               loading="eager"
-               class="w-32 h-32 rounded-full ring ring-primary ring-offset-4 ring-offset-base-200 object-cover hover:opacity-90 transition-opacity">
+            onerror="this.src='https://ui-avatars.com/api/?name=Neobee&background=random'" alt="Neobee" loading="eager"
+            class="w-32 h-32 rounded-full ring ring-primary ring-offset-4 ring-offset-base-200 object-cover hover:opacity-90 transition-opacity">
         </a>
         <a href="/" class="block mb-2 hover:opacity-80 transition-opacity">
           <h1 class="text-2xl font-bold text-base-content">Neobee's Blog</h1>
@@ -527,7 +779,7 @@
 
       <!-- 导航菜单 (Navigation Menu) -->
       <nav class="flex-1">
-        <ul class="menu menu-compact bg-base-100 rounded-box p-2 space-y-1">
+        <ul class="menu menu-compact rounded-box p-2 space-y-1">
           <li>
             <a href="/" class="flex items-center gap-3 text-base-content hover:text-primary transition-colors">
               <i class="fa-solid fa-house text-sm"></i>
@@ -541,7 +793,8 @@
           </li>
           {% for cat in (categories or []) %}
           <li>
-            <a href="{{ url_for('category', name=cat) }}" class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
+            <a href="{{ url_for('category', name=cat) }}"
+              class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
               {% if cat == 'HTB' %}
               <i class="fa-solid fa-skull text-sm"></i>
               {% elif cat == 'Methodology' or cat == '方法论' %}
@@ -565,7 +818,8 @@
             </a>
           </li>
           <li>
-            <a href="/archives" class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
+            <a href="/archives"
+              class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
               <i class="fa-solid fa-archive text-sm"></i>
               <span>ARCHIVES</span>
             </a>
@@ -581,33 +835,34 @@
 
       <!-- 社交媒体图标 (Social Media Icons) -->
       <div class="mt-auto pt-6 border-t border-base-content/10">
-        <!-- 主题切换按钮 (Theme Toggle) -->
-        <div class="flex items-center justify-center mb-4">
-          <button id="theme-toggle" class="btn btn-ghost btn-sm gap-2" aria-label="切换主题">
+        <div class="flex items-center justify-center gap-3">
+          <!-- 主题切换 (Theme Toggle) -->
+          <button id="theme-toggle"
+            class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
+            aria-label="切换主题">
             <i class="fa-solid fa-moon text-lg"></i>
-            <span class="text-xs">切换主题</span>
           </button>
-        </div>
 
-        <div class="flex items-center justify-center gap-4">
+          <span class="text-base-content/20">•</span>
+
           <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-             class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
-             aria-label="GitHub">
+            class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
+            aria-label="GitHub">
             <i class="fa-brands fa-github text-lg"></i>
           </a>
           <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
-             class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
-             aria-label="Twitter">
+            class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
+            aria-label="Twitter">
             <i class="fa-brands fa-twitter text-lg"></i>
           </a>
           <a href="/feed.xml" target="_blank"
-             class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
-             aria-label="RSS">
+            class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
+            aria-label="RSS">
             <i class="fa-solid fa-rss text-lg"></i>
           </a>
           <a href="mailto:neobee@neobee.top"
-             class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
-             aria-label="Email">
+            class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
+            aria-label="Email">
             <i class="fa-solid fa-envelope text-lg"></i>
           </a>
         </div>
@@ -647,7 +902,7 @@
 
   <!-- 返回顶部按钮功能 (Back to top button functionality) -->
   <script>
-    (function() {
+    (function () {
       const btn = document.getElementById('back-to-top');
       if (!btn) return;
 
@@ -661,7 +916,7 @@
       }
 
       // 滚动到顶部
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function () {
         window.scrollTo({
           top: 0,
           behavior: 'smooth'
@@ -675,7 +930,7 @@
 
   <!-- 移动端侧边栏切换功能 (Mobile Sidebar Toggle) -->
   <script>
-    (function() {
+    (function () {
       const menuToggle = document.getElementById('mobile-menu-toggle');
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('mobile-overlay');
@@ -701,7 +956,7 @@
       }
 
       // 切换侧边栏
-      menuToggle.addEventListener('click', function() {
+      menuToggle.addEventListener('click', function () {
         if (sidebar.classList.contains('open')) {
           closeSidebar();
         } else {
@@ -713,8 +968,8 @@
       overlay.addEventListener('click', closeSidebar);
 
       // 点击侧边栏内的链接后关闭（移动端）
-      sidebar.querySelectorAll('a').forEach(function(link) {
-        link.addEventListener('click', function() {
+      sidebar.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
           if (window.innerWidth < 1024) {
             closeSidebar();
           }
@@ -722,7 +977,7 @@
       });
 
       // 窗口大小改变时处理
-      window.addEventListener('resize', function() {
+      window.addEventListener('resize', function () {
         if (window.innerWidth >= 1024) {
           closeSidebar();
         }
@@ -732,7 +987,7 @@
 
   <!-- 主题切换功能 (Theme Toggle) -->
   <script>
-    (function() {
+    (function () {
       const themeToggle = document.getElementById('theme-toggle');
       if (!themeToggle) return;
 
@@ -740,35 +995,44 @@
       const currentTheme = localStorage.getItem('theme') || 'business';
       document.documentElement.setAttribute('data-theme', currentTheme);
 
-      // 更新按钮图标
-      function updateIcon(theme) {
+      // 更新按钮图标和 Prism 主题
+      function updateThemeAssets(theme) {
         const icon = themeToggle.querySelector('i');
+        const prismLight = document.getElementById('prism-light');
+        const prismDark = document.getElementById('prism-dark');
+
         if (theme === 'business') {
+          // 暗色模式
           icon.classList.remove('fa-moon');
           icon.classList.add('fa-sun');
+          if (prismLight) prismLight.disabled = true;
+          if (prismDark) prismDark.disabled = false;
         } else {
+          // 亮色模式
           icon.classList.remove('fa-sun');
           icon.classList.add('fa-moon');
+          if (prismLight) prismLight.disabled = false;
+          if (prismDark) prismDark.disabled = true;
         }
       }
 
-      updateIcon(currentTheme);
+      updateThemeAssets(currentTheme);
 
       // 切换主题
-      themeToggle.addEventListener('click', function() {
+      themeToggle.addEventListener('click', function () {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'business' ? 'lofi' : 'business';
 
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
-        updateIcon(newTheme);
+        updateThemeAssets(newTheme);
       });
     })();
   </script>
 
   <!-- Toast 通知系统 (Toast Notification System) -->
   <script>
-    window.showToast = function(message, type = 'info', duration = 3000) {
+    window.showToast = function (message, type = 'info', duration = 3000) {
       const container = document.getElementById('toast-container');
       if (!container) return;
 
@@ -791,9 +1055,9 @@
       container.appendChild(toast);
 
       // 自动移除
-      setTimeout(function() {
+      setTimeout(function () {
         toast.classList.add('removing');
-        setTimeout(function() {
+        setTimeout(function () {
           if (toast.parentNode) {
             toast.parentNode.removeChild(toast);
           }
@@ -805,7 +1069,7 @@
   <!-- medium-zoom: 点击图片放大 -->
   <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       try {
         var imgs = document.querySelectorAll('.post-content img');
         if (imgs && imgs.length) {
@@ -823,11 +1087,11 @@
 
   <!-- 待办列表复选框行为控制 (Todo checkbox behavior control) -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       // 为所有待办列表复选框添加事件监听
       var checkboxes = document.querySelectorAll('input[type="checkbox"].todo-checkbox');
-      checkboxes.forEach(function(checkbox) {
-        checkbox.addEventListener('change', function(e) {
+      checkboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', function (e) {
           // 切换文本的删除线样式
           var textSpan = this.parentElement.querySelector('.todo-text');
           if (textSpan) {
@@ -846,10 +1110,10 @@
 
   <!-- KaTeX 自动渲染数学公式 (KaTeX auto-render math formulas) -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       // 渲染所有块级公式
       var equations = document.querySelectorAll('.katex-block');
-      equations.forEach(function(eq) {
+      equations.forEach(function (eq) {
         try {
           var latex = eq.textContent;
           katex.render(latex, eq, {
@@ -865,4 +1129,5 @@
   </script>
   {% block scripts %}{% endblock %}
 </body>
+
 </html>
