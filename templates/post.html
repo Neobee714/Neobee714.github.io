@@ -192,7 +192,7 @@
         <h4 class="font-bold text-lg mb-6 flex items-center gap-2" style="color: var(--glass-text-strong);">
           <i class="fa-solid fa-list-ul text-sm" style="color: var(--glass-icon);"></i>内容目录
         </h4>
-        <ul id="toc-list" class="space-y-3 text-sm" style="color: var(--glass-text-dim);"></ul>
+        <ul id="toc-list" class="text-sm"></ul>
       </div>
     </aside>
 
@@ -394,11 +394,9 @@
         var a = document.createElement('a');
         a.href = '#' + id;
         a.textContent = h.textContent.trim();
-        // default classes: block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all
-        a.className = 'block py-1 text-sm text-base-content/60 border-l-2 border-transparent hover:text-primary transition-all';
-        // indentation based on level
-        if (level === 2) a.classList.add('pl-4');
-        if (level === 3) a.classList.add('pl-8');
+        // 缩进层级通过 CSS class 控制
+        if (level === 2) a.classList.add('toc-h2');
+        if (level === 3) a.classList.add('toc-h3');
 
         // store reference for scrollspy
         items.push({ id: id, node: a, heading: h });
@@ -416,7 +414,7 @@
         container.appendChild(li);
       });
 
-      // Scroll spy (优化性能：使用 throttled 监听和 offsetTop)
+      // Scroll spy
       var scrollTimeout;
       function onScroll() {
         if (scrollTimeout) return;
@@ -426,7 +424,6 @@
           var fromTop = window.scrollY + 120;
           var current = null;
 
-          // 直接利用 offsetTop，避免 getBoundingClientRect 触发重排
           for (var i = 0; i < items.length; i++) {
             if (items[i].heading.offsetTop <= fromTop) {
               current = items[i];
@@ -435,17 +432,14 @@
             }
           }
 
-          // 批量处理样式更新
           items.forEach(function (it) {
             if (it === current) {
-              it.node.classList.add('text-primary', 'font-bold', 'border-l-4', 'pl-3');
-              it.node.classList.remove('text-base-content/60', 'border-transparent');
+              it.node.classList.add('toc-active');
             } else {
-              it.node.classList.remove('text-primary', 'font-bold', 'border-l-4', 'pl-3');
-              it.node.classList.add('text-base-content/60', 'border-transparent');
+              it.node.classList.remove('toc-active');
             }
           });
-        }, 80); // 80ms 节流
+        }, 80);
       }
 
       window.addEventListener('scroll', onScroll, { passive: true });

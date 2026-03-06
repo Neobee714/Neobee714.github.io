@@ -1,7 +1,13 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="business">
+<html lang="zh-CN">
 
 <head>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme') || 'business';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Neobee's Blog{% endblock %}</title>
@@ -115,7 +121,21 @@
 
     body {
       font-family: var(--font-sans);
-      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    /* 主题切换平滑过渡 — 仅针对关键容器，避免 * 选择器导致的性能问题 */
+    body.theme-transition,
+    body.theme-transition .sidebar-fixed,
+    body.theme-transition main,
+    body.theme-transition footer,
+    body.theme-transition .card,
+    body.theme-transition .badge,
+    body.theme-transition .btn,
+    body.theme-transition .menu,
+    body.theme-transition nav,
+    body.theme-transition aside,
+    body.theme-transition header {
+      transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease !important;
     }
 
     .btn,
@@ -722,6 +742,64 @@
     .toast.removing {
       animation: slideOut 0.3s ease-out forwards;
     }
+
+    /* ==================== TOC Glow Card 样式 ==================== */
+    #toc-list {
+      position: relative;
+      padding-left: 0;
+      margin-left: 0;
+    }
+
+    #toc-list li {
+      list-style: none;
+    }
+
+    #toc-list a {
+      display: block;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      color: var(--glass-text-dim);
+      border-radius: 0.5rem;
+      border-left: 3px solid transparent;
+      transition: color 0.25s ease, background-color 0.25s ease;
+    }
+
+    #toc-list a:hover {
+      color: var(--glass-text-strong) !important;
+      background: hsl(var(--bc) / 0.06);
+    }
+
+    /* 活跃条目：Glow Card 浮起效果 */
+    #toc-list a.toc-active {
+      color: var(--primary-color) !important;
+      font-weight: 600;
+      /* 暗色主题默认：白色半透明卡片 */
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-left: 3px solid var(--primary-color);
+      box-shadow: -4px 0 14px -2px rgba(16, 185, 129, 0.25),
+        0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 亮色主题：黑色半透明卡片 */
+    :root:not([data-theme="business"]) #toc-list a.toc-active {
+      background: rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-left: 3px solid var(--primary-color);
+      box-shadow: -4px 0 14px -2px rgba(16, 185, 129, 0.15),
+        0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    /* TOC 缩进层级 */
+    #toc-list a.toc-h2 {
+      padding-left: 1.5rem;
+    }
+
+    #toc-list a.toc-h3 {
+      padding-left: 2.25rem;
+      font-size: 0.75rem;
+    }
   </style>
 
   <!-- JSON-LD 结构化数据 (Structured Data) -->
@@ -1025,9 +1103,16 @@
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'business' ? 'lofi' : 'business';
 
+        // 添加过渡类实现平滑切换
+        document.body.classList.add('theme-transition');
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeAssets(newTheme);
+
+        // 过渡结束后移除，避免影响其他动画
+        setTimeout(function () {
+          document.body.classList.remove('theme-transition');
+        }, 500);
       });
     })();
   </script>
