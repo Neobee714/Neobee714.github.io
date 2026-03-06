@@ -57,7 +57,26 @@
     font-family: 'JetBrains Mono', ui-monospace, monospace !important;
     font-size: 0.875rem;
   }
+</style>
+<script>
+  // 文章页语言切换（供按钮 onclick 调用）
+  function togglePostLanguage() {
+    const currentLang = document.documentElement.getAttribute('data-lang') || 'zh';
+    const nextLang = currentLang === 'zh' ? 'en' : 'zh';
+    document.documentElement.setAttribute('data-lang', nextLang);
+    localStorage.setItem('lang', nextLang);
 
+    // 切换后重新初始化代码高亮等
+    if (typeof window.reinitializeFeatures === 'function') {
+      setTimeout(window.reinitializeFeatures, 100);
+    }
+    // 重建 TOC（从新语言的标题中读取）
+    if (typeof window.rebuildTOC === 'function') {
+      setTimeout(window.rebuildTOC, 150);
+    }
+  }
+</script>
+<style>
   .post-content pre {
     margin: 0;
     border-radius: 0 0 0.75rem 0.75rem;
@@ -83,7 +102,9 @@
   <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 lg:gap-8">
     <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
       <header class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">{{ post.title | default('无标题') }}
+        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">
+          <span class="lang-zh">{{ post.title | default('无标题') }}</span>
+          <span class="lang-en">{{ post.title_en or post.title or 'Untitled' }}</span>
         </h1>
         <div class="flex flex-wrap items-center gap-4 mt-3 text-base-content/50 text-sm">
           {% if post.date %}
@@ -95,14 +116,18 @@
           {% if post.reading_time %}
           <span class="flex items-center gap-2">
             <i class="fa-regular fa-clock"></i>
-            约 {{ post.reading_time }} 分钟阅读
+            <span class="lang-zh">约 {{ post.reading_time }} 分钟阅读</span>
+            <span class="lang-en">{{ post.reading_time }} read</span>
           </span>
           {% endif %}
-          <!-- AI 翻译按钮 (AI Translation Button) -->
-          <button id="translate-btn" class="btn btn-sm btn-outline gap-2" title="AI 智能翻译" aria-label="AI 智能翻译文章内容"
-            aria-pressed="false">
-            <i class="fa-solid fa-language"></i>
-            <span>AI 翻译</span>
+
+          <!-- 翻译切换 (Translate Toggle) - 小巧 pill 样式 -->
+          <button id="translate-toggle-btn" onclick="togglePostLanguage()"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
+            style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">
+            <i class="fa-solid fa-language text-[11px]"></i>
+            <span class="lang-zh">EN</span>
+            <span class="lang-en">中文</span>
           </button>
         </div>
         {% if post.tags %}
@@ -120,7 +145,8 @@
         {% if post.summary %}
         <blockquote
           class="text-base-content/70 italic mb-8 border-l-4 border-primary pl-4 bg-base-200 py-3 rounded-r-lg">
-          {{ post.summary }}
+          <span class="lang-zh">{{ post.summary }}</span>
+          <span class="lang-en">{{ post.summary_en or post.summary }}</span>
         </blockquote>
         {% endif %}
 
@@ -144,9 +170,23 @@
         {% else %}
         <!-- 正常状态：渲染完整内容 (Normal Status: Render Full Content) -->
         {% if post.content_html %}
-        {{ post.content_html | safe }}
+        <div class="lang-zh">{{ post.content_html | safe }}</div>
+        <div class="lang-en">
+          {% if post.content_en_html %}
+          {{ post.content_en_html | safe }}
+          {% else %}
+          <div class="alert alert-warning mb-6">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>This post has not been translated to English yet.</span>
+          </div>
+          {{ post.content_html | safe }}
+          {% endif %}
+        </div>
         {% else %}
-        <p class="text-base-content/60">暂无正文。</p>
+        <p class="text-base-content/60">
+          <span class="lang-zh">暂无正文。</span>
+          <span class="lang-en">No content available.</span>
+        </p>
         {% endif %}
         {% endif %}
       </div>
@@ -159,22 +199,25 @@
       </footer>
     </div>
 
-    <!-- 侧边栏 (右侧) -->
-    <aside class="hidden lg:block lg:col-span-1 space-y-12">
+    <aside class="hidden lg:block lg:col-span-1 space-y-12 min-w-0" style="overflow-x: clip;">
 
       <!-- 最新动态 (Recent Posts) - 无边框极简设计 -->
       {% if recent_posts %}
       <div class="px-2 transition-all duration-300">
         <h4 class="font-bold text-lg mb-6 flex items-center gap-2" style="color: var(--glass-text-strong);">
-          <i class="fa-solid fa-clock-rotate-left text-sm" style="color: var(--glass-icon);"></i>最新动态
+          <i class="fa-solid fa-clock-rotate-left text-sm" style="color: var(--glass-icon);"></i>
+          <span class="lang-zh">最新动态</span>
+          <span class="lang-en">Recent Posts</span>
         </h4>
         <ul class="space-y-5">
           {% for rp in recent_posts %}
           <li>
             <a href="{{ url_for('post', slug=rp.slug) }}" class="block group">
-              <h5 class="text-sm font-medium line-clamp-2 transition-colors group-hover:text-primary leading-snug"
-                style="color: var(--glass-text-strong);">
-                {{ rp.title }}
+              <h5
+                class="text-sm font-medium line-clamp-2 transition-colors group-hover:text-primary leading-snug break-words"
+                style="color: var(--glass-text-strong); overflow-wrap: break-word; word-break: break-word;">
+                <span class="lang-zh">{{ rp.title }}</span>
+                <span class="lang-en">{{ rp.title_en or rp.title }}</span>
               </h5>
               <div class="text-xs mt-1.5 flex items-center gap-2" style="color: var(--glass-text-dim);">
                 <i class="fa-regular fa-calendar-days text-[10px]"></i>
@@ -190,7 +233,9 @@
       <!-- 目录面板 (TOC Panel) - 独立 Sticky + 无边框 -->
       <div class="sticky top-24 px-2 transition-all duration-300">
         <h4 class="font-bold text-lg mb-6 flex items-center gap-2" style="color: var(--glass-text-strong);">
-          <i class="fa-solid fa-list-ul text-sm" style="color: var(--glass-icon);"></i>内容目录
+          <i class="fa-solid fa-list-ul text-sm" style="color: var(--glass-icon);"></i>
+          <span class="lang-zh">内容目录</span>
+          <span class="lang-en">Table of Contents</span>
         </h4>
         <ul id="toc-list" class="text-sm"></ul>
       </div>
@@ -375,7 +420,22 @@
       var content = document.querySelector('.post-content');
       var container = document.getElementById('toc-list');
       if (!content || !container) return;
-      var headings = Array.from(content.querySelectorAll('h1,h2,h3'));
+
+      // 根据当前语言，只从可见的内容中提取标题
+      var currentLang = document.documentElement.getAttribute('data-lang') || 'zh';
+      var langClass = 'lang-' + currentLang;
+
+      // 尝试从对应语言的 div 中获取标题
+      var langDiv = content.querySelector('div.' + langClass);
+      var searchRoot = langDiv || content;
+
+      var headings = Array.from(searchRoot.querySelectorAll('h1,h2,h3'));
+      if (!headings.length) {
+        // 如果没找到，尝试从整个 content 中取可见的
+        headings = Array.from(content.querySelectorAll('h1,h2,h3')).filter(function (h) {
+          return h.offsetParent !== null;
+        });
+      }
       if (!headings.length) {
         container.innerHTML = '<li class="text-sm text-base-content/60">本文暂无目录。</li>';
         return;
@@ -387,18 +447,16 @@
         var id = h.id || slugify(h.textContent || ('heading-' + idx));
         // ensure unique id
         var base = id, i = 1;
-        while (document.getElementById(id)) { id = base + '-' + (i++); }
+        while (document.getElementById(id) && document.getElementById(id) !== h) { id = base + '-' + (i++); }
         h.id = id;
 
         var li = document.createElement('li');
         var a = document.createElement('a');
         a.href = '#' + id;
         a.textContent = h.textContent.trim();
-        // 缩进层级通过 CSS class 控制
         if (level === 2) a.classList.add('toc-h2');
         if (level === 3) a.classList.add('toc-h3');
 
-        // store reference for scrollspy
         items.push({ id: id, node: a, heading: h });
 
         a.addEventListener('click', function (e) {
@@ -418,7 +476,6 @@
       var scrollTimeout;
       function onScroll() {
         if (scrollTimeout) return;
-
         scrollTimeout = setTimeout(function () {
           scrollTimeout = null;
           var fromTop = window.scrollY + 120;
@@ -442,12 +499,19 @@
         }, 80);
       }
 
+      // 清除旧的监听器并绑新的
+      if (window._tocScrollHandler) {
+        window.removeEventListener('scroll', window._tocScrollHandler);
+        window.removeEventListener('resize', window._tocScrollHandler);
+      }
+      window._tocScrollHandler = onScroll;
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll);
-      // initial highlight
       setTimeout(onScroll, 200);
     }
 
+    // 暴露到全局，供语言切换时重建
+    window.rebuildTOC = buildTOC;
     document.addEventListener('DOMContentLoaded', buildTOC);
   })();
 </script>
@@ -499,126 +563,15 @@
 </script>
 {% endif %}
 
-<!-- AI 翻译功能 (AI Translation Feature) -->
+<!-- 文章页面功能脚本 (Post Features Script) -->
 <script>
   (function () {
-    const translateBtn = document.getElementById('translate-btn');
     const postContent = document.querySelector('.post-content');
-    const slug = '{{ post.slug }}';
-    let isTranslated = false;
-    let originalContent = '';
 
-    if (!translateBtn || !postContent) return;
-
-    // 保存原始内容
-    originalContent = postContent.innerHTML;
-
-    translateBtn.addEventListener('click', function () {
-      // 如果已经翻译，则恢复原文
-      if (isTranslated) {
-        postContent.innerHTML = originalContent;
-        translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
-        translateBtn.classList.remove('btn-active');
-        translateBtn.setAttribute('aria-pressed', 'false');
-        isTranslated = false;
-
-        // 重新初始化代码高亮和其他功能
-        reinitializeFeatures();
-        return;
-      }
-
-      // 开始翻译
-      translateBtn.disabled = true;
-      translateBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span><span>翻译中...</span>';
-
-      // 发送 AJAX 请求
-      fetch(`/api/translate/${slug}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-        .then(async response => {
-          // 先读取响应体（只能读取一次）
-          const responseText = await response.text();
-
-          // 尝试解析为 JSON
-          let responseData;
-          try {
-            responseData = JSON.parse(responseText);
-          } catch (jsonError) {
-            // 如果不是 JSON，说明返回了 HTML 错误页面
-            console.error('服务器返回了非 JSON 响应:', responseText.substring(0, 500));
-            throw new Error(`服务器返回了非 JSON 响应 (HTTP ${response.status}): ${responseText.substring(0, 200)}...`);
-          }
-
-          // 检查 HTTP 状态码
-          if (!response.ok) {
-            const errorMessage = responseData.error || `服务器错误 (HTTP ${response.status})`;
-            throw new Error(errorMessage);
-          }
-
-          // 检查响应中的 success 字段
-          if (responseData.success === false) {
-            throw new Error(responseData.error || '翻译失败，但未返回具体错误信息');
-          }
-
-          // 检查是否有翻译内容
-          if (!responseData.content_html) {
-            throw new Error('翻译响应中缺少 content_html 字段');
-          }
-
-          return responseData;
-        })
-        .then(data => {
-          // 替换内容
-          postContent.innerHTML = data.content_html;
-          translateBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>恢复原文</span>';
-          translateBtn.classList.add('btn-active');
-          translateBtn.setAttribute('aria-pressed', 'true');
-          translateBtn.disabled = false;
-          isTranslated = true;
-
-          // 显示缓存提示（如果是从缓存读取）
-          if (data.from_cache) {
-            console.log('翻译内容来自缓存');
-          }
-
-          // 重新初始化代码高亮和其他功能
-          reinitializeFeatures();
-        })
-        .catch(error => {
-          console.error('翻译失败:', error);
-
-          // 显示用户友好的错误提示（使用 Toast）
-          let userMessage = '翻译失败';
-          if (error.message.includes('未配置')) {
-            userMessage = '翻译功能未配置，请联系管理员';
-          } else if (error.message.includes('未找到')) {
-            userMessage = '文章未找到';
-          } else if (error.message.includes('为空')) {
-            userMessage = '文章内容为空，无法翻译';
-          } else if (error.message.includes('未安装')) {
-            userMessage = '服务器缺少必要的依赖库';
-          } else {
-            userMessage = `翻译失败: ${error.message}`;
-          }
-
-          // 使用 Toast 通知替代 alert
-          if (typeof window.showToast === 'function') {
-            window.showToast(userMessage, 'error', 5000);
-          } else {
-            alert(userMessage);
-          }
-
-          // 恢复按钮状态
-          translateBtn.innerHTML = '<i class="fa-solid fa-language"></i><span>AI 翻译</span>';
-          translateBtn.disabled = false;
-        });
-    });
+    if (!postContent) return;
 
     // 重新初始化页面功能（代码高亮、复制按钮等）
-    function reinitializeFeatures() {
+    window.reinitializeFeatures = function () {
       // 重新应用 Prism 语法高亮
       if (typeof Prism !== 'undefined') {
         postContent.querySelectorAll('pre').forEach(function (pre) {

@@ -422,6 +422,19 @@
     }
 
     /* Notion 文本颜色样式 (Notion text colors) */
+    /* 内联代码 - 确保在 prose 环境中也能正确显示 */
+    .post-content code.notion-inline-code,
+    .prose code.notion-inline-code {
+      background-color: oklch(var(--b3)) !important;
+      color: #fb923c !important;
+      padding: 0.15em 0.4em !important;
+      border-radius: 0.25rem !important;
+      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+      font-size: 0.85em !important;
+      border: 1px solid oklch(var(--bc) / 0.1) !important;
+      word-break: break-word !important;
+    }
+
     /* 内联代码颜色 - 默认橙色 */
     .notion-inline-code {
       color: #fb923c !important;
@@ -800,7 +813,29 @@
       padding-left: 2.25rem;
       font-size: 0.75rem;
     }
+
+    /* 全局语言切换逻辑 (Global Language Toggle Logic) */
+    html[data-lang="zh"] .lang-en {
+      display: none !important;
+    }
+
+    html[data-lang="en"] .lang-zh {
+      display: none !important;
+    }
+
+    /* 英文专用字体样式 (Optional typographic tweaks for English) */
+    html[data-lang="en"] body {
+      font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+    }
   </style>
+
+  <script>
+    // 在页面渲染前立即应用语言设置，防止闪烁 (Apply lang immediately before render to prevent flash)
+    (function () {
+      const savedLang = localStorage.getItem('lang') || 'zh';
+      document.documentElement.setAttribute('data-lang', savedLang);
+    })();
+  </script>
 
   <!-- JSON-LD 结构化数据 (Structured Data) -->
   {% block structured_data %}
@@ -916,6 +951,14 @@
       <!-- 社交媒体图标 (Social Media Icons) -->
       <div class="mt-auto pt-6 border-t border-base-content/10">
         <div class="flex items-center justify-center gap-3">
+          <!-- 语言切换 (Language Toggle) -->
+          <button id="lang-toggle"
+            class="btn btn-ghost btn-circle btn-sm text-base-content/100 hover:text-primary transition-colors font-bold text-xs"
+            aria-label="Toggle Language">
+            <span class="lang-zh">En</span>
+            <span class="lang-en">中</span>
+          </button>
+
           <!-- 主题切换 (Theme Toggle) -->
           <button id="theme-toggle"
             class="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-primary transition-colors"
@@ -1075,7 +1118,6 @@
       const currentTheme = localStorage.getItem('theme') || 'business';
       document.documentElement.setAttribute('data-theme', currentTheme);
 
-      // 更新按钮图标和 Prism 主题
       function updateThemeAssets(theme) {
         const icon = themeToggle.querySelector('i');
         const prismLight = document.getElementById('prism-light');
@@ -1098,23 +1140,58 @@
 
       updateThemeAssets(currentTheme);
 
-      // 切换主题
+      // 点击切换
       themeToggle.addEventListener('click', function () {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'business' ? 'lofi' : 'business';
-
-        // 添加过渡类实现平滑切换
-        document.body.classList.add('theme-transition');
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeAssets(newTheme);
-
-        // 过渡结束后移除，避免影响其他动画
-        setTimeout(function () {
-          document.body.classList.remove('theme-transition');
-        }, 500);
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'business' ? 'corporate' : 'business';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        updateThemeAssets(next);
       });
     })();
+  </script>
+
+  <!-- 全局语言切换功能 (Global Language Toggle) -->
+  <script>
+    (function () {
+      const langToggle = document.getElementById('lang-toggle');
+      if (!langToggle) return;
+
+      langToggle.addEventListener('click', function () {
+        const currentLang = document.documentElement.getAttribute('data-lang') || 'zh';
+        const nextLang = currentLang === 'zh' ? 'en' : 'zh';
+        document.documentElement.setAttribute('data-lang', nextLang);
+        localStorage.setItem('lang', nextLang);
+
+        // 如果页面上有代码高亮或MathJax，可能需要重新渲染或调整样式，通常不需要。
+        if (typeof window.reinitializeFeatures === 'function') {
+          setTimeout(window.reinitializeFeatures, 100);
+        }
+        // 重建 TOC（从新语言的标题中读取）
+        if (typeof window.rebuildTOC === 'function') {
+          setTimeout(window.rebuildTOC, 150);
+        }
+      });
+    })();
+  </script>
+
+  // 切换主题
+  themeToggle.addEventListener('click', function () {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'business' ? 'lofi' : 'business';
+
+  // 添加过渡类实现平滑切换
+  document.body.classList.add('theme-transition');
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeAssets(newTheme);
+
+  // 过渡结束后移除，避免影响其他动画
+  setTimeout(function () {
+  document.body.classList.remove('theme-transition');
+  }, 500);
+  });
+  })();
   </script>
 
   <!-- Toast 通知系统 (Toast Notification System) -->

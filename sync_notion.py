@@ -11,12 +11,14 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 from datetime import datetime, timezone
+import concurrent.futures
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.notion_service import (
     get_notion_client,
+    NotionRenderer,
     _extract_title,
     _extract_slug,
     _extract_date,
@@ -167,11 +169,192 @@ def process_blocks_images(blocks, images_dir):
             process_blocks_images(block['children'], images_dir)
 
 
-def sync_posts(clean=True):
+def _split_html_by_headings(content_html, max_chunk_chars=6000):
+    """
+    按 <h1> 和 <h2> 标签将 HTML 正文切分成多个分块。
+    如果某个分块仍然超过 max_chunk_chars，则进一步按 <h3> 拆分。
+    返回 chunks 列表 (每个元素是一段 HTML 字符串)。
+    """
+    import re
+    # 按 <h1> 或 <h2> 拆分，同时保留拆分符
+    parts = re.split(r'(?=<h[12]\b)', content_html)
+    parts = [p for p in parts if p.strip()]
+
+    # 如果全部内容没有任何 h1/h2，直接返回一整块
+    if len(parts) <= 1 and len(content_html) <= max_chunk_chars:
+        return [content_html]
+
+    chunks = []
+    current_chunk = ""
+    for part in parts:
+        # 如果当前累积块 + 新段 仍然在限额内，合并
+        if len(current_chunk) + len(part) <= max_chunk_chars:
+            current_chunk += part
+        else:
+            # 先推入已有内容
+            if current_chunk.strip():
+                chunks.append(current_chunk)
+            # 如果这一段本身就超长，尝试按 <h3> 再拆一次
+            if len(part) > max_chunk_chars:
+                sub_parts = re.split(r'(?=<h3\b)', part)
+                sub_chunk = ""
+                for sp in sub_parts:
+                    if len(sub_chunk) + len(sp) <= max_chunk_chars:
+                        sub_chunk += sp
+                    else:
+                        if sub_chunk.strip():
+                            chunks.append(sub_chunk)
+                        sub_chunk = sp
+                if sub_chunk.strip():
+                    chunks.append(sub_chunk)
+                current_chunk = ""
+            else:
+                current_chunk = part
+
+    if current_chunk.strip():
+        chunks.append(current_chunk)
+
+    return chunks if chunks else [content_html]
+
+
+def _translate_chunk(client, chunk_html, chunk_index, total_chunks):
+    """
+    翻译单个 HTML 分块，返回翻译后的 HTML 字符串。
+    """
+    import re
+
+    system_prompt = """You are an expert technical translator. Translate the provided HTML content from Chinese to English.
+CRITICAL RULES:
+1. For any content inside <pre><code> tags, you MUST strictly preserve the programming language syntax, function names, and variables.
+2. You are ONLY allowed to translate the inline code comments (e.g., text after //, #, /* */) and explanatory string literals inside code blocks.
+3. Do not break the HTML structure. Keep all HTML tags intact.
+4. Preserve all class names, IDs, and attributes.
+5. For technical terms, use industry-standard English translations.
+
+You will receive an HTML fragment inside <CONTENT> tags.
+Return the English translation inside <CONTENT> tags.
+
+<CONTENT>
+...
+</CONTENT>"""
+
+    user_content = f"<CONTENT>\n{chunk_html}\n</CONTENT>"
+
+    logger.info(f"    [AI 翻译] 翻译分块 {chunk_index}/{total_chunks} ({len(chunk_html)} 字符)...")
+    response = client.chat.completions.create(
+        model=Config.LLM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ],
+        temperature=0.3,
+        max_tokens=16000
+    )
+
+    result_text = response.choices[0].message.content or ''
+
+    # 提取 <CONTENT>...</CONTENT>
+    content_match = re.search(r'<CONTENT>(.*?)</CONTENT>', result_text, re.DOTALL)
+    if not content_match:
+        # 兼容截断：没有闭合标签
+        content_match = re.search(r'<CONTENT>(.*?)(?:</CONTENT>|$)', result_text, re.DOTALL | re.IGNORECASE)
+
+    if content_match:
+        translated = content_match.group(1).strip()
+        if translated:
+            return translated
+
+    # 兜底：返回原文
+    logger.warning(f"    [AI 翻译] 分块 {chunk_index} 提取失败，使用原文兜底。")
+    return chunk_html
+
+
+def execute_translation(title, summary, category, content_html):
+    """
+    调用 LLM 执行翻译，返回翻译后的字典。
+    对于长文章，使用分块翻译策略避免因 token 超限导致输出截断。
+    """
+    if not Config.LLM_API_KEY:
+        logger.warning("  未配置 LLM_API_KEY，跳过翻译")
+        return None
+
+    try:
+        import re
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=Config.LLM_API_KEY,
+            base_url=Config.LLM_BASE_URL
+        )
+
+        # ====== 第一步：翻译标题、摘要、分类（轻量调用） ======
+        meta_prompt = """You are an expert technical translator. Translate the provided metadata from Chinese to English.
+Return the English translation in the EXACT SAME delimiter format:
+<TITLE>
+...
+</TITLE>
+<SUMMARY>
+...
+</SUMMARY>
+<CATEGORY>
+...
+</CATEGORY>"""
+
+        meta_input = f"<TITLE>\n{title}\n</TITLE>\n<SUMMARY>\n{summary}\n</SUMMARY>\n<CATEGORY>\n{category}\n</CATEGORY>"
+
+        logger.info(f"  [AI 翻译] 翻译元数据（标题/摘要/分类）: {Config.LLM_MODEL} ...")
+        meta_response = client.chat.completions.create(
+            model=Config.LLM_MODEL,
+            messages=[
+                {"role": "system", "content": meta_prompt},
+                {"role": "user", "content": meta_input}
+            ],
+            temperature=0.3,
+            max_tokens=2000
+        )
+
+        meta_text = meta_response.choices[0].message.content or ''
+        title_match = re.search(r'<TITLE>(.*?)</TITLE>', meta_text, re.DOTALL)
+        summary_match = re.search(r'<SUMMARY>(.*?)</SUMMARY>', meta_text, re.DOTALL)
+        category_match = re.search(r'<CATEGORY>(.*?)</CATEGORY>', meta_text, re.DOTALL)
+
+        title_en = title_match.group(1).strip() if title_match else title
+        summary_en = summary_match.group(1).strip() if summary_match else summary
+        category_en = category_match.group(1).strip() if category_match else category
+
+        # ====== 第二步：分块翻译正文 HTML ======
+        chunks = _split_html_by_headings(content_html, max_chunk_chars=12000)
+        total_chunks = len(chunks)
+
+        if total_chunks == 1:
+            logger.info(f"  [AI 翻译] 正文较短（{len(content_html)} 字符），单次翻译...")
+        else:
+            logger.info(f"  [AI 翻译] 正文较长（{len(content_html)} 字符），已拆分为 {total_chunks} 个分块翻译...")
+
+        translated_chunks = []
+        for i, chunk in enumerate(chunks, 1):
+            translated = _translate_chunk(client, chunk, i, total_chunks)
+            translated_chunks.append(translated)
+
+        content_en_html = '\n'.join(translated_chunks)
+
+        logger.info(f"  ✓ [AI 翻译] 全部完成 ({total_chunks} 个分块)")
+
+        return {
+            'title_en': title_en,
+            'summary_en': summary_en,
+            'category_en': category_en,
+            'content_en_html': content_en_html
+        }
+    except Exception as e:
+        logger.error(f"  [AI 翻译] 失败: {e}")
+        return None
+
+def sync_posts(clean=True, skip_translate=False):
     """同步所有文章到本地 JSON 文件（支持增量同步）
 
     Args:
         clean: 是否清理不存在的文章和图片文件（默认 True）
+        skip_translate: 是否跳过 AI 翻译（默认 False）
     """
     logger.info("开始同步 Notion 内容...")
 
@@ -215,30 +398,29 @@ def sync_posts(clean=True):
             ]
         }
 
-        # 如果有上次同步时间，只查询修改或新建的文章（增量同步）
-        if last_sync_time:
-            query_filter = {
-                "and": [
-                    query_filter,
-                    {
-                        "or": [
-                            {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": last_sync_time}},
-                            {"timestamp": "created_time", "created_time": {"on_or_after": last_sync_time}}
-                        ]
-                    }
-                ]
+        # 直接全量查询文章列表（只获取元数据，很快），并在本地进行增量和完整性比对
+        logger.info("🔄 查询 Notion 文章列表进行比对...")
+        
+        posts = []
+        has_more = True
+        next_cursor = None
+        
+        while has_more:
+            kwargs = {
+                "database_id": Config.NOTION_DATABASE_ID,
+                "filter": query_filter,
+                "sorts": [{"property": "日期", "direction": "descending"}]
             }
-            logger.info("🔄 增量同步模式：只同步最近修改或新建的文章")
-        else:
-            logger.info("📦 全量同步模式：首次同步所有文章")
+            if next_cursor:
+                kwargs["start_cursor"] = next_cursor
+                
+            response = notion.databases.query(**kwargs)
+            posts.extend(response.get('results', []))
+            
+            has_more = response.get('has_more', False)
+            next_cursor = response.get('next_cursor')
 
-        response = notion.databases.query(
-            database_id=Config.NOTION_DATABASE_ID,
-            filter=query_filter,
-            sorts=[{"property": "日期", "direction": "descending"}]
-        )
-
-        posts = response.get('results', [])
+        logger.info(f"找到 {len(posts)} 篇文章，开始比对本地完整性...")
 
         if last_sync_time:
             logger.info(f"找到 {len(posts)} 篇需要更新的文章")
@@ -249,30 +431,34 @@ def sync_posts(clean=True):
         categories = set()
         all_tags = set()
 
-        # 如果是增量同步，从本地文件加载现有文章列表
-        if last_sync_time:
-            for post_file in POSTS_DIR.glob('*.json'):
-                try:
-                    with open(post_file, 'r', encoding='utf-8') as f:
-                        post_data = json.load(f)
-                        synced_posts.append({
-                            'slug': post_data['slug'],
-                            'title': post_data['title'],
-                            'date': post_data['date'],
-                            'category': post_data['category'],
-                            'tags': post_data.get('tags', []),
-                            'summary': post_data.get('summary', ''),
-                            'icon': post_data.get('icon', {'type': 'emoji', 'value': '📝'}),
-                            'cover': post_data.get('cover', ''),
-                            'status': post_data.get('status', '已完成'),
-                        })
-                        if post_data.get('category'):
-                            categories.add(post_data['category'])
-                        all_tags.update(post_data.get('tags', []))
-                except Exception as e:
-                    logger.warning(f"读取文章文件失败 {post_file}: {e}")
+        # 始终加载本地文件列表，以预填 synced_posts 及缓存信息
+        for post_file in POSTS_DIR.glob('*.json'):
+            try:
+                with open(post_file, 'r', encoding='utf-8') as f:
+                    post_data = json.load(f)
+                    synced_posts.append({
+                        'slug': post_data['slug'],
+                        'title': post_data['title'],
+                        'title_en': post_data.get('title_en', ''),
+                        'date': post_data['date'],
+                        'category': post_data['category'],
+                        'category_en': post_data.get('category_en', ''),
+                        'tags': post_data.get('tags', []),
+                        'summary': post_data.get('summary', ''),
+                        'summary_en': post_data.get('summary_en', ''),
+                        'icon': post_data.get('icon', {'type': 'emoji', 'value': '📝'}),
+                        'cover': post_data.get('cover', ''),
+                        'status': post_data.get('status', '已完成'),
+                    })
+                    if post_data.get('category'):
+                        categories.add(post_data['category'])
+                    all_tags.update(post_data.get('tags', []))
+            except Exception as e:
+                logger.warning(f"读取文章文件失败 {post_file}: {e}")
 
-        for idx, page in enumerate(posts, 1):
+        total_posts = len(posts)
+
+        def process_single_page(idx, page):
             try:
                 properties = page.get('properties', {})
 
@@ -287,14 +473,82 @@ def sync_posts(clean=True):
 
                 if not slug:
                     logger.warning(f"文章 '{title}' 没有 slug，跳过")
-                    continue
+                    return None
 
-                logger.info(f"[{idx}/{len(posts)}] 同步文章: {title} ({slug})")
+                # ===============================
+                # 完整性检测与增量跳过逻辑 (Integrity & Incremental Sync Check)
+                # ===============================
+                needs_sync = False
+                sync_reason = ""
+                post_file = POSTS_DIR / f"{slug}.json"
+                notion_last_edited = page.get('last_edited_time', '')
+                
+                # 记录具体缺失了什么，以实现局部免拉取的“模块化修复”
+                missing_translation = False
+                missing_content = False
+                missing_images = False
+                
+                if not post_file.exists():
+                    needs_sync = True
+                    sync_reason = "本地文件缺失"
+                    missing_content = True
+                    missing_translation = True
+                    missing_images = True
+                else:
+                    try:
+                        with open(post_file, 'r', encoding='utf-8') as f:
+                            local_data = json.load(f)
+                            
+                        local_last_edited = local_data.get('last_edited_time', '')
+                        
+                        if notion_last_edited != local_last_edited:
+                            needs_sync = True
+                            sync_reason = "Notion有更新"
+                            missing_content = True
+                            missing_translation = True
+                            missing_images = True
+                        elif status == '已完成':
+                            # 开始完整性模块检测
+                            if not local_data.get('content_html'):
+                                needs_sync = True
+                                missing_content = True
+                                sync_reason = "缺少本地正文"
+                                
+                            if not skip_translate and not local_data.get('content_en_html'):
+                                needs_sync = True
+                                missing_translation = True
+                                sync_reason = (sync_reason + "及" if sync_reason else "") + "缺少英文翻译"
+                                
+                            # 封面图独立检测 (如果启用了图片下载，但本地记录的 cover 不是本地路径且 Notion 有 cover)
+                            if DOWNLOAD_IMAGES:
+                                cover_data = page.get('cover')
+                                if cover_data:
+                                    local_cover = local_data.get('cover', '')
+                                    if not local_cover.startswith('/static/images/'):
+                                        needs_sync = True
+                                        missing_images = True
+                                        sync_reason = (sync_reason + "及" if sync_reason else "") + "封面图未离线"
+                                        
+                                icon_data = page.get('icon')
+                                if icon_data and icon_data.get('type') in ['file', 'external']:
+                                    local_icon = local_data.get('icon', {}).get('value', '')
+                                    if not local_icon.startswith('/static/images/'):
+                                        needs_sync = True
+                                        missing_images = True
+                                        sync_reason = (sync_reason + "及" if sync_reason else "") + "图标未离线"
+                                        
+                    except Exception as e:
+                        needs_sync = True
+                        sync_reason = "读取本地数据损坏"
+                        missing_content = True
+                        missing_translation = True
+                        missing_images = True
 
-                # 收集分类和标签
-                if category:
-                    categories.add(category)
-                all_tags.update(tags)
+                if not needs_sync:
+                    # 如果这篇不需要更新，跳过大模型获取等耗时操作
+                    return None
+                
+                logger.info(f"[{idx}/{total_posts}] 同步文章: {title} ({slug}) - 触发同步原因: {sync_reason}")
 
                 # 提取封面图 URL（null-safe）
                 cover_url = ''
@@ -307,7 +561,7 @@ def sync_posts(clean=True):
 
                 # 下载封面图（如果启用）
                 if cover_url and DOWNLOAD_IMAGES:
-                    logger.info(f"  下载封面图...")
+                    logger.info(f"  [{title}] 下载封面图...")
                     cover_url = download_image(cover_url, IMAGES_DIR)
 
                 # 提取图标信息
@@ -315,10 +569,10 @@ def sync_posts(clean=True):
 
                 # 下载图标图片（如果是文件类型且启用了图片下载）
                 if icon_type in ['file', 'external'] and icon_value and DOWNLOAD_IMAGES:
-                    logger.info(f"  下载图标图片...")
+                    logger.info(f"  [{title}] 下载图标图片...")
                     icon_value = download_image(icon_value, IMAGES_DIR)
 
-                # 构建文章数据
+                # 构建文章数据 (预填本地已存在且无须更新的数据)
                 post_data = {
                     'id': page['id'],
                     'title': title,
@@ -336,66 +590,125 @@ def sync_posts(clean=True):
                     'created_time': page.get('created_time', ''),
                 }
 
+                # 如果本地已有数据，先继承它们，避免无谓消耗
+                if post_file.exists():
+                    try:
+                        with open(post_file, 'r', encoding='utf-8') as f:
+                            local_data = json.load(f)
+                        
+                        # 如果不缺内容，继承 blocks 和 html
+                        if not missing_content:
+                            post_data['blocks'] = local_data.get('blocks', [])
+                            post_data['content_html'] = local_data.get('content_html', '')
+                            
+                        # 无条件继承已有的英文翻译（防止因为只下载图片等原因把旧翻译清空）
+                        post_data['title_en'] = local_data.get('title_en', '')
+                        post_data['summary_en'] = local_data.get('summary_en', '')
+                        post_data['category_en'] = local_data.get('category_en', '')
+                        post_data['content_en_html'] = local_data.get('content_en_html', '')
+                            
+                    except Exception as e:
+                        pass
+
                 # 获取文章内容 blocks（仅对已完成的文章）
                 if status == '已完成':
-                    logger.info(f"  获取文章内容...")
-                    blocks = renderer._fetch_page_blocks(page['id'])
+                    if missing_content or missing_images:
+                        logger.info(f"  [{title}] 获取文章内容 (Notion API)...")
+                        blocks = renderer._fetch_page_blocks(page['id'])
 
-                    # 处理 blocks 中的图片
-                    if DOWNLOAD_IMAGES:
-                        logger.info(f"  处理文章图片...")
-                        process_blocks_images(blocks, IMAGES_DIR)
+                        # 处理 blocks 中的图片
+                        if DOWNLOAD_IMAGES:
+                            logger.info(f"  [{title}] 处理文章图片...")
+                            process_blocks_images(blocks, IMAGES_DIR)
 
-                    post_data['blocks'] = blocks
-                    logger.info(f"  获取到 {len(blocks)} 个 blocks")
+                        post_data['blocks'] = blocks
+                        logger.info(f"  [{title}] 获取到 {len(blocks)} 个 blocks")
+                        
+                        # 生成供翻译的原始内容 HTML
+                        html_renderer = NotionRenderer(notion)
+                        content_html = html_renderer.render_blocks(blocks)
+                        post_data['content_html'] = content_html  # 保存一份原版HTML以提高性能
+                    else:
+                        logger.info(f"  [{title}] 检测到本地有完整正文和图片，跳过 Notion API 获取...")
+                        content_html = post_data.get('content_html', '')
+
+                    # 执行翻译逻辑
+                    if missing_translation and not skip_translate:
+                        translation = execute_translation(title, summary, category, content_html)
+                        if translation:
+                            post_data['title_en'] = translation.get('title_en', title)
+                            post_data['summary_en'] = translation.get('summary_en', summary)
+                            post_data['category_en'] = translation.get('category_en', category)
+                            post_data['content_en_html'] = translation.get('content_en_html', '')
+                            logger.info(f"  ✓ [{title}] AI 翻译成功完成")
+                        else:
+                            logger.warning(f"  ⚠ [{title}] AI 翻译未返回结果或发生错误")
+                    elif not missing_translation:
+                        logger.info(f"  ✓ [{title}] 本地已有翻译，跳过 AI 调用")
+                    else:
+                        logger.info(f"  [{title}] 跳过 AI 翻译 (--skip-translate)")
+
                 else:
                     post_data['blocks'] = []
-                    logger.info(f"  文章已锁住，跳过内容获取")
+                    logger.info(f"  [{title}] 文章已锁住，跳过内容获取/翻译")
 
                 # 保存为 JSON 文件
-                post_file = POSTS_DIR / f"{slug}.json"
                 with open(post_file, 'w', encoding='utf-8') as f:
                     json.dump(post_data, f, ensure_ascii=False, indent=2)
 
                 # 更新或添加到文章列表 (包含完整元数据以支撑高性能列表展示)
                 post_meta = {
                     'slug': slug,
-                    'title': title,
+                    'title': post_data.get('title', title),
+                    'title_en': post_data.get('title_en', ''),
                     'date': date,
-                    'category': category,
+                    'category': post_data.get('category', category),
+                    'category_en': post_data.get('category_en', ''),
                     'tags': tags,
-                    'summary': summary,
+                    'summary': post_data.get('summary', summary),
+                    'summary_en': post_data.get('summary_en', ''),
                     'icon': {'type': icon_type, 'value': icon_value},
                     'cover': cover_url,
                     'status': status
                 }
 
-                # 如果是增量同步，更新现有文章；否则添加
-                found = False
-                if last_sync_time:
+                logger.info(f"  ✓ [{title}] 已保存到 {post_file}")
+                return post_meta
+
+            except Exception as e:
+                logger.error(f"同步文章失败 [{idx}/{total_posts}]: {e}", exc_info=True)
+                return None
+
+        logger.info(f"🚀 开始多线程处理 {total_posts} 篇文章 (最大并发: 5)...")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(process_single_page, idx, page) for idx, page in enumerate(posts, 1)]
+            for future in concurrent.futures.as_completed(futures):
+                post_meta = future.result()
+                if post_meta:
+                    if post_meta.get('category'):
+                        categories.add(post_meta['category'])
+                    all_tags.update(post_meta.get('tags', []))
+                    
+                    found = False
                     for i, p in enumerate(synced_posts):
-                        if p['slug'] == slug:
+                        if p['slug'] == post_meta['slug']:
                             synced_posts[i] = post_meta
                             found = True
                             break
-
-                if not found:
-                    synced_posts.append(post_meta)
-
-                logger.info(f"  ✓ 已保存到 {post_file}")
-
-            except Exception as e:
-                logger.error(f"同步文章失败: {e}", exc_info=True)
-                continue
+                    if not found:
+                        synced_posts.append(post_meta)
 
         # 清理不存在的文章文件（需要 --clean 参数）
         if clean:
-            valid_slugs = {post['slug'] for post in synced_posts}
+            valid_slugs = { _extract_slug(post.get('properties', {})) for post in posts }
+            valid_slugs.discard('')
             for post_file in POSTS_DIR.glob('*.json'):
                 file_slug = post_file.stem
                 if file_slug not in valid_slugs:
                     logger.info(f"删除旧文章文件: {post_file.name}")
                     post_file.unlink()
+                    
+            synced_posts = [p for p in synced_posts if p['slug'] in valid_slugs]
 
         # 清理未使用的图片文件（需要 --clean 参数）
         if clean and DOWNLOAD_IMAGES:
@@ -486,7 +799,8 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='同步 Notion 内容到本地')
     parser.add_argument('--clean', action='store_true', help='清理不存在的文章和图片文件')
+    parser.add_argument('--skip-translate', action='store_true', help='跳过文章的 AI 翻译过程，加速同步（适用于首次全量获取或快速更新）')
     args = parser.parse_args()
 
-    success = sync_posts(clean=args.clean)
+    success = sync_posts(clean=args.clean, skip_translate=args.skip_translate)
     sys.exit(0 if success else 1)

@@ -59,11 +59,14 @@ class LocalDataService:
                 # 构造基础文章对象，直接使用 metadata 中的详细信息
                 posts.append({
                     'title': post_info.get('title', ''),
+                    'title_en': post_info.get('title_en', ''),
                     'slug': post_info.get('slug', ''),
                     'date': post_info.get('date'),
                     'category': post_info.get('category', ''),
+                    'category_en': post_info.get('category_en', ''),
                     'tags': post_info.get('tags', []),     # 优先从 metadata 读取
                     'summary': post_info.get('summary', ''), # 优先从 metadata 读取
+                    'summary_en': post_info.get('summary_en', ''), # 英文摘要
                     'status': post_info.get('status', '已完成'),
                     'icon_type': post_info.get('icon', {}).get('type', 'emoji'),
                     'icon_url_or_emoji': post_info.get('icon', {}).get('value', '📝'),
@@ -112,11 +115,12 @@ class LocalDataService:
             with open(post_file, 'r', encoding='utf-8') as f:
                 post_data = json.load(f)
 
-            # 如果有 blocks，需要渲染为 HTML
-            content_html = ''
+            # 如果有 blocks 并且 HTML 尚未预渲染，需要渲染为 HTML
+            content_html = post_data.get('content_html', '')
+            content_en_html = post_data.get('content_en_html', '')
             blocks = post_data.get('blocks', [])
 
-            if blocks and post_data.get('status') == '已完成':
+            if not content_html and blocks and post_data.get('status') == '已完成':
                 # 导入渲染器
                 try:
                     from services.notion_service import NotionRenderer, get_notion_client
@@ -139,17 +143,21 @@ class LocalDataService:
 
             return {
                 'title': post_data.get('title', ''),
+                'title_en': post_data.get('title_en', ''),
                 'slug': post_data.get('slug', ''),
                 'tags': post_data.get('tags', []),
                 'date': post_data.get('date'),
                 'summary': post_data.get('summary', ''),
+                'summary_en': post_data.get('summary_en', ''),
                 'category': post_data.get('category', ''),
+                'category_en': post_data.get('category_en', ''),
                 'os': post_data.get('os', ''),
                 'difficulty': post_data.get('difficulty', ''),
                 'user': False,
                 'root': False,
                 'status': post_data.get('status', ''),
                 'content_html': content_html,
+                'content_en_html': content_en_html,
                 'reading_time': reading_time,
             }
 
