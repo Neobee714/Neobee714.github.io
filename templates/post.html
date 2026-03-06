@@ -12,6 +12,23 @@
 
 {% block og_description %}{{ (post.summary or 'Hack The Box Writeup') | truncate(200) }}{% endblock %}
 
+{% block custom_og_image %}
+{% if post.cover %}
+<meta property="og:image" content="{{ post.cover }}">
+{% else %}
+<!-- 使用动态生成图片服务：传递文章名作为占位图 -->
+<meta property="og:image" content="https://placehold.co/1200x630/15171e/10b981.png?text={{ (post.title or 'Neobee') | replace(' ', '+')|urlencode }}&font=lora">
+{% endif %}
+{% endblock %}
+
+{% block custom_twitter_image %}
+{% if post.cover %}
+<meta name="twitter:image" content="{{ post.cover }}">
+{% else %}
+<meta name="twitter:image" content="https://placehold.co/1200x630/15171e/10b981.png?text={{ (post.title or 'Neobee') | replace(' ', '+')|urlencode }}&font=lora">
+{% endif %}
+{% endblock %}
+
 {% block structured_data %}
 <!-- BlogPosting Schema -->
 <script type="application/ld+json">
@@ -108,6 +125,15 @@
             <i class="fa-solid fa-language text-[11px]"></i>
             <span class="lang-zh">EN</span>
             <span class="lang-en">中文</span>
+          </button>
+
+          <!-- 分享按钮 (Share Button) -->
+          <button id="share-btn" onclick="copyShareLink()"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
+            style="background: rgba(99,102,241,0.15); color: #6366f1; border: 1px solid rgba(99,102,241,0.3);">
+            <i class="fa-solid fa-share-nodes text-[11px]"></i>
+            <span class="lang-zh">分享</span>
+            <span class="lang-en">Share</span>
           </button>
         </div>
         {% if post.tags %}
@@ -336,6 +362,35 @@
       var wrapper = document.createElement('div');
       wrapper.className = 'code-block-wrapper';
       pre.parentNode.insertBefore(wrapper, pre);
+      
+      // 检测代码块高度以决定是否添加折叠功能的延迟函数
+      function checkAndCollapse() {
+        if (pre.scrollHeight > 600) { // 阈值设定为 600px
+          wrapper.classList.add('is-collapsed');
+          
+          var expandBtn = document.createElement('button');
+          expandBtn.className = 'code-expand-btn';
+          expandBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>展开代码';
+          
+          expandBtn.addEventListener('click', function() {
+            if (wrapper.classList.contains('is-collapsed')) {
+              wrapper.classList.remove('is-collapsed');
+              expandBtn.innerHTML = '<i class="fa-solid fa-chevron-up mr-1"></i>收起代码';
+            } else {
+              wrapper.classList.add('is-collapsed');
+              expandBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>展开代码';
+              // 滚动回代码块顶部
+              var top = wrapper.getBoundingClientRect().top + window.pageYOffset - 100;
+              window.scrollTo({ top: top, behavior: 'smooth' });
+            }
+          });
+          
+          wrapper.appendChild(expandBtn);
+        }
+      }
+      
+      // 让浏览器先渲染以获取准确的高度
+      setTimeout(checkAndCollapse, 100);
 
       // 创建语言标签栏 header
       var header = document.createElement('div');
@@ -587,6 +642,31 @@
         var wrapper = document.createElement('div');
         wrapper.className = 'code-block-wrapper';
         pre.parentNode.insertBefore(wrapper, pre);
+        
+        // 检测代码块高度并添加折叠功能
+        setTimeout(function() {
+          if (pre.scrollHeight > 600) {
+            wrapper.classList.add('is-collapsed');
+            
+            var expandBtn = document.createElement('button');
+            expandBtn.className = 'code-expand-btn';
+            expandBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>展开代码';
+            
+            expandBtn.addEventListener('click', function() {
+              if (wrapper.classList.contains('is-collapsed')) {
+                wrapper.classList.remove('is-collapsed');
+                expandBtn.innerHTML = '<i class="fa-solid fa-chevron-up mr-1"></i>收起代码';
+              } else {
+                wrapper.classList.add('is-collapsed');
+                expandBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>展开代码';
+                var top = wrapper.getBoundingClientRect().top + window.pageYOffset - 100;
+                window.scrollTo({ top: top, behavior: 'smooth' });
+              }
+            });
+            
+            wrapper.appendChild(expandBtn);
+          }
+        }, 100);
 
         // 创建 header
         var header = document.createElement('div');
@@ -647,5 +727,21 @@
       }
     }
   })();
+</script>
+
+<!-- 分享按钮逻辑 (Share button logic) -->
+<script>
+  function copyShareLink() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(function() {
+      if (typeof window.showToast === 'function') {
+        window.showToast(document.documentElement.getAttribute('data-lang') === 'en' ? 'Link copied to clipboard!' : '链接已复制！', 'success');
+      } else {
+        alert("链接已复制: " + url);
+      }
+    }).catch(function(err) {
+      console.error('Copy failed:', err);
+    });
+  }
 </script>
 {% endblock %}

@@ -309,6 +309,60 @@ def after_request_handler(response):
 
     return response
 
+@app.after_request
+def gzip_response(response):
+    """
+    轻量原生 Gzip 压缩中间件：
+    如果请求头支持 gzip，并且内容类型为文本/HTML/JSON 等可压缩类型，
+    同时大小超过 500 字节，则进行 gzip 压缩。
+    """
+    accept_encoding = request.headers.get('Accept-Encoding', '')
+    if 'gzip' not in accept_encoding.lower():
+        return response
+
+    if response.status_code < 200 or response.status_code >= 300:
+        return response
+
+    if response.direct_passthrough:
+        return response
+
+    # 定义可以压缩的 MIME 类型
+    gzip_mimetypes = {
+        'text/html', 'text/css', 'text/plain', 'text/javascript',
+        'application/json', 'application/javascript', 'application/xml',
+        'image/svg+xml'
+    }
+
+    # 简单匹配 mime type
+    content_type = response.headers.get('Content-Type', '').lower()
+    is_compressible = any(content_type.startswith(mime) for mime in gzip_mimetypes)
+
+    if not is_compressible:
+        return response
+
+    response.direct_passthrough = False
+    data = response.get_data()
+    
+    # 仅压缩大于 500 字节的数据
+    if len(data) < 500:
+        return response
+
+    import gzip
+    import io
+    gzip_buffer = io.BytesIO()
+    # level 6 是压缩率和性能很好的平衡点
+    with gzip.GzipFile(mode='wb', compresslevel=6, fileobj=gzip_buffer) as gzip_file:
+        gzip_file.write(data)
+    
+    compressed_data = gzip_buffer.getvalue()
+    
+    # 替换原本内容，增加 Header
+    response.set_data(compressed_data)
+    response.headers['Content-Encoding'] = 'gzip'
+    response.headers['Vary'] = 'Accept-Encoding'
+    response.headers['Content-Length'] = len(compressed_data)
+    
+    return response
 
 # ==================== 路由定义 (Routes) ====================
 

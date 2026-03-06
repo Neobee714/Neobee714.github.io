@@ -140,6 +140,12 @@ class LocalDataService:
             except (ImportError, Exception) as e:
                 logger.warning(f"无法计算阅读时间: {e}")
                 reading_time = "5 min"
+                
+            # SEO与性能极致优化: 针对长文与多回文自动加上图片原生冷加载 (Lazy Loading) 标签
+            if content_html:
+                content_html = content_html.replace('<img ', '<img loading="lazy" ')
+            if content_en_html:
+                content_en_html = content_en_html.replace('<img ', '<img loading="lazy" ')
 
             return {
                 'title': post_data.get('title', ''),

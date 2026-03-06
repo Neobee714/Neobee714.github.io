@@ -19,13 +19,18 @@
   <meta name="keywords"
     content="{% block keywords %}Hack The Box, HTB, Cybersecurity, Penetration Testing, CTF, Writeups{% endblock %}">
 
+  <!-- View Transitions API 页面级平滑过渡 -->
+  <meta name="view-transition" content="same-origin" />
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:url" content="{{ request.url }}">
   <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}{{ self.description() }}{% endblock %}">
+  {% block custom_og_image %}
   <meta property="og:image"
     content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
+  {% endblock %}
   <meta property="og:site_name" content="Neobee's Blog">
 
   <!-- Twitter Card -->
@@ -33,7 +38,9 @@
   <meta name="twitter:url" content="{{ request.url }}">
   <meta name="twitter:title" content="{% block twitter_title %}{{ self.og_title() }}{% endblock %}">
   <meta name="twitter:description" content="{% block twitter_description %}{{ self.og_description() }}{% endblock %}">
+  {% block custom_twitter_image %}
   <meta name="twitter:image" content="{% block twitter_image %}{{ self.og_image() }}{% endblock %}">
+  {% endblock %}
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}"
@@ -123,6 +130,139 @@
       font-family: var(--font-sans);
     }
 
+    /* === 全局搜索 Modal 样式 (Spotlight Search) === */
+    .search-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: hsl(var(--n) / 0.5);
+      backdrop-filter: blur(8px);
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 10vh;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .search-modal.show {
+      display: flex;
+      opacity: 1;
+    }
+
+    .search-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 1rem;
+      background: hsl(var(--b1));
+      border: 1px solid hsl(var(--bc) / 0.1);
+      border-radius: 1rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      transform: scale(0.95);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 70vh;
+    }
+
+    .search-modal.show .search-container {
+      transform: scale(1);
+    }
+    
+    .search-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid hsl(var(--bc) / 0.1);
+    }
+    
+    .search-input-wrapper i {
+      color: var(--primary-color);
+      font-size: 1.25rem;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 1.5rem 1rem;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 1.125rem;
+      color: hsl(var(--bc));
+    }
+    
+    .search-results {
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+    
+    .search-item {
+      display: block;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.25rem;
+      color: hsl(var(--bc) / 0.8);
+      transition: all 0.1s;
+    }
+    
+    .search-item:hover, .search-item.active {
+      background: hsl(var(--p) / 0.1);
+      color: var(--primary-color);
+    }
+    
+    .search-item-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .search-item-desc {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .search-hint {
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.875rem;
+      color: hsl(var(--bc) / 0.5);
+    }
+    /* === 跨页平滑过渡动画 (View Transitions) === */
+    @view-transition {
+      navigation: auto;
+    }
+    
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.3s;
+      animation-fill-mode: both;
+      animation-timing-function: ease-in-out;
+      mix-blend-mode: normal;
+    }
+
+    ::view-transition-old(root) {
+      animation-name: pageFadeOut;
+    }
+
+    ::view-transition-new(root) {
+      animation-name: pageFadeIn;
+    }
+
+    @keyframes pageFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes pageFadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    /* === 跨页平滑过渡动画结束 === */
+
     .btn,
     .sidebar-link,
     .nav-item {
@@ -136,6 +276,10 @@
     }
 
     /* 应用自定义配色 */
+    html {
+      scroll-behavior: smooth;
+    }
+    
     a {
       color: var(--primary-color);
     }
@@ -192,12 +336,64 @@
       /* 为行号留出足够空间 */
     }
 
-    /* 代码块外部包装器 (Code block wrapper with glow) */
+    /* 代码块允许横向滚动而不是强制换行 (Allow horizontal scroll for code blocks) */
+    pre {
+      overflow-x: auto !important;
+      white-space: pre !important;
+    }
+
+    code {
+      white-space: pre !important;
+    }
+
+    /* 长代码折叠包装器样式 (Long code block wrapper styling) */
     .code-block-wrapper {
       position: relative;
       margin-top: 1.5em;
       margin-bottom: 1.5em;
       border-radius: 0.75rem;
+    }
+    
+    .code-block-wrapper.is-collapsed pre {
+      max-height: 480px; /* 超出这个高度显示折叠展开按钮 */
+      overflow-y: hidden !important; 
+    }
+    
+    .code-block-wrapper.is-collapsed::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      border-radius: 0 0 0.75rem 0.75rem;
+      background: linear-gradient(to bottom, transparent, var(--code-bg));
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .code-expand-btn {
+      position: absolute;
+      bottom: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: hsl(var(--bc) / 0.1);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--code-border);
+      color: var(--glass-text-strong);
+      padding: 0.25rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      opacity: 0.9;
+      transition: all 0.2s ease;
+    }
+    
+    .code-expand-btn:hover {
+      background: hsl(var(--bc) / 0.2);
+      opacity: 1;
     }
 
     /* 语言标签栏 (Language header bar) */
@@ -832,6 +1028,20 @@
     .post-card {
       opacity: 0;
       animation: cardFadeIn 0.5s ease forwards;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+      border: 1px solid transparent;
+      will-change: transform, box-shadow;
+    }
+
+    .post-card:hover {
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 16px rgba(16, 185, 129, 0.15) !important;
+      border-color: rgba(16, 185, 129, 0.3);
+      z-index: 10;
+    }
+    
+    :root[data-theme="business"] .post-card:hover {
+       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 20px rgba(16, 185, 129, 0.15) !important;
     }
 
     .post-card:nth-child(1) {
@@ -892,6 +1102,26 @@
       font-weight: 600;
       transform: translateX(4px);
     }
+    
+    /* 顶部阅读进度条 (Reading Progress Bar) */
+    .reading-progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: transparent;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    
+    .reading-progress-bar {
+      height: 100%;
+      background: var(--primary-color);
+      box-shadow: 0 0 8px var(--primary-color);
+      width: 0%;
+      transition: width 0.1s ease-out;
+    }
   </style>
 
   <script>
@@ -925,6 +1155,11 @@
 </head>
 
 <body class="min-h-screen bg-base-100">
+  <!-- 顶部阅读进度条 (Reading Progress Bar) -->
+  <div class="reading-progress-container">
+    <div class="reading-progress-bar" id="reading-progress-bar"></div>
+  </div>
+
   <!-- Toast 通知容器 (Toast notification container) -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -1095,6 +1330,206 @@
 
       window.addEventListener('scroll', toggleButton, { passive: true });
       toggleButton(); // 初始检查
+    })();
+  </script>
+
+  <!-- 全局 Cmd+K 搜索 (Spotlight Search) -->
+  <div id="spotlight-search" class="search-modal">
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-search"></i>
+        <input type="text" id="spotlight-input" class="search-input" placeholder="Search posts... (Cmd+K)" autocomplete="off">
+        <kbd class="kbd kbd-sm ml-2 opacity-50">ESC</kbd>
+      </div>
+      <div id="spotlight-results" class="search-results">
+        <!-- 动态渲染的搜索结果将在这里 -->
+        <div class="search-hint">输入关键字搜索博客文章</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      let cachedPosts = null;
+      let activeIndex = -1;
+      let resultElements = [];
+
+      const modal = document.getElementById('spotlight-search');
+      const input = document.getElementById('spotlight-input');
+      const resultsContainer = document.getElementById('spotlight-results');
+
+      if (!modal || !input || !resultsContainer) return;
+
+      // 定义多语言辅助函数
+      const getI18n = () => {
+        const lang = document.documentElement.getAttribute('data-lang') || 'zh';
+        return lang === 'en' ? {
+          hint: 'Type keyword to search posts...',
+          loading: '<span class="loading loading-spinner loading-md"></span> Searching...',
+          empty: 'No posts found, try another keyword.',
+          error: 'Search request failed, please try again.',
+          placeholder: 'Search posts (Cmd+K)'
+        } : {
+          hint: '输入关键字搜索博客文章...',
+          loading: '<span class="loading loading-spinner loading-md"></span> 搜索中...',
+          empty: '未找到相关文章，换个关键词试试。',
+          error: '搜索请求失败，请稍后再试。',
+          placeholder: '搜索文章 (Cmd+K)'
+        };
+      };
+
+      const updateSearchI18n = () => {
+        const i18n = getI18n();
+        input.placeholder = i18n.placeholder;
+        // 只有当当前呈现的是提示语（且没有结果）时，才触发更新界面
+        if (!input.value.trim() && resultsContainer.querySelector('.search-hint')) {
+          resultsContainer.innerHTML = '<div class="search-hint">' + i18n.hint + '</div>';
+        }
+      };
+      
+      // 添加到全局重刷逻辑里
+      const _origReinit = window.reinitializeFeatures || function(){};
+      window.reinitializeFeatures = function() {
+          _origReinit();
+          updateSearchI18n();
+      };
+      // 初始化加载一次
+      updateSearchI18n();
+      
+      const openModal = () => {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        updateSearchI18n();
+        setTimeout(() => input.focus(), 100);
+      };
+
+      const closeModal = () => {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        input.value = '';
+        resultsContainer.innerHTML = '<div class="search-hint">' + getI18n().hint + '</div>';
+      };
+
+      // 监听快捷键 Cmd+K 或者 Ctrl+K
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          modal.classList.contains('show') ? closeModal() : openModal();
+        }
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+          closeModal();
+        }
+      });
+
+      // 绑定页面中显式的搜索入口按钮 (如首页的输入框占位符)
+      document.addEventListener('click', (e) => {
+        const triggerBtn = e.target.closest('#open-search-btn');
+        if (triggerBtn) {
+          e.preventDefault();
+          openModal();
+        }
+      });
+
+      // 点击遮罩层关闭
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      // 防抖和基于后端的简单请求 (通过 q 参数)
+      let debounceTimer;
+      input.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const q = e.target.value.trim();
+        const i18n = getI18n();
+        if (!q) {
+          resultsContainer.innerHTML = '<div class="search-hint">' + i18n.hint + '</div>';
+          return;
+        }
+
+        resultsContainer.innerHTML = '<div class="search-hint">' + i18n.loading + '</div>';
+
+        debounceTimer = setTimeout(() => {
+          // 请求首页并利用后端的搜索过滤
+          fetch(`/?q=${encodeURIComponent(q)}`)
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+              // 抓取并转换文章数据
+              const cards = doc.querySelectorAll('.post-card');
+              
+              if (cards.length === 0) {
+                 resultsContainer.innerHTML = '<div class="search-hint">' + i18n.empty + '</div>';
+                 return;
+              }
+
+              resultsContainer.innerHTML = '';
+              resultElements = [];
+              activeIndex = -1;
+
+              cards.forEach((card, i) => {
+                const link = card.getAttribute('href');
+                
+                // 判断当前页面语言
+                const currentLang = document.documentElement.getAttribute('data-lang') || 'zh';
+                const langClass = currentLang === 'en' ? '.lang-en' : '.lang-zh';
+
+                // 获取标题和摘要
+                let titles = card.querySelectorAll('.card-title ' + langClass);
+                if (titles.length === 0) titles = card.querySelectorAll('.card-title span');
+                const titleStr = Array.from(titles).map(s => s.textContent).join(' ');
+
+                let summaries = card.querySelectorAll('p ' + langClass);
+                if (summaries.length === 0) summaries = card.querySelectorAll('p span');
+                const summaryStr = Array.from(summaries).map(s => s.textContent).join(' ');
+
+                const a = document.createElement('a');
+                a.className = 'search-item';
+                a.href = link;
+                a.innerHTML = `
+                  <div class="search-item-title">${titleStr}</div>
+                  <div class="search-item-desc">${summaryStr}</div>
+                `;
+                a.addEventListener('mouseenter', () => {
+                   setActive(i);
+                });
+                resultElements.push(a);
+                resultsContainer.appendChild(a);
+              });
+            }).catch(e => {
+               resultsContainer.innerHTML = '<div class="search-hint text-error">' + getI18n().error + '</div>';
+            });
+        }, 300);
+      });
+
+      // 键盘导航
+      const setActive = (index) => {
+         if (resultElements.length === 0) return;
+         resultElements.forEach(el => el.classList.remove('active'));
+         if (index < 0) index = 0;
+         if (index >= resultElements.length) index = resultElements.length - 1;
+         activeIndex = index;
+         resultElements[activeIndex].classList.add('active');
+         // 滚动到视口内
+         resultElements[activeIndex].scrollIntoView({ block: 'nearest' });
+      };
+
+      input.addEventListener('keydown', (e) => {
+         if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(activeIndex + 1);
+         } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(activeIndex - 1);
+         } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && activeIndex < resultElements.length) {
+               window.location.href = resultElements[activeIndex].href;
+            } else if (resultElements.length > 0) {
+               window.location.href = resultElements[0].href;
+            }
+         }
+      });
+
     })();
   </script>
 
@@ -1340,6 +1775,22 @@
       });
     });
   </script>
+
+  <!-- 顶部阅读进度条逻辑 (Reading progress bar logic) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const progressBar = document.getElementById('reading-progress-bar');
+      if (!progressBar) return;
+
+      window.addEventListener('scroll', function () {
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+        progressBar.style.width = scrolled + '%';
+      }, { passive: true });
+    });
+  </script>
+
   {% block scripts %}{% endblock %}
 </body>
 
