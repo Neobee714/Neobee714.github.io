@@ -1175,25 +1175,6 @@
     })();
   </script>
 
-  // 切换主题
-  themeToggle.addEventListener('click', function () {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'business' ? 'lofi' : 'business';
-
-  // 添加过渡类实现平滑切换
-  document.body.classList.add('theme-transition');
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  updateThemeAssets(newTheme);
-
-  // 过渡结束后移除，避免影响其他动画
-  setTimeout(function () {
-  document.body.classList.remove('theme-transition');
-  }, 500);
-  });
-  })();
-  </script>
-
   <!-- Toast 通知系统 (Toast Notification System) -->
   <script>
     window.showToast = function (message, type = 'info', duration = 3000) {

@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 import concurrent.futures
+import threading
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -457,6 +458,7 @@ def sync_posts(clean=True, skip_translate=False):
                 logger.warning(f"读取文章文件失败 {post_file}: {e}")
 
         total_posts = len(posts)
+        notion_api_semaphore = threading.Semaphore(2)
 
         def process_single_page(idx, page):
             try:
@@ -487,6 +489,7 @@ def sync_posts(clean=True, skip_translate=False):
                 missing_translation = False
                 missing_content = False
                 missing_images = False
+                local_data = None
                 
                 if not post_file.exists():
                     needs_sync = True
@@ -543,6 +546,7 @@ def sync_posts(clean=True, skip_translate=False):
                         missing_content = True
                         missing_translation = True
                         missing_images = True
+                        local_data = None
 
                 if not needs_sync:
                     # 如果这篇不需要更新，跳过大模型获取等耗时操作
@@ -590,31 +594,22 @@ def sync_posts(clean=True, skip_translate=False):
                     'created_time': page.get('created_time', ''),
                 }
 
-                # 如果本地已有数据，先继承它们，避免无谓消耗
-                if post_file.exists():
-                    try:
-                        with open(post_file, 'r', encoding='utf-8') as f:
-                            local_data = json.load(f)
+                if local_data is not None:
+                    if not missing_content:
+                        post_data['blocks'] = local_data.get('blocks', [])
+                        post_data['content_html'] = local_data.get('content_html', '')
                         
-                        # 如果不缺内容，继承 blocks 和 html
-                        if not missing_content:
-                            post_data['blocks'] = local_data.get('blocks', [])
-                            post_data['content_html'] = local_data.get('content_html', '')
-                            
-                        # 无条件继承已有的英文翻译（防止因为只下载图片等原因把旧翻译清空）
-                        post_data['title_en'] = local_data.get('title_en', '')
-                        post_data['summary_en'] = local_data.get('summary_en', '')
-                        post_data['category_en'] = local_data.get('category_en', '')
-                        post_data['content_en_html'] = local_data.get('content_en_html', '')
-                            
-                    except Exception as e:
-                        pass
+                    post_data['title_en'] = local_data.get('title_en', '')
+                    post_data['summary_en'] = local_data.get('summary_en', '')
+                    post_data['category_en'] = local_data.get('category_en', '')
+                    post_data['content_en_html'] = local_data.get('content_en_html', '')
 
                 # 获取文章内容 blocks（仅对已完成的文章）
                 if status == '已完成':
                     if missing_content or missing_images:
                         logger.info(f"  [{title}] 获取文章内容 (Notion API)...")
-                        blocks = renderer._fetch_page_blocks(page['id'])
+                        with notion_api_semaphore:
+                            blocks = renderer._fetch_page_blocks(page['id'])
 
                         # 处理 blocks 中的图片
                         if DOWNLOAD_IMAGES:

@@ -61,10 +61,7 @@
       <!-- 卡片封面图 (Card Cover Image) -->
       <figure class="relative h-48 bg-base-300 overflow-hidden flex items-center justify-center">
         {% if post.cover %}
-        <img src="{{ post.cover }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-cover"
-          onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200\'><span class=\'text-6xl font-bold text-base-content/30\'>{{ post.title[0] if post.title else "
-          ?" }}</span>
-  </div>'">
+        <img src="{{ post.cover }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200\'><span class=\'text-6xl font-bold text-base-content/30\'>{{ post.title[0] if post.title else "?" }}</span></div>'">
   {% elif post.icon_type in ['external', 'file'] and post.icon_url_or_emoji %}
   <img src="{{ post.icon_url_or_emoji }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-contain">
   {% else %}
@@ -102,8 +99,8 @@
       {% else %}
       <i class="fa-solid fa-folder text-xs"></i>
       {% endif %}
-      <span class="lang-zh">{{ post.category | default('未分类') }}</span>
-      <span class="lang-en">{{ post.category_en or post.category | default('Uncategorized') }}</span>
+      <span class="lang-zh">{{ post.category or '未分类' }}</span>
+      <span class="lang-en">{{ post.category_en or post.category or 'Uncategorized' }}</span>
     </span>
   </div>
   </figure>

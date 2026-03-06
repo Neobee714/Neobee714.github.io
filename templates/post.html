@@ -51,32 +51,12 @@
 <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css"
   rel="stylesheet">
 <style>
-  /* 所有代码块强制使用 JetBrains Mono */
   pre[class*="language-"],
   code[class*="language-"] {
     font-family: 'JetBrains Mono', ui-monospace, monospace !important;
     font-size: 0.875rem;
   }
-</style>
-<script>
-  // 文章页语言切换（供按钮 onclick 调用）
-  function togglePostLanguage() {
-    const currentLang = document.documentElement.getAttribute('data-lang') || 'zh';
-    const nextLang = currentLang === 'zh' ? 'en' : 'zh';
-    document.documentElement.setAttribute('data-lang', nextLang);
-    localStorage.setItem('lang', nextLang);
 
-    // 切换后重新初始化代码高亮等
-    if (typeof window.reinitializeFeatures === 'function') {
-      setTimeout(window.reinitializeFeatures, 100);
-    }
-    // 重建 TOC（从新语言的标题中读取）
-    if (typeof window.rebuildTOC === 'function') {
-      setTimeout(window.rebuildTOC, 150);
-    }
-  }
-</script>
-<style>
   .post-content pre {
     margin: 0;
     border-radius: 0 0 0.75rem 0.75rem;
@@ -122,7 +102,7 @@
           {% endif %}
 
           <!-- 翻译切换 (Translate Toggle) - 小巧 pill 样式 -->
-          <button id="translate-toggle-btn" onclick="togglePostLanguage()"
+          <button id="translate-toggle-btn" onclick="var g=document.getElementById('lang-toggle');if(g)g.click();"
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
             style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">
             <i class="fa-solid fa-language text-[11px]"></i>
