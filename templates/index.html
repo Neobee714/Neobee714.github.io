@@ -61,7 +61,7 @@
       <!-- 卡片封面图 (Card Cover Image) -->
       <figure class="relative h-48 bg-base-300 overflow-hidden flex items-center justify-center">
         {% if post.cover %}
-        <img src="{{ post.cover }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200\'><span class=\'text-6xl font-bold text-base-content/30\'>{{ post.title[0] if post.title else "?" }}</span></div>'">
+        <img src="{{ post.cover }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-cover cover-fallback" data-fallback="{{ post.title[0] if post.title else '?' }}">
   {% elif post.icon_type in ['external', 'file'] and post.icon_url_or_emoji %}
   <img src="{{ post.icon_url_or_emoji }}" alt="{{ post.title }}" loading="lazy" class="w-full h-full object-contain">
   {% else %}
@@ -182,7 +182,7 @@
 <div class="flex items-center justify-center gap-4 mt-12">
   <!-- 上一页按钮 (Previous Page) -->
   {% if pagination.has_prev %}
-  <a href="{{ url_for('index', page=pagination.prev_page, q=q) }}" class="btn btn-outline btn-primary gap-2">
+  <a href="{{ url_for('category', name=category_name, page=pagination.prev_page) if category_name else url_for('index', page=pagination.prev_page, q=q) }}" class="btn btn-outline btn-primary gap-2">
     <i class="fa-solid fa-chevron-left"></i>
     <span>上一页</span>
   </a>
@@ -202,7 +202,7 @@
 
   <!-- 下一页按钮 (Next Page) -->
   {% if pagination.has_next %}
-  <a href="{{ url_for('index', page=pagination.next_page, q=q) }}" class="btn btn-outline btn-primary gap-2">
+  <a href="{{ url_for('category', name=category_name, page=pagination.next_page) if category_name else url_for('index', page=pagination.next_page, q=q) }}" class="btn btn-outline btn-primary gap-2">
     <span>下一页</span>
     <i class="fa-solid fa-chevron-right"></i>
   </a>
@@ -222,6 +222,12 @@
   document.addEventListener('DOMContentLoaded', function () {
     var s = document.getElementById('skeleton-loader');
     if (s) s.style.display = 'none';
+    document.querySelectorAll('img.cover-fallback').forEach(function (img) {
+      img.addEventListener('error', function () {
+        var ch = this.dataset.fallback || '?';
+        this.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200"><span class="text-6xl font-bold text-base-content/30">' + ch + '</span></div>';
+      });
+    });
   });
 </script>
 {% endblock %}

@@ -123,21 +123,6 @@
       font-family: var(--font-sans);
     }
 
-    /* 主题切换平滑过渡 — 仅针对关键容器，避免 * 选择器导致的性能问题 */
-    body.theme-transition,
-    body.theme-transition .sidebar-fixed,
-    body.theme-transition main,
-    body.theme-transition footer,
-    body.theme-transition .card,
-    body.theme-transition .badge,
-    body.theme-transition .btn,
-    body.theme-transition .menu,
-    body.theme-transition nav,
-    body.theme-transition aside,
-    body.theme-transition header {
-      transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease !important;
-    }
-
     .btn,
     .sidebar-link,
     .nav-item {
@@ -775,7 +760,9 @@
       color: var(--glass-text-dim);
       border-radius: 0.5rem;
       border-left: 3px solid transparent;
-      transition: color 0.25s ease, background-color 0.25s ease;
+      transition: color 0.25s ease, background-color 0.25s ease,
+        border-color 0.3s ease, box-shadow 0.3s ease,
+        transform 0.25s ease;
     }
 
     #toc-list a:hover {
@@ -783,25 +770,24 @@
       background: hsl(var(--bc) / 0.06);
     }
 
-    /* 活跃条目：Glow Card 浮起效果 */
     #toc-list a.toc-active {
       color: var(--primary-color) !important;
       font-weight: 600;
-      /* 暗色主题默认：白色半透明卡片 */
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-left: 3px solid var(--primary-color);
       box-shadow: -4px 0 14px -2px rgba(16, 185, 129, 0.25),
         0 2px 6px rgba(0, 0, 0, 0.2);
+      transform: translateX(2px);
     }
 
-    /* 亮色主题：黑色半透明卡片 */
     :root:not([data-theme="business"]) #toc-list a.toc-active {
       background: rgba(0, 0, 0, 0.04);
       border: 1px solid rgba(0, 0, 0, 0.08);
       border-left: 3px solid var(--primary-color);
       box-shadow: -4px 0 14px -2px rgba(16, 185, 129, 0.15),
         0 2px 6px rgba(0, 0, 0, 0.06);
+      transform: translateX(2px);
     }
 
     /* TOC 缩进层级 */
@@ -826,6 +812,85 @@
     /* 英文专用字体样式 (Optional typographic tweaks for English) */
     html[data-lang="en"] body {
       font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+    }
+
+    /* 主题切换：快速淡入淡出（仅 opacity，GPU 合成零卡顿） */
+
+    /* 卡片入场 staggered fade-in */
+    @keyframes cardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .post-card {
+      opacity: 0;
+      animation: cardFadeIn 0.5s ease forwards;
+    }
+
+    .post-card:nth-child(1) {
+      animation-delay: 0.05s;
+    }
+
+    .post-card:nth-child(2) {
+      animation-delay: 0.10s;
+    }
+
+    .post-card:nth-child(3) {
+      animation-delay: 0.15s;
+    }
+
+    .post-card:nth-child(4) {
+      animation-delay: 0.20s;
+    }
+
+    .post-card:nth-child(5) {
+      animation-delay: 0.25s;
+    }
+
+    .post-card:nth-child(6) {
+      animation-delay: 0.30s;
+    }
+
+    .post-card:nth-child(7) {
+      animation-delay: 0.35s;
+    }
+
+    .post-card:nth-child(8) {
+      animation-delay: 0.40s;
+    }
+
+    .post-card:nth-child(9) {
+      animation-delay: 0.45s;
+    }
+
+    .post-card:nth-child(n+10) {
+      animation-delay: 0.50s;
+    }
+
+    /* 分类徽章悬浮微动效 */
+    .post-card .badge-primary {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .post-card:hover .badge-primary {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* 侧边栏当前页活跃指示器 */
+    .menu li>a.sidebar-link-active,
+    .menu a.sidebar-link-active {
+      color: hsl(var(--p)) !important;
+      background: hsl(var(--p) / 0.10) !important;
+      font-weight: 600;
+      transform: translateX(4px);
     }
   </style>
 
@@ -901,30 +966,12 @@
               <span class="font-medium">HOME</span>
             </a>
           </li>
-
-          <!-- 分类 (Categories) -->
-          <li class="menu-title">
-            <span class="text-xs text-base-content/50 font-bold tracking-wider">CATEGORIES</span>
-          </li>
-          {% for cat in (categories or []) %}
           <li>
-            <a href="{{ url_for('category', name=cat) }}"
+            <a href="/categories"
               class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
-              {% if cat == 'HTB' %}
-              <i class="fa-solid fa-skull text-sm"></i>
-              {% elif cat == 'Methodology' or cat == '方法论' %}
-              <i class="fa-solid fa-book-open text-sm"></i>
-              {% else %}
-              <i class="fa-solid fa-folder text-sm"></i>
-              {% endif %}
-              <span>{{ cat }}</span>
+              <i class="fa-solid fa-layer-group text-sm"></i>
+              <span>CATEGORIES</span>
             </a>
-          </li>
-          {% endfor %}
-
-          <!-- 其他页面 (Other Pages) -->
-          <li class="menu-title mt-4">
-            <span class="text-xs text-base-content/50 font-bold tracking-wider">PAGES</span>
           </li>
           <li>
             <a href="/tags" class="flex items-center gap-3 text-base-content/80 hover:text-primary transition-colors">
@@ -1140,13 +1187,20 @@
 
       updateThemeAssets(currentTheme);
 
-      // 点击切换
       themeToggle.addEventListener('click', function () {
         const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'business' ? 'corporate' : 'business';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateThemeAssets(next);
+        const next = current === 'business' ? 'lofi' : 'business';
+        document.body.style.transition = 'opacity 0.18s ease';
+        document.body.style.opacity = '0';
+        setTimeout(function () {
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          updateThemeAssets(next);
+          setTimeout(function () {
+            document.body.style.opacity = '1';
+            setTimeout(function () { document.body.style.transition = ''; }, 200);
+          }, 30);
+        }, 180);
       });
     })();
   </script>
@@ -1171,6 +1225,20 @@
         if (typeof window.rebuildTOC === 'function') {
           setTimeout(window.rebuildTOC, 150);
         }
+      });
+    })();
+  </script>
+
+  <!-- 侧边栏活跃页面高亮 (Sidebar Active Page Highlight) -->
+  <script>
+    (function () {
+      var path = window.location.pathname;
+      document.querySelectorAll('.menu a[href]').forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (!href) return;
+        var isActive = (href === '/' && path === '/') ||
+          (href !== '/' && path.startsWith(href));
+        if (isActive) a.classList.add('sidebar-link-active');
       });
     })();
   </script>

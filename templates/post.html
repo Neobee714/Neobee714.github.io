@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}{{ post.title | default('文章') }} — Neobee's Blog{% endblock %}
+{% block title %}{{ post.title or '文章' }} — Neobee's Blog{% endblock %}
 
-{% block description %}{{ post.summary | default('Hack The Box Writeup') | truncate(160) }}{% endblock %}
+{% block description %}{{ (post.summary or 'Hack The Box Writeup') | truncate(160) }}{% endblock %}
 
 {% block keywords %}{{ post.tags | join(', ') }}, {{ post.category }}, HTB, Hack The Box{% endblock %}
 
 {% block og_type %}article{% endblock %}
 
-{% block og_title %}{{ post.title | default('文章') }}{% endblock %}
+{% block og_title %}{{ post.title or '文章' }}{% endblock %}
 
-{% block og_description %}{{ post.summary | default('Hack The Box Writeup') | truncate(200) }}{% endblock %}
+{% block og_description %}{{ (post.summary or 'Hack The Box Writeup') | truncate(200) }}{% endblock %}
 
 {% block structured_data %}
 <!-- BlogPosting Schema -->
@@ -18,8 +18,8 @@
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "{{ post.title | default('文章') }}",
-  "description": "{{ post.summary | default('') | truncate(200) }}",
+  "headline": "{{ post.title or '文章' }}",
+  "description": "{{ (post.summary or '') | truncate(200) }}",
   "author": {
     "@type": "Person",
     "name": "Neobee",
@@ -39,7 +39,7 @@
     "@type": "WebPage",
     "@id": "{{ request.url }}"
   },
-  "articleSection": "{{ post.category | default('Technology') }}",
+  "articleSection": "{{ post.category or 'Technology' }}",
   "keywords": "{{ post.tags | join(', ') }}",
   "inLanguage": "zh-CN"
 }
@@ -83,7 +83,7 @@
     <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
       <header class="mb-8">
         <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">
-          <span class="lang-zh">{{ post.title | default('无标题') }}</span>
+          <span class="lang-zh">{{ post.title or '无标题' }}</span>
           <span class="lang-en">{{ post.title_en or post.title or 'Untitled' }}</span>
         </h1>
         <div class="flex flex-wrap items-center gap-4 mt-3 text-base-content/50 text-sm">
@@ -236,11 +236,6 @@
 
 <!-- Mermaid 图表支持 (Mermaid diagram support) -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-
-<!-- KaTeX 数学公式支持 (KaTeX math formula support) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {

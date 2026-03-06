@@ -6,10 +6,9 @@ import os
 import time
 import traceback
 import logging
-from collections import defaultdict
 from flask import Flask, render_template, abort, make_response, url_for, request, g, session, redirect
 from config import Config
-from services.notion_service import get_posts as get_posts_notion, get_post_content as get_post_content_notion, get_categories as get_categories_notion, get_related_posts as get_related_posts_notion, sync_to_cache
+from services.notion_service import get_posts as get_posts_notion, get_post_content as get_post_content_notion, get_categories as get_categories_notion, get_related_posts as get_related_posts_notion
 from services.local_data_service import LocalDataService
 from services.analytics import Analytics
 
@@ -480,16 +479,66 @@ def tags():
         logger.error(f"获取标签失败: {str(e)}", exc_info=True)
         return render_template('tags.html', tags=[], error=str(e))
 
+@app.route('/categories')
+@cache.cached(timeout=2592000, key_prefix='categories_page')  # 30天缓存
+def categories_page():
+    """分类页面 (Categories page)"""
+    from collections import Counter, defaultdict
+    try:
+        posts = get_posts() or []
+        # 统计所有分类
+        category_counter = Counter()
+        category_posts = defaultdict(list)
+
+        for post in posts:
+            cat = post.get('category')
+            if cat:
+                category_counter[cat] += 1
+                category_posts[cat].append(post)
+
+        # 按文章数量排序
+        categories_list = [
+            {'name': cat, 'count': count, 'posts': category_posts[cat]}
+            for cat, count in category_counter.most_common()
+        ]
+
+        return render_template('categories.html', categories_list=categories_list)
+    except Exception as e:
+        logger.error(f"获取分类页面失败: {str(e)}", exc_info=True)
+        return render_template('categories.html', categories_list=[], error=str(e))
+
 
 @app.route('/category/<name>')
-@cache.cached(timeout=2592000, key_prefix=lambda: f'category_{request.view_args.get("name")}')  # 30天缓存
 def category(name):
-    """按分类显示文章列表"""
+    """按分类显示文章列表（带分页）"""
     try:
         logger.info(f"正在获取分类文章: {name}")
-        posts = get_posts(category=name)
-        logger.info(f"分类 {name} 获取到 {len(posts)} 篇文章")
-        return render_template('index.html', posts=posts)
+        all_posts = get_posts(category=name)
+        logger.info(f"分类 {name} 获取到 {len(all_posts)} 篇文章")
+
+        page = request.args.get('page', 1, type=int)
+        per_page = 15
+        total_posts = len(all_posts)
+        total_pages = (total_posts + per_page - 1) // per_page if total_posts > 0 else 1
+        if page < 1:
+            page = 1
+        elif page > total_pages and total_pages > 0:
+            page = total_pages
+        start_idx = (page - 1) * per_page
+        posts = all_posts[start_idx:start_idx + per_page]
+
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total_posts': total_posts,
+            'total_pages': total_pages,
+            'has_prev': page > 1,
+            'has_next': page < total_pages,
+            'prev_page': page - 1 if page > 1 else None,
+            'next_page': page + 1 if page < total_pages else None
+        }
+
+        return render_template('index.html', posts=posts, pagination=pagination, category_name=name)
     except Exception as e:
         logger.error(f"获取分类 {name} 失败: {str(e)}", exc_info=True)
         traceback.print_exc()

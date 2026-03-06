@@ -5,18 +5,25 @@
 {% block content %}
   <section class="px-4 md:px-6 py-12">
     <div class="max-w-6xl mx-auto">
-      <h1 class="text-4xl font-bold text-base-content mb-8">标签</h1>
+      <h1 class="text-4xl font-bold text-base-content mb-8">
+        <span class="lang-zh">标签</span>
+        <span class="lang-en">Tags</span>
+      </h1>
 
       {% if error %}
       <div class="alert alert-error mb-6" role="alert">
-        <span>加载标签失败：{{ error }}</span>
+        <span class="lang-zh">加载标签失败：{{ error }}</span>
+        <span class="lang-en">Failed to load tags: {{ error }}</span>
       </div>
       {% endif %}
 
       {% if tags %}
         <!-- 标签云 (Tag Cloud) -->
         <div class="mb-12 p-6 bg-base-200 rounded-lg">
-          <h2 class="text-2xl font-semibold text-base-content mb-4">标签云</h2>
+          <h2 class="text-2xl font-semibold text-base-content mb-4">
+            <span class="lang-zh">标签云</span>
+            <span class="lang-en">Tag Cloud</span>
+          </h2>
           <div class="flex flex-wrap gap-3">
             {% for tag in tags %}
             <a href="#tag-{{ tag.name | urlencode }}"
@@ -43,19 +50,26 @@
               <a href="{{ url_for('post', slug=post.slug) if post.slug else '#' }}"
                  class="block p-4 rounded-lg bg-base-200 hover:bg-base-300 transition-colors group">
                 <h3 class="text-lg font-semibold text-base-content group-hover:text-primary transition-colors mb-2">
-                  {{ post.title or '无标题' }}
+                  <span class="lang-zh">{{ post.title or '无标题' }}</span>
+                  <span class="lang-en">{{ post.title_en or post.title or 'Untitled' }}</span>
                 </h3>
                 {% if post.summary %}
-                <p class="text-sm text-base-content/60 line-clamp-2 mb-2">{{ post.summary }}</p>
+                <p class="text-sm text-base-content/60 line-clamp-2 mb-2">
+                  <span class="lang-zh">{{ post.summary }}</span>
+                  <span class="lang-en">{{ post.summary_en or post.summary }}</span>
+                </p>
                 {% endif %}
                 <div class="flex items-center gap-4 text-xs text-base-content/50">
                   <span>
                     <i class="fa-regular fa-calendar"></i>
-                    {{ post.date[:10] if post.date else '未知日期' }}
+                    {{ post.date[:10] if post.date else '' }}
+                    <span class="lang-zh">{{ '未知日期' if not post.date else '' }}</span>
+                    <span class="lang-en">{{ 'Unknown' if not post.date else '' }}</span>
                   </span>
                   <span>
                     <i class="fa-regular fa-folder"></i>
-                    {{ post.category | default('Uncategorized') }}
+                    <span class="lang-zh">{{ post.category or '未分类' }}</span>
+                    <span class="lang-en">{{ post.category_en or post.category or 'Uncategorized' }}</span>
                   </span>
                 </div>
               </a>
@@ -67,7 +81,10 @@
       {% else %}
         <div class="text-center py-12 text-base-content/60">
           <i class="fa-solid fa-tags text-6xl mb-4 opacity-20"></i>
-          <p>暂无标签。</p>
+          <p>
+            <span class="lang-zh">暂无标签。</span>
+            <span class="lang-en">No tags found.</span>
+          </p>
         </div>
       {% endif %}
     </div>

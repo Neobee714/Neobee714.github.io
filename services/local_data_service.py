@@ -185,23 +185,16 @@ class LocalDataService:
             # 过滤掉当前文章
             candidates = [p for p in all_posts if p.get('slug') != current_slug]
 
-            # 计算相似度分数
             def calculate_similarity(post):
                 score = 0
                 post_tags = set(post.get('tags') or [])
                 current_tags = set(tags or [])
-
-                # 标签匹配：每个匹配的标签 +2 分
-                common_tags = post_tags & current_tags
-                score += len(common_tags) * 2
-
-                # 类别匹配：+1 分
+                score += len(post_tags & current_tags) * 2
                 if post.get('category') == category:
                     score += 1
-
                 return score
 
-            # 返回前 N 篇
+            candidates.sort(key=calculate_similarity, reverse=True)
             return candidates[:limit] if limit > 0 else []
 
         except Exception as e:

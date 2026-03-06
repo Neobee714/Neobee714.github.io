@@ -7,10 +7,9 @@ import os
 import sys
 import hashlib
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
-from datetime import datetime, timezone
 import concurrent.futures
 import threading
 
