@@ -44,7 +44,7 @@ IMAGES_DIR = DATA_DIR / 'images'
 METADATA_FILE = DATA_DIR / 'metadata.json'
 
 # 是否下载图片到本地（默认开启，避免 Notion AWS 临时链接过期）
-DOWNLOAD_IMAGES = os.environ.get('DOWNLOAD_IMAGES', 'true').lower() == 'true'
+DOWNLOAD_IMAGES = os.environ.get('DOWNLOAD_IMAGES', 'false').lower() == 'true'
 
 
 class NotionBlockRenderer:
@@ -260,6 +260,11 @@ def sync_posts(clean=True):
                             'title': post_data['title'],
                             'date': post_data['date'],
                             'category': post_data['category'],
+                            'tags': post_data.get('tags', []),
+                            'summary': post_data.get('summary', ''),
+                            'icon': post_data.get('icon', {'type': 'emoji', 'value': '📝'}),
+                            'cover': post_data.get('cover', ''),
+                            'status': post_data.get('status', '已完成'),
                         })
                         if post_data.get('category'):
                             categories.add(post_data['category'])
