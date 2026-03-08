@@ -38,6 +38,24 @@
 </div>
 {% endif %}
 
+{% if posts %}
+<section class="mb-8 p-4 rounded-xl border border-base-content/10 bg-base-200/40">
+  <h3 class="text-sm font-semibold text-base-content/70 mb-3">
+    <span class="lang-zh">文章索引（SEO）</span>
+    <span class="lang-en">Post Index (SEO)</span>
+  </h3>
+  <ul class="list-disc list-inside space-y-1 text-sm text-base-content/80">
+    {% for p in posts[:20] %}
+    {% if p.slug %}
+    <li>
+      <a href="{{ url_for('post', slug=p.slug) }}" class="link link-hover text-primary/90">{{ p.title or p.slug }}</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <div id="posts-container">
   
   {% if not q and not category_name and (not pagination or pagination.page == 1) %}

@@ -16,6 +16,7 @@
   <meta name="description"
     content="{% block description %}Hack The Box Writeups & Cybersecurity Methodology - Neobee's personal blog{% endblock %}">
   <meta name="author" content="Neobee">
+  <meta name="robots" content="index, follow">
   <meta name="keywords"
     content="{% block keywords %}Hack The Box, HTB, Cybersecurity, Penetration Testing, CTF, Writeups{% endblock %}">
 
@@ -56,7 +57,7 @@
     href="{{ url_for('rss_feed', _external=True) }}">
 
   <!-- Canonical URL -->
-  <link rel="canonical" href="{% block canonical %}{{ request.url_root.rstrip('/') }}{{ request.path }}{% endblock %}">
+  <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}">
 
   <!-- Google Fonts: Inter (正文) + JetBrains Mono (代码) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
