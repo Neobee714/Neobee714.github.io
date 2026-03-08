@@ -1,0 +1,71 @@
+/* =========================================
+   static/css/base.css
+   Base utility overrides and animations
+   ========================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.font-mono,
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+a {
+  color: var(--primary-color);
+}
+
+a:hover {
+  color: var(--secondary-color);
+}
+
+.btn,
+.sidebar-link,
+.nav-item {
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+}
+
+.badge-accent {
+  background-color: var(--accent-color) !important;
+}
+
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.text-secondary {
+  color: var(--secondary-color) !important;
+}
+
+.text-accent {
+  color: var(--accent-color) !important;
+}
+
+/* Global Language Toggle Logic */
+html[data-lang="zh"] .lang-en {
+  display: none !important;
+}
+
+html[data-lang="en"] .lang-zh {
+  display: none !important;
+}
+
+html[data-lang="en"] body {
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+}

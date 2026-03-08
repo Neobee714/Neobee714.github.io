@@ -1,0 +1,227 @@
+/* =========================================
+   static/css/code.css
+   Prism.js overrides & Code block styling
+   ========================================= */
+
+div.code-toolbar > pre,
+.prose pre[class*="language-"] {
+  background-color: var(--code-bg) !important;
+  border-radius: 0 0 0.75rem 0.75rem !important;
+  padding: 1rem 1rem 1.25rem 1rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid var(--code-border) !important;
+  border-top: none !important;
+}
+
+div.code-toolbar > pre.line-numbers,
+.prose pre.line-numbers[class*="language-"] {
+  padding-left: 4.5rem !important;
+}
+
+pre {
+  overflow-x: auto !important;
+  white-space: pre !important;
+}
+
+code {
+  white-space: pre !important;
+}
+
+.code-block-wrapper {
+  position: relative;
+  margin-top: 1.5em; /* Spacing matched for comfortable reading */
+  margin-bottom: 2em;
+  border-radius: 0.75rem;
+}
+
+.code-block-wrapper.is-collapsed pre {
+  max-height: 480px;
+  overflow-y: hidden !important; 
+}
+
+.code-block-wrapper.is-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: linear-gradient(to bottom, transparent, var(--code-bg));
+  pointer-events: none;
+  z-index: 10;
+}
+
+.code-expand-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: hsl(var(--bc) / 0.1);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--code-border);
+  color: var(--glass-text-strong);
+  padding: 0.25rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.code-expand-btn:hover {
+  background: hsl(var(--bc) / 0.2);
+  opacity: 1;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--code-header-bg);
+  border: 1px solid var(--code-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem 0.75rem 0 0;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  min-height: 38px;
+}
+
+.code-header .code-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--glass-text-strong);
+  background: hsl(var(--bc) / 0.1);
+  border: 1px solid var(--code-border);
+  border-radius: 9999px;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.code-header .code-lang i {
+  font-size: 0.6rem;
+  color: var(--glass-text-dim);
+}
+
+div.code-toolbar > pre > code,
+.prose code[class*="language-"],
+.prose pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+  text-shadow: none !important;
+  line-height: 1.7 !important; /* improved readability */
+}
+
+/* Original Prism toolbar fixes */
+div.code-toolbar {
+  position: relative !important;
+}
+
+div.code-toolbar > .toolbar {
+  position: absolute !important;
+  top: 0.5rem !important;
+  right: 0.5rem !important;
+  opacity: 1 !important;
+  z-index: 20 !important;
+}
+
+div.code-toolbar > .toolbar button {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border: none !important;
+  cursor: pointer;
+  font-size: 0.75rem !important;
+  transition: all 0.2s ease !important;
+}
+
+div.code-toolbar > .toolbar button:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+.copy-code-btn {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0.375rem !important;
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.75rem !important;
+  transition: all 0.2s ease !important;
+  min-height: unset !important;
+  height: auto !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.copy-code-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+.copy-code-btn.copied {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+.line-numbers .line-numbers-rows {
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-right: 0.75rem !important;
+  opacity: 0.5; /* Weaken line numbers */
+}
+
+.line-numbers .line-numbers-rows > span::before {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* =========================================
+   Notion Inline Code Styling & Colors
+   ========================================= */
+
+.post-content code.notion-inline-code,
+.prose code.notion-inline-code {
+  background-color: rgba(255,255,255,0.06) !important;
+  color: #fb923c !important;
+  padding: 0.2em 0.4em !important;
+  border-radius: 0.375rem !important; /* Milder bg, subtle corners */
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-size: 0.85em !important;
+  border: 1px solid rgba(255,255,255, 0.08) !important;
+  word-break: break-word !important;
+}
+
+.notion-inline-code {
+  color: #fb923c !important;
+}
+
+code.notion-inline-code.notion-text[data-notion-color="gray"] { color: #9ca3af !important; }
+code.notion-inline-code.notion-text[data-notion-color="brown"] { color: #d97706 !important; }
+code.notion-inline-code.notion-text[data-notion-color="orange"] { color: #fb923c !important; }
+code.notion-inline-code.notion-text[data-notion-color="yellow"] { color: #fbbf24 !important; }
+code.notion-inline-code.notion-text[data-notion-color="green"] { color: #4ade80 !important; }
+code.notion-inline-code.notion-text[data-notion-color="blue"] { color: #60a5fa !important; }
+code.notion-inline-code.notion-text[data-notion-color="purple"] { color: #c084fc !important; }
+code.notion-inline-code.notion-text[data-notion-color="pink"] { color: #f472b6 !important; }
+code.notion-inline-code.notion-text[data-notion-color="red"] { color: #f87171 !important; }
+
+code.notion-inline-code.notion-text[data-notion-color="gray-bg"] { background-color: rgba(107, 114, 128, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="brown-bg"] { background-color: rgba(217, 119, 6, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="orange-bg"] { background-color: rgba(251, 146, 60, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="yellow-bg"] { background-color: rgba(251, 191, 36, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="green-bg"] { background-color: rgba(74, 222, 128, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="blue-bg"] { background-color: rgba(96, 165, 250, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="purple-bg"] { background-color: rgba(192, 132, 252, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="pink-bg"] { background-color: rgba(244, 114, 182, 0.3) !important; }
+code.notion-inline-code.notion-text[data-notion-color="red-bg"] { background-color: rgba(248, 113, 113, 0.3) !important; color: #fca5a5 !important; }

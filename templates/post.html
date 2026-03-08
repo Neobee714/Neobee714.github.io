@@ -67,92 +67,81 @@
 <!-- Prism.js 行号插件样式 -->
 <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css"
   rel="stylesheet">
-<style>
-  pre[class*="language-"],
-  code[class*="language-"] {
-    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
-    font-size: 0.875rem;
-  }
 
-  .post-content pre {
-    margin: 0;
-    border-radius: 0 0 0.75rem 0.75rem;
-    overflow-x: auto;
-    position: relative;
-    background-color: transparent !important;
-  }
-
-  /* 代码块使用 DaisyUI 主题色 */
-  .post-content pre code {
-    background-color: transparent !important;
-    color: inherit !important;
-  }
-
-  .post-content :first-child {
-    margin-top: 0;
-  }
-</style>
 {% endblock %}
 
 {% block content %}
 <article class="px-4 md:px-6 py-8 md:py-12">
   <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-4 lg:gap-8">
     <div class="lg:col-span-3 min-w-0 overflow-x-hidden">
-      <header class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-base-content leading-tight">
+            <header class="mb-10">
+        {% if post.category %}
+        <div class="mb-4 flex items-center gap-3">
+          <span class="text-primary font-mono text-sm tracking-wide uppercase flex items-center gap-1.5 opacity-90">
+            <i class="fa-solid fa-folder-open text-xs"></i>
+            <span class="lang-zh">{{ post.category }}</span>
+            <span class="lang-en">{{ post.category_en or post.category }}</span>
+          </span>
+          {% if post.tags %}
+          <div class="flex items-center gap-2 border-l border-base-content/20 pl-3">
+            {% for tag in post.tags[:4] %}
+            <span class="badge badge-sm badge-outline border-base-content/20 text-base-content/60 font-mono text-xs">{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <h1 class="text-3xl md:text-4xl xl:text-[42px] font-bold text-base-content leading-[1.3] tracking-tight group-hover:text-primary transition-colors">
           <span class="lang-zh">{{ post.title or '无标题' }}</span>
           <span class="lang-en">{{ post.title_en or post.title or 'Untitled' }}</span>
         </h1>
-        <div class="flex flex-wrap items-center gap-4 mt-3 text-base-content/50 text-sm">
+
+        <div class="flex flex-wrap shadow-sm items-center gap-4 py-3.5 px-5 rounded-2xl bg-base-200 border border-base-content/5 text-base-content/60 text-sm font-medium mt-6">
           {% if post.date %}
           <span class="flex items-center gap-2">
-            <i class="fa-regular fa-calendar"></i>
+            <i class="fa-regular fa-calendar text-primary/70"></i>
             {{ post.date[:10] }}
           </span>
           {% endif %}
+          
           {% if post.reading_time %}
           <span class="flex items-center gap-2">
-            <i class="fa-regular fa-clock"></i>
-            <span class="lang-zh">约 {{ post.reading_time }} 分钟阅读</span>
+            <i class="fa-regular fa-clock text-primary/70"></i>
+            <span class="lang-zh">约 {{ post.reading_time }}</span>
             <span class="lang-en">{{ post.reading_time }} read</span>
           </span>
           {% endif %}
 
-          <!-- 翻译切换 (Translate Toggle) - 小巧 pill 样式 -->
-          <button id="translate-toggle-btn" onclick="var g=document.getElementById('lang-toggle');if(g)g.click();"
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
-            style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">
-            <i class="fa-solid fa-language text-[11px]"></i>
-            <span class="lang-zh">EN</span>
-            <span class="lang-en">中文</span>
-          </button>
+          <div class="flex items-center gap-2 xl:gap-3 ml-auto">
+            <!-- 翻译切换 -->
+            <button id="translate-toggle-btn" onclick="var g=document.getElementById('lang-toggle');if(g)g.click();"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:bg-base-content/10 border border-transparent hover:border-base-content/10">
+              <i class="fa-solid fa-language text-sm"></i>
+              <span class="lang-zh">EN</span>
+              <span class="lang-en">中文</span>
+            </button>
 
-          <!-- 分享按钮 (Share Button) -->
-          <button id="share-btn" onclick="copyShareLink()"
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
-            style="background: rgba(99,102,241,0.15); color: #6366f1; border: 1px solid rgba(99,102,241,0.3);">
-            <i class="fa-solid fa-share-nodes text-[11px]"></i>
-            <span class="lang-zh">分享</span>
-            <span class="lang-en">Share</span>
-          </button>
+            <!-- 分享按钮 -->
+            <button id="share-btn" onclick="copyShareLink()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:bg-base-content/10 border border-transparent hover:border-base-content/10">
+              <i class="fa-solid fa-share-nodes text-sm"></i>
+              <span class="lang-zh">分享</span>
+              <span class="lang-en">Share</span>
+            </button>
+          </div>
         </div>
-        {% if post.tags %}
-        <div class="flex flex-wrap gap-2 mt-3">
-          {% for tag in post.tags %}
-          <span class="badge badge-outline badge-sm">{{ tag }}</span>
-          {% endfor %}
-        </div>
-        {% endif %}
       </header>
 
-      <div class="post-content prose prose-base max-w-none text-base-content/90 leading-relaxed">
+      <div class="post-content prose prose-base text-base-content/90">
 
         <!-- 简介引言区 (Summary Quote) - 无条件显示 -->
         {% if post.summary %}
         <blockquote
-          class="text-base-content/70 italic mb-8 border-l-4 border-primary pl-4 bg-base-200 py-3 rounded-r-lg">
-          <span class="lang-zh">{{ post.summary }}</span>
-          <span class="lang-en">{{ post.summary_en or post.summary }}</span>
+          class="text-base-content/70 italic mb-10 mt-2 border-l-4 border-primary pl-5 bg-base-200 py-4 pr-5 rounded-r-xl shadow-sm text-[16px] leading-relaxed relative overflow-hidden">
+          <i class="fa-solid fa-quote-left absolute opacity-5 -top-2 left-4 text-4xl"></i>
+          <span class="lang-zh relative z-10">{{ post.summary }}</span>
+          <span class="lang-en relative z-10">{{ post.summary_en or post.summary }}</span>
         </blockquote>
         {% endif %}
 
