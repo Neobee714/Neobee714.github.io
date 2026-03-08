@@ -12,6 +12,15 @@ from services.notion_service import get_posts as get_posts_notion, get_post_cont
 from services.local_data_service import LocalDataService
 from services.analytics import Analytics
 
+
+def ensure_https_url(url: str) -> str:
+    """确保 URL 使用 HTTPS。"""
+    if not url:
+        return url
+    if url.startswith('http://'):
+        return 'https://' + url[len('http://'):]
+    return url
+
 # 数据源选择：优先使用本地数据，如果不可用则回退到 Notion API
 def get_posts(category=None):
     """获取文章列表（优先本地数据）"""
@@ -180,7 +189,12 @@ def inject_global_vars():
     except Exception:
         recent = []
         
-    return {'categories': cats, 'recent_posts': recent}
+    canonical = ensure_https_url(f"{request.url_root.rstrip('/')}{request.path}")
+    return {
+        'categories': cats,
+        'recent_posts': recent,
+        'canonical_url': canonical
+    }
 
 @cache.cached(timeout=600, key_prefix='categories')
 def _get_cached_categories():
@@ -615,8 +629,8 @@ def sitemap():
         posts = []
 
     # build XML
-    host_index = url_for('index', _external=True)
-    host_about = url_for('about', _external=True)
+    host_index = ensure_https_url(url_for('index', _external=True))
+    host_about = ensure_https_url(url_for('about', _external=True))
     url_entries = []
 
     def fmt_date(d):
@@ -643,7 +657,7 @@ def sitemap():
         slug = p.get('slug') or ''
         if not slug:
             continue
-        loc = url_for('post', slug=slug, _external=True)
+        loc = ensure_https_url(url_for('post', slug=slug, _external=True))
         lastmod = fmt_date(p.get('date'))
         url_entries.append({
             'loc': loc,
@@ -672,10 +686,10 @@ def sitemap():
 @app.route('/robots.txt')
 def robots():
     """动态生成 robots.txt"""
-    sitemap_url = url_for('sitemap', _external=True)
+    sitemap_url = 'https://neobee.top/sitemap.xml'
     lines = [
         "User-agent: *",
-        "Disallow:",
+        "Allow: /",
         "",
         f"Sitemap: {sitemap_url}"
     ]
