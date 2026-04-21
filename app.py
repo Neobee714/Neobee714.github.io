@@ -84,6 +84,8 @@ except Exception:
             def deco(f):
                 return f
             return deco
+        def exempt(self, f):
+            return f
     def get_remote_address():
         return '127.0.0.1'
 
@@ -136,6 +138,9 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"
 )
+
+# Local image files are served from disk and should not consume request quota.
+limiter.exempt(serve_image)
 
 # 配置日志系统
 logging.basicConfig(
