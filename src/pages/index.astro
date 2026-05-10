@@ -1,84 +1,128 @@
 ---
 /**
- * Homepage — Hero, featured post, post grid.
+ * Homepage — Hero title, search, tag filter pills, 3-column card grid.
+ * Premium minimal design.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import Hero from '@/components/Hero.astro';
 import SearchModal from '@/components/SearchModal.astro';
-import FeaturedPost from '@/components/FeaturedPost.astro';
 import PostCard from '@/components/PostCard.astro';
 import { getPublishedPosts } from '@/lib/obsidian-parser';
 
 const posts = await getPublishedPosts();
-const featured = posts[0];
-const gridPosts = posts.slice(1, 13);
+
+// Collect unique categories for filter pills
+const allCategories = [...new Set(posts.map((p) => {
+  const segs = p.id.replace(/\.md$/, '').split('/');
+  return segs.length > 1 ? segs[0] : '';
+}).filter(Boolean))];
 ---
 
 <BaseLayout title="Xyvora - Web Security & CTF Notes">
-  <Hero />
   <SearchModal />
 
-  <section class="homepage-posts">
-    {featured && (
-      <div class="homepage-posts__featured">
-        <h2 class="homepage-posts__heading">
-          <span class="lang-zh">最新文章</span>
-          <span class="lang-en">Latest Post</span>
-        </h2>
-        <FeaturedPost post={featured} />
-      </div>
-    )}
+  <!-- Hero Section -->
+  <section class="max-w-6xl mx-auto px-6 pt-20 pb-10">
+    <h1 class="text-6xl md:text-8xl font-semibold tracking-tight text-[var(--text)]">Xyvora</h1>
+    <p class="mt-5 text-xl max-w-2xl text-[var(--text-muted)]">
+      <span class="lang-zh">安全研究 · 渗透测试 · 技术笔记</span>
+      <span class="lang-en">Security Research · Pentesting · Tech Notes</span>
+    </p>
 
-    {gridPosts.length > 0 && (
-      <div class="homepage-posts__grid-section">
-        <h2 class="homepage-posts__heading">
-          <span class="lang-zh">更多文章</span>
-          <span class="lang-en">More Posts</span>
-        </h2>
-        <div class="homepage-posts__grid">
-          {gridPosts.map((post) => (
-            <PostCard post={post} />
-          ))}
-        </div>
-      </div>
-    )}
+    <!-- Inline Search -->
+    <div class="max-w-xl mt-8 relative">
+      <svg class="absolute left-4 top-4 w-5 h-5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M20 20l-3.5-3.5"></path>
+      </svg>
+      <input
+        id="homepage-search"
+        type="text"
+        class="w-full pl-11 pr-4 py-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-hover)] transition-colors"
+        placeholder="Search articles..."
+      />
+    </div>
 
-    {posts.length === 0 && (
-      <div class="homepage-posts__empty">
-        <p class="lang-zh">暂无文章</p>
-        <p class="lang-en">No posts yet</p>
+    <!-- Tag Filter Pills -->
+    {allCategories.length > 0 && (
+      <div class="flex flex-wrap gap-3 mt-8" id="tag-filters">
+        <button
+          class="filter-pill px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text)] bg-[var(--bg-card)] cursor-pointer transition-colors hover:border-[var(--border-hover)]"
+          data-filter="all"
+        >
+          All
+        </button>
+        {allCategories.map((cat) => (
+          <button
+            class="filter-pill px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text)] bg-[var(--bg-card)] cursor-pointer transition-colors hover:border-[var(--border-hover)]"
+            data-filter={cat}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
     )}
   </section>
+
+  <!-- Card Grid -->
+  <section class="max-w-6xl mx-auto px-6 grid lg:grid-cols-3 md:grid-cols-2 gap-6 pb-24" id="posts-grid">
+    {posts.map((post) => (
+      <PostCard post={post} />
+    ))}
+  </section>
+
+  {posts.length === 0 && (
+    <div class="max-w-6xl mx-auto px-6 text-center py-16 text-[var(--text-muted)]">
+      <p class="lang-zh">暂无文章</p>
+      <p class="lang-en">No posts yet</p>
+    </div>
+  )}
 </BaseLayout>
 
-<style>
-  .homepage-posts {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem 4rem;
+<script>
+  function initHomepageFilters() {
+    const searchInput = document.getElementById('homepage-search') as HTMLInputElement | null;
+    const grid = document.getElementById('posts-grid');
+    const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
+    if (!grid) return;
+
+    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>('.post-card'));
+    let activeFilter = 'all';
+
+    function filterCards() {
+      const query = (searchInput?.value || '').toLowerCase();
+      cards.forEach((card) => {
+        const title = (card.dataset.title || '').toLowerCase();
+        const slug = (card.dataset.slug || '').toLowerCase();
+        const category = (card.dataset.category || '').toLowerCase();
+        const tags = (card.dataset.tags || '').toLowerCase();
+
+        const matchesSearch = !query || title.includes(query) || slug.includes(query) || tags.includes(query);
+        const matchesFilter = activeFilter === 'all' || category === activeFilter.toLowerCase();
+
+        card.style.display = matchesSearch && matchesFilter ? '' : 'none';
+      });
+    }
+
+    searchInput?.addEventListener('input', filterCards);
+
+    pills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        activeFilter = pill.dataset.filter || 'all';
+        pills.forEach((p) => {
+          p.classList.toggle('bg-zinc-800', p === pill);
+          p.classList.toggle('text-white', p === pill);
+        });
+        filterCards();
+      });
+    });
+
+    // Activate "All" pill by default
+    const allPill = document.querySelector('[data-filter="all"]') as HTMLButtonElement | null;
+    if (allPill) {
+      allPill.classList.add('bg-zinc-800', 'text-white');
+    }
   }
 
-  .homepage-posts__heading {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 1.5rem;
-    color: var(--text);
-  }
-
-  .homepage-posts__featured {
-    margin-bottom: 3rem;
-  }
-
-  .homepage-posts__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .homepage-posts__empty {
-    text-align: center;
-    padding: 4rem 0;
-    color: var(--text-dim);
-  }
-</style>
+  initHomepageFilters();
+  document.addEventListener('astro:after-swap', initHomepageFilters);
+</script>

@@ -1,58 +1,9 @@
 ---
 /**
- * Footer — simple site footer.
- * Copyright, GitHub link, RSS link.
+ * Footer — minimal footer with border-top and centered copyright.
  */
 ---
 
-<footer class="site-footer">
-  <div class="site-footer__inner">
-    <p class="site-footer__copy">© 2024 Xyvora</p>
-    <div class="site-footer__links">
-      <a href="https://github.com/Neobee714" target="_blank" rel="noopener" class="site-footer__link">
-        GitHub
-      </a>
-      <a href="/rss.xml" class="site-footer__link">
-        RSS
-      </a>
-    </div>
-  </div>
+<footer class="border-t border-[var(--border)] py-10 text-center text-sm text-[var(--text-muted)]">
+  © 2026 Xyvora
 </footer>
-
-<style>
-  .site-footer {
-    border-top: 1px solid var(--border);
-    padding: 2rem 1.5rem;
-    margin-top: 4rem;
-  }
-
-  .site-footer__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .site-footer__copy {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--text-dim);
-  }
-
-  .site-footer__links {
-    display: flex;
-    gap: 1rem;
-  }
-
-  .site-footer__link {
-    font-size: 0.8125rem;
-    color: var(--text-dim);
-    text-decoration: none;
-    transition: color 0.15s ease;
-  }
-
-  .site-footer__link:hover {
-    color: var(--primary);
-  }
-</style>

@@ -2,7 +2,7 @@
 /**
  * AICover — decorative placeholder card when no cover image exists.
  * Maps category to a gradient color scheme; renders title + category badge
- * over a CSS grid pattern. Pure CSS, no external dependencies.
+ * over a CSS grid pattern. Matches premium minimal design.
  *
  * Validates: REQ-07-3, REQ-07-6
  */
@@ -14,89 +14,28 @@ interface Props {
 
 const { category = '', title, slug } = Astro.props;
 
-// Category → gradient color mapping
-const gradientMap: Record<string, { from: string; to: string }> = {
-  HTB:         { from: '#10b981', to: '#059669' },
-  方法论:      { from: '#8b5cf6', to: '#6d28d9' },
-  PortSwigger: { from: '#f59e0b', to: '#d97706' },
-  工具:        { from: '#3b82f6', to: '#2563eb' },
+// Category → Tailwind gradient class mapping
+const gradientMap: Record<string, string> = {
+  HTB:         'from-emerald-500/20',
+  Security:    'from-cyan-500/20',
+  方法论:      'from-cyan-500/20',
+  PortSwigger: 'from-rose-500/20',
+  工具:        'from-indigo-500/20',
+  Tech:        'from-indigo-500/20',
+  CTF:         'from-violet-500/20',
 };
-const defaultGradient = { from: '#6b7280', to: '#4b5563' };
-
-const gradient = gradientMap[category] || defaultGradient;
+const gradientClass = gradientMap[category] || 'from-zinc-500/20';
 ---
 
 <div
-  class="ai-cover"
-  style={`--grad-from: ${gradient.from}; --grad-to: ${gradient.to};`}
+  class="ai-cover h-48 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] relative overflow-hidden"
   data-slug={slug}
 >
-  <div class="ai-cover__gradient"></div>
-  <div class="ai-cover__grid"></div>
-  <div class="ai-cover__badge">{category || 'Blog'}</div>
-  <div class="ai-cover__title">
-    <h3>{title}</h3>
+  <div class={`absolute inset-0 bg-gradient-to-br ${gradientClass} to-transparent`}></div>
+  <div class="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:22px_22px]"></div>
+  <div class="absolute top-4 left-4 text-[10px] uppercase tracking-[0.3em] text-zinc-400">AI Cover</div>
+  <div class="absolute left-5 right-5 bottom-5">
+    <div class="text-xs uppercase tracking-[0.25em] text-zinc-400">{category || 'Blog'}</div>
+    <h3 class="mt-2 text-xl font-semibold leading-tight text-[var(--text)] m-0 line-clamp-2">{title}</h3>
   </div>
 </div>
-
-<style>
-  .ai-cover {
-    position: relative;
-    overflow: hidden;
-    border-radius: 1rem;
-    aspect-ratio: 16 / 9;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-  }
-
-  .ai-cover__gradient {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-    opacity: 0.85;
-  }
-
-  .ai-cover__grid {
-    position: absolute;
-    inset: 0;
-    opacity: 0.15;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  .ai-cover__badge {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    font-size: 0.625rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: rgba(255, 255, 255, 0.8);
-    background: rgba(0, 0, 0, 0.25);
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-weight: 500;
-  }
-
-  .ai-cover__title {
-    position: absolute;
-    left: 1.25rem;
-    right: 1.25rem;
-    bottom: 1.25rem;
-  }
-
-  .ai-cover__title h3 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    line-height: 1.4;
-    color: #ffffff;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-</style>

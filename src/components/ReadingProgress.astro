@@ -1,7 +1,7 @@
 ---
 /**
  * ReadingProgress — fixed top bar showing scroll progress.
- * Pure CSS + vanilla JS.
+ * Uses accent color (cyan-500).
  */
 ---
 
@@ -12,9 +12,9 @@
     position: fixed;
     top: 0;
     left: 0;
-    height: 2px;
+    height: 1px;
     width: 0%;
-    background: var(--primary);
+    background: var(--accent);
     z-index: 9999;
     transition: width 0.1s linear;
     pointer-events: none;

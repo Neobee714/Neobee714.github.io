@@ -1,23 +1,15 @@
-/* Global styles — imports theme tokens and sets base defaults */
-
 @import 'tailwindcss';
 @import './theme.css';
 @import './callout.css';
 
-/* Language visibility toggle (single-page CSS switch) */
 html[data-lang='zh'] .lang-en { display: none; }
 html[data-lang='en'] .lang-zh { display: none; }
 
-/* Base body styles using theme tokens */
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Utility classes for theme tokens */
-.text-dim { color: var(--text-dim); }
-.bg-elevated { background-color: var(--bg-elevated); }
-.bg-card { background-color: var(--bg-card); }
-.border-theme { border-color: var(--border); }
+.text-muted { color: var(--text-muted); }

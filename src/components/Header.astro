@@ -1,165 +1,19 @@
 ---
 /**
- * Header — site navigation bar.
- * Logo, nav links, ThemeToggle, LangToggle.
- * Responsive with hamburger menu on mobile.
+ * Header — minimal site header.
+ * Brand "Xyvora" on left, theme toggle + lang toggle on right.
+ * Backdrop blur with semi-transparent background.
  */
 import ThemeToggle from './ThemeToggle.astro';
 import LangToggle from './LangToggle.astro';
 ---
 
-<header class="site-header">
-  <div class="site-header__inner">
-    <a href="/" class="site-header__logo">Xyvora</a>
-
-    <nav class="site-header__nav" id="header-nav">
-      <a href="/" class="site-header__link">
-        <span class="lang-zh">首页</span>
-        <span class="lang-en">Home</span>
-      </a>
-      <a href="/archives/" class="site-header__link">
-        <span class="lang-zh">归档</span>
-        <span class="lang-en">Archives</span>
-      </a>
-      <a href="/tags/" class="site-header__link">
-        <span class="lang-zh">标签</span>
-        <span class="lang-en">Tags</span>
-      </a>
-      <a href="/categories/" class="site-header__link">
-        <span class="lang-zh">分类</span>
-        <span class="lang-en">Categories</span>
-      </a>
-      <a href="/about/" class="site-header__link">
-        <span class="lang-zh">关于</span>
-        <span class="lang-en">About</span>
-      </a>
-    </nav>
-
-    <div class="site-header__actions">
+<header class="sticky top-0 z-50 backdrop-blur-xl border-b border-[var(--border)]" style="background: color-mix(in srgb, var(--bg) 75%, transparent);">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+    <a href="/" class="text-xl font-semibold text-[var(--text)] no-underline">Xyvora</a>
+    <div class="flex items-center gap-1">
       <ThemeToggle />
       <LangToggle />
-      <button
-        id="header-menu-btn"
-        type="button"
-        class="site-header__menu-btn"
-        aria-label="Toggle menu"
-        aria-expanded="false"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path class="menu-icon-open" d="M3 12h18M3 6h18M3 18h18" />
-          <path class="menu-icon-close" d="M18 6L6 18M6 6l12 12" style="display:none" />
-        </svg>
-      </button>
     </div>
   </div>
 </header>
-
-<style>
-  .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(8px);
-  }
-
-  .site-header__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0.75rem 1.5rem;
-  }
-
-  .site-header__logo {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--primary);
-    text-decoration: none;
-  }
-
-  .site-header__nav {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .site-header__link {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    text-decoration: none;
-    transition: color 0.15s ease;
-  }
-
-  .site-header__link:hover {
-    color: var(--primary);
-  }
-
-  .site-header__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .site-header__menu-btn {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    border-radius: 0.5rem;
-  }
-
-  .site-header__menu-btn:hover {
-    background: var(--primary-soft);
-  }
-
-  @media (max-width: 768px) {
-    .site-header__nav {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      flex-direction: column;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-      gap: 0.75rem;
-      display: none;
-    }
-
-    .site-header__nav.open {
-      display: flex;
-    }
-
-    .site-header__menu-btn {
-      display: flex;
-    }
-  }
-</style>
-
-<script>
-  function initHeader() {
-    const btn = document.getElementById('header-menu-btn');
-    const nav = document.getElementById('header-nav');
-    if (!btn || !nav) return;
-
-    btn.addEventListener('click', () => {
-      const isOpen = nav.classList.toggle('open');
-      btn.setAttribute('aria-expanded', String(isOpen));
-      const openIcon = btn.querySelector('.menu-icon-open') as SVGElement;
-      const closeIcon = btn.querySelector('.menu-icon-close') as SVGElement;
-      if (openIcon) openIcon.style.display = isOpen ? 'none' : '';
-      if (closeIcon) closeIcon.style.display = isOpen ? '' : 'none';
-    });
-  }
-
-  initHeader();
-  document.addEventListener('astro:after-swap', initHeader);
-</script>
