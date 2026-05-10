@@ -414,32 +414,32 @@
 
 ## Phase 6：翻译脚本
 
-- [ ] **6.1 脚本依赖**
+- [x] **6.1 脚本依赖**
   - Req: REQ-13-8
   - 文件：`scripts/requirements.txt`
   - 内容：`openai>=1.0`、`python-frontmatter>=1.0`、`requests>=2.31`
   - Done when：`pip install -r scripts/requirements.txt` 成功
 
-- [ ] **6.2 frontmatter 工具**
+- [x] **6.2 frontmatter 工具**
   - Req: REQ-10-10
   - 文件：`scripts/lib/frontmatter.py`
   - 函数：`read_note(path) -> (fm, body)`、`write_note(path, fm, body)`
   - 用 `python-frontmatter` 但保持中文字段原名不变
   - Done when：读写同一文件内容无损
 
-- [ ] **6.3 source_hash 计算**
+- [x] **6.3 source_hash 计算**
   - Req: REQ-10-5, REQ-10-6, REQ-10-7
   - 文件：`scripts/lib/hash_util.py`
   - design §7.3 实现
   - Done when：同一文件多次计算哈希一致；改动 `简介` 或 body 哈希变化；改动文件 `mtime` 不变哈希
 
-- [ ] **6.4 按标题切块**
+- [x] **6.4 按标题切块**
   - Req: REQ-10-14
   - 文件：`scripts/lib/chunker.py`
   - design §7.4 实现
   - Done when：超长文本按 h1/h2 正确切分；短文不切
 
-- [ ] **6.5 LLM 客户端封装**
+- [x] **6.5 LLM 客户端封装**
   - Req: REQ-10-13
   - 文件：`scripts/lib/llm_client.py`
   - `LlmClient.from_env()` 读 `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL`
@@ -447,7 +447,7 @@
   - 重试 3 次，指数退避
   - Done when：能成功调用一次返回翻译
 
-- [ ] **6.6 翻译主入口**
+- [x] **6.6 翻译主入口**
   - Req: REQ-10-1 ~ REQ-10-12
   - 文件：`scripts/translate.py`
   - design §7.1 完整实现：
@@ -462,7 +462,7 @@
     - `--only htb-bruno` 单独翻一篇成功写回 `.en.md`
     - 再跑一次无改动 → 报告 "cached"
 
-- [ ] **6.7 System Prompt 校准**
+- [x] **6.7 System Prompt 校准**
   - Req: REQ-10-9
   - 位置：`scripts/translate.py` 中的 system prompt 常量
   - design §7.5 的文案；做 3 次实测：
