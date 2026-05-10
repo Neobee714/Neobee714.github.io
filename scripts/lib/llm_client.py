@@ -84,6 +84,8 @@ class LlmClient:
                     temperature=0.3,
                 )
 
+                if not response.choices:
+                    raise ValueError("LLM returned empty choices")
                 text = response.choices[0].message.content or ""
                 tokens = response.usage.total_tokens if response.usage else 0
 
