@@ -1,0 +1,62 @@
+---
+// Phase 3 smoke test: render a real post.
+// Deleted after Phase 3 verification.
+import { getPublishedPosts } from '@/lib/obsidian-parser';
+import { render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  // Prefer the syntax-sanity test note if present, plus 2 real posts.
+  const sanity = posts.find((p) => p.data.Slug === '_syntax-sanity');
+  const others = posts.filter((p) => p.data.Slug !== '_syntax-sanity').slice(0, 2);
+  const picked = sanity ? [sanity, ...others] : posts.slice(0, 3);
+  return picked.map((post) => ({
+    params: { slug: post.data.Slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+---
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>{post.data.Slug} · Phase 3 Test</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui; max-width: 900px; margin: 2rem auto; padding: 0 1.2rem; color: #1f2937; line-height: 1.6; }
+      h1, h2, h3 { color: #111827; }
+      pre { background: #f3f4f6; padding: 1rem; overflow-x: auto; border-radius: 6px; }
+      code { background: #f3f4f6; padding: 0 4px; border-radius: 3px; }
+      pre code { background: transparent; padding: 0; }
+      img { max-width: 100%; height: auto; border-radius: 4px; }
+      .callout { border-left: 4px solid #3b82f6; padding: 12px 16px; margin: 1em 0; background: #eff6ff; border-radius: 4px; }
+      .callout-warning { border-color: #f59e0b; background: #fffbeb; }
+      .callout-danger  { border-color: #ef4444; background: #fef2f2; }
+      .callout-success { border-color: #10b981; background: #ecfdf5; }
+      .callout-title { font-weight: 600; margin-bottom: 4px; }
+      .wiki-link { color: #0ea5e9; }
+      .wiki-link.broken { color: #9ca3af; text-decoration: line-through; cursor: help; }
+      .missing-image { display: inline-block; padding: 4px 8px; background: #fee2e2; color: #b91c1c; border-radius: 4px; font-size: 13px; }
+      details.callout { padding: 12px 16px; }
+      details.callout summary { cursor: pointer; }
+      .meta { color: #6b7280; font-size: 14px; margin-bottom: 2rem; }
+    </style>
+  </head>
+  <body>
+    <p class="meta">
+      <a href="/test-render">← back</a> · <code>{post.id}</code>
+    </p>
+    <h1>{post.data.Slug}</h1>
+    <p class="meta">
+      Date: {post.data.日期?.toISOString()?.slice(0, 10) ?? '—'} ·
+      Category: {post.data.类型 ?? '—'} ·
+      Tags: {post.data.tags?.join(', ') || '—'} ·
+      Headings: {headings.length}
+    </p>
+    <article>
+      <Content />
+    </article>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+---
+/**
+ * CodeBlockWrapper — client-side script that enhances all <pre> elements with:
+ * - Language label (top-left)
+ * - Copy button (top-right)
+ * - Long code collapse (if height > 600px)
+ * Pure vanilla JS, no framework needed.
+ */
+---
+
+<script>
+  function initCodeBlocks() {
+    const pres = document.querySelectorAll<HTMLPreElement>('pre');
+
+    pres.forEach((pre) => {
+      if (pre.dataset.enhanced) return;
+      pre.dataset.enhanced = 'true';
+
+      // Wrap in container
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-block-wrapper';
+      pre.parentNode?.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+
+      // Toolbar
+      const toolbar = document.createElement('div');
+      toolbar.className = 'code-block-toolbar';
+      wrapper.insertBefore(toolbar, pre);
+
+      // Language label
+      const code = pre.querySelector('code');
+      const lang = pre.dataset.language || code?.dataset.language || code?.className.match(/language-(\w+)/)?.[1] || '';
+      if (lang) {
+        const label = document.createElement('span');
+        label.className = 'code-block-lang';
+        label.textContent = lang;
+        toolbar.appendChild(label);
+      }
+
+      // Copy button
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'code-block-copy';
+      copyBtn.textContent = 'Copy';
+      copyBtn.type = 'button';
+      copyBtn.addEventListener('click', async () => {
+        const text = code?.textContent || pre.textContent || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          copyBtn.textContent = '✓';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        } catch {
+          copyBtn.textContent = 'Failed';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        }
+      });
+      toolbar.appendChild(copyBtn);
+
+      // Collapse long code blocks
+      if (pre.scrollHeight > 600) {
+        wrapper.classList.add('code-block-collapsed');
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'code-block-expand';
+        expandBtn.type = 'button';
+        expandBtn.innerHTML = '<span class="lang-zh">展开</span><span class="lang-en">Expand</span>';
+        expandBtn.addEventListener('click', () => {
+          wrapper.classList.remove('code-block-collapsed');
+          expandBtn.remove();
+        });
+        wrapper.appendChild(expandBtn);
+      }
+    });
+  }
+
+  initCodeBlocks();
+  document.addEventListener('astro:after-swap', initCodeBlocks);
+</script>
+
+<style is:global>
+  .code-block-wrapper {
+    position: relative;
+    margin: 1.5rem 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .code-block-wrapper pre {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+  }
+
+  .code-block-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.375rem 0.75rem;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.6875rem;
+  }
+
+  .code-block-lang {
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+
+  .code-block-copy {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.625rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .code-block-copy:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .code-block-collapsed pre {
+    max-height: 600px;
+    overflow: hidden;
+  }
+
+  .code-block-expand {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1.5rem 0 0.75rem;
+    background: linear-gradient(transparent, var(--code-bg) 60%);
+    border: none;
+    color: var(--primary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .code-block-expand:hover {
+    text-decoration: underline;
+  }
+</style>

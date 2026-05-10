@@ -1,0 +1,28 @@
+---
+/**
+ * LangToggle — switches between zh/en language display.
+ * Persists choice to localStorage('lang').
+ * Uses CSS class visibility (.lang-zh / .lang-en) defined in global.css.
+ */
+---
+
+<button
+  id="lang-toggle"
+  type="button"
+  aria-label="Toggle language"
+  class="inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-[var(--primary-soft)] transition-colors cursor-pointer text-sm font-medium text-[var(--text)]"
+>
+  <span class="lang-zh">EN</span>
+  <span class="lang-en">中文</span>
+</button>
+
+<script>
+  document.getElementById('lang-toggle')?.addEventListener('click', () => {
+    const html = document.documentElement;
+    const cur = html.getAttribute('data-lang');
+    const next = cur === 'zh' ? 'en' : 'zh';
+    html.setAttribute('data-lang', next);
+    html.setAttribute('lang', next === 'en' ? 'en' : 'zh-CN');
+    localStorage.setItem('lang', next);
+  });
+</script>

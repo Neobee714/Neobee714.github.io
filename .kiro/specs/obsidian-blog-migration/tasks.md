@@ -8,7 +8,7 @@
 
 ## Phase 0：准备（人工一次性操作）
 
-- [ ] **0.1 准备 GitHub Tokens 与 Secrets（GitHub 仓库侧）**
+- [x] **0.1 准备 GitHub Tokens 与 Secrets（GitHub 仓库侧）**
   - Req: REQ-09-1, REQ-09-4, REQ-09-5
   - 动作：
     1. 确认 classic PAT（范围 `repo`）在手（你已完成 ✅）
@@ -18,12 +18,12 @@
     5. 把对应**私钥**添加到 `Neobee714.github.io` Secrets 为 `VAULT_SSH_KEY`
   - Done when：所需 Secret 在对应仓库的 Settings 里可见（值隐藏）
 
-- [ ] **0.2 准备 LLM 凭据**
+- [x] **0.2 准备 LLM 凭据**
   - Req: REQ-10-13
   - 动作：把 OpenAI 兼容 API 的 key / base_url / model 添加到 `Neobee714.github.io` Secrets：`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`
   - Done when：3 条 Secret 可见
 
-- [ ] **0.3 生成 VPS 部署专用 SSH key**
+- [x] **0.3 生成 VPS 部署专用 SSH key**
   - Req: REQ-09-6
   - 动作（Windows PowerShell）：
     ```powershell
@@ -34,7 +34,7 @@
   - 然后把私钥（`~\.ssh\xyvora_ci_deploy` 文件内容）填到 site-repo Secret `VPS_SSH_KEY`
   - Done when：最后一条 ssh 命令输出 `OK Docker version ...`
 
-- [ ] **0.4 配置 VPS 相关 Secrets**
+- [x] **0.4 配置 VPS 相关 Secrets**
   - Req: REQ-09-6
   - 在 `Neobee714.github.io` Secrets 添加：
     - `VPS_HOST` = `45.63.124.218`
@@ -43,7 +43,7 @@
     - `VPS_COMPOSE_DIR` = `/root/neobee-stack`
   - Done when：4 条 Secret 可见
 
-- [ ] **0.5 归档现有 Flask 代码**
+- [x] **0.5 归档现有 Flask 代码**
   - Req: REQ-13-1
   - 动作：
     ```bash
@@ -54,7 +54,7 @@
     ```
   - Done when：GitHub 上能看到 `legacy-flask-v1` tag
 
-- [ ] **0.6 检查 vault-repo 状态**
+- [x] **0.6 检查 vault-repo 状态**
   - Req: REQ-13-3
   - 动作：
     1. 确认 `F:\Work\Obsidian` 是 git 仓库，remote 指向 `github.com:Neobee714/obsidian-vault`
@@ -62,7 +62,7 @@
     3. 确认 main 分支最新 commit 推送了
   - Done when：`git remote -v` 输出正确，`git status` 干净
 
-- [ ] **0.7 VPS 现状备份（防呆）**
+- [x] **0.7 VPS 现状备份（防呆）**
   - Req: REQ-09-7
   - 动作（SSH 到 VPS 执行）：
     ```bash
@@ -78,7 +78,7 @@
 
 ## Phase 1：site-repo 骨架
 
-- [ ] **1.1 清空工作目录（保留 .git / .kiro）**
+- [x] **1.1 清空工作目录（保留 .git / .kiro）**
   - Req: REQ-13-1, REQ-13-5
   - 动作：Windows cmd：
     ```cmd
@@ -88,7 +88,7 @@
     保留：`.git/`、`.kiro/`、`.gitignore`（如有）
   - Done when：`dir` 只剩 `.git` 和 `.kiro`
 
-- [ ] **1.2 初始化 Astro 项目**
+- [x] **1.2 初始化 Astro 项目**
   - Req: —（基础设施）
   - 动作：
     ```bash
@@ -97,7 +97,7 @@
     询问时：不要安装示例；不要覆盖 .kiro
   - Done when：`package.json`、`astro.config.mjs`、`src/pages/index.astro` 存在
 
-- [ ] **1.3 安装核心依赖**
+- [x] **1.3 安装核心依赖**
   - Req: —
   - 动作：
     ```bash
@@ -112,7 +112,7 @@
     ```
   - Done when：`npm run dev` 能启动默认页
 
-- [ ] **1.4 建立项目目录骨架**
+- [x] **1.4 建立项目目录骨架**
   - Req: —
   - 动作：按 design §2 建空目录与占位文件：
     ```
@@ -123,7 +123,7 @@
     ```
   - Done when：目录树与 design §2 一致
 
-- [ ] **1.5 配置 TypeScript 路径别名**
+- [x] **1.5 配置 TypeScript 路径别名**
   - Req: —
   - 动作：在 `tsconfig.json` 里加 `"paths": { "@/*": ["./src/*"] }` 和 Astro 必需的 strict 设置
   - Done when：`import X from '@/lib/foo'` 不报错
@@ -132,19 +132,19 @@
 
 ## Phase 2：内容建模
 
-- [ ] **2.1 实现日期解析器**
+- [x] **2.1 实现日期解析器**
   - Req: REQ-04-2
   - 文件：`src/lib/date-parser.ts`
   - 实现 design §3.2 的 `parseFlexDate`（ISO / `2026年1月3日` / `2026/1/3`），解析失败返回 undefined
   - Done when：单测覆盖 3 种格式 + 无效输入
 
-- [ ] **2.2 实现 Content Collection schema**
+- [x] **2.2 实现 Content Collection schema**
   - Req: REQ-04-1, REQ-04-3
   - 文件：`src/content/config.ts`
   - 实现 design §3.1 的 `flexBool` / `flexDate` / `normalizeTags` / `postsCollection`
   - Done when：`astro check` 无类型错误
 
-- [ ] **2.3 配置 Content Collection 数据源（读环境变量）**
+- [x] **2.3 配置 Content Collection 数据源（读环境变量）**
   - Req: REQ-09-2
   - 文件：`src/content/config.ts`、`astro.config.mjs`
   - 让 Content Collection 指向环境变量 `ASTRO_VAULT_PATH`：
@@ -155,7 +155,7 @@
     - 本地：设置好 `.env` 后 `astro sync` 能扫到真实笔记
     - CI：build 能读到 clone 的 vault
 
-- [ ] **2.4 实现发布过滤管道**
+- [x] **2.4 实现发布过滤管道**
   - Req: REQ-01-1, REQ-01-2, REQ-01-3, REQ-02-1, REQ-03-3, REQ-03-4
   - 文件：`src/lib/obsidian-parser.ts`
   - 实现 design §3.3 的 `getPublishedPosts`、`getPostWithTranslation`
@@ -164,13 +164,13 @@
     - 锁住的文章也在列表里
     - 未发布的文章不在返回值中
 
-- [ ] **2.5 实现 Slug 唯一性检查**
+- [x] **2.5 实现 Slug 唯一性检查**
   - Req: REQ-03-4
   - 文件：`src/lib/integrations/slug-check.ts`
   - 实现 design §3.4 的 `slugUniquenessCheck` integration，在 `astro.config.mjs` 注册
   - Done when：构造两篇同 Slug 笔记 → `npm run build` 失败并报错
 
-- [ ] **2.6 Frontmatter 状态字段语义处理**
+- [x] **2.6 Frontmatter 状态字段语义处理**
   - Req: REQ-04-3
   - 位置：`src/lib/obsidian-parser.ts`
   - `状态: 进行中` / `draft` 的文章被视为不发布（覆盖 `发布:true`）；`已锁住` 等同 `是否锁住:Yes`
@@ -180,20 +180,20 @@
 
 ## Phase 3：Markdown 渲染管道
 
-- [ ] **3.1 `remark-dataview-strip`**
+- [x] **3.1 `remark-dataview-strip`**
   - Req: REQ-05-12, REQ-05-13
   - 文件：`src/lib/remark-dataview-strip.ts`
   - 去除 `dataview` / `dataviewjs` fenced code；去除以 `<%*` 开头的 code；剥离 `%%...%%`
   - Done when：含这些语法的文章渲染后看不到它们
 
-- [ ] **3.2 `remark-callout`**
+- [x] **3.2 `remark-callout`**
   - Req: REQ-05-6
   - 文件：`src/lib/remark-callout.ts`
   - 实现 design §4.3：识别 12 种 callout 类型、支持 `-`（折叠）和 `+`（展开）
   - 样式：`src/styles/callout.css` 定义每种类型的颜色 / 图标
   - Done when：`> [!warning] xxx` 渲染为带样式的 aside；`[!note]-` 渲染为 `<details>`
 
-- [ ] **3.3 `remark-wikilink`**
+- [x] **3.3 `remark-wikilink`**
   - Req: REQ-05-1, REQ-05-2, REQ-05-3, REQ-05-4, REQ-05-5
   - 文件：`src/lib/remark-wikilink.ts`
   - 实现 design §4.2：`![[img]]` / `![[img|300]]` / `[[note]]` / `[[note|alias]]` / `[[note#heading]]`
@@ -201,13 +201,13 @@
   - 死链用 `.wiki-link.broken` 样式标注
   - Done when：4 种语法都能正确渲染；破链构建日志 WARN
 
-- [ ] **3.4 `remark-mermaid`**
+- [x] **3.4 `remark-mermaid`**
   - Req: REQ-05-10
   - 文件：`src/lib/remark-mermaid.ts`
   - 把 ` ```mermaid ` 代码块替换为 `<div data-mermaid>SOURCE</div>` 占位
   - Done when：mermaid 代码块输出占位，客户端 island 能接管（见 Task 4.8）
 
-- [ ] **3.5 `rehype-image-rewrite`**
+- [x] **3.5 `rehype-image-rewrite`**
   - Req: REQ-06-1, REQ-06-2, REQ-06-3, REQ-06-5, REQ-06-6
   - 文件：`src/lib/rehype-image-rewrite.ts`
   - 逻辑：
@@ -219,7 +219,7 @@
   - 文件名规范化规则：空格/`_` → `-`；中文 → `py-<3hash>`；转小写
   - Done when：`![[image 1.png]]` → `/_images/image-1.png`；`![[图片.png]]` → `/_images/tp-a1b.png`
 
-- [ ] **3.6 注册插件到 Astro**
+- [x] **3.6 注册插件到 Astro**
   - Req: 集成 §4.1
   - 文件：`astro.config.mjs`
   - 按 design §4.7 的顺序注册所有 remark / rehype 插件；配置 Shiki 双主题
@@ -229,26 +229,26 @@
 
 ## Phase 4：UI 组件
 
-- [ ] **4.1 主题系统基础**
+- [x] **4.1 主题系统基础**
   - Req: REQ-07-1
   - 文件：`src/styles/theme.css`、`src/styles/global.css`、`src/components/ThemeToggle.astro`
   - 深浅色 CSS 变量（design §6.1），按钮切换并持久化
   - 在 `BaseLayout` 的 `<head>` 内联脚本里做主题初始化防闪烁（design §5.1）
   - Done when：刷新不闪白 / 手动切换持久化
 
-- [ ] **4.2 语言切换（单页 CSS）**
+- [x] **4.2 语言切换（单页 CSS）**
   - Req: REQ-11-1, REQ-11-2, REQ-11-5
   - 文件：`src/styles/global.css`、`src/components/LangToggle.astro`
   - design §6.2 的 CSS 规则 + 按钮脚本；默认语言跟随 `navigator.language`
   - Done when：按钮切换后页面上中英 DOM 互相显隐；刷新后语言持久
 
-- [ ] **4.3 AICover 组件**
+- [x] **4.3 AICover 组件**
   - Req: REQ-07-3, REQ-07-6
   - 文件：`src/components/AICover.astro`
   - design §6.3 的 category → 色板映射；无封面图时渲染
   - Done when：不同 category 卡片颜色各异；有 cover 字段时优先显示真封面
 
-- [ ] **4.4 PostCard 组件**
+- [x] **4.4 PostCard 组件**
   - Req: REQ-07-2
   - 文件：`src/components/PostCard.astro`
   - 结构：封面 / 分类 badge / 锁住 badge / 标题 / 摘要 / 标签 / 日期 / 阅读时长
@@ -256,51 +256,51 @@
   - 悬停上浮 + 轻微 shadow（CSS `transition` 即可，不必 Framer）
   - Done when：首页网格整齐，hover 效果自然
 
-- [ ] **4.5 FeaturedPost 组件**
+- [x] **4.5 FeaturedPost 组件**
   - Req: REQ-07-5（精选文章）
   - 文件：`src/components/FeaturedPost.astro`
   - 大卡片，左右分栏：左侧封面、右侧元信息
   - Done when：首页第一篇用这个组件展示
 
-- [ ] **4.6 Hero 组件**
+- [x] **4.6 Hero 组件**
   - Req: REQ-07-5（Hero 区域）
   - 文件：`src/components/Hero.astro` + `src/components/islands/TerminalAnim.tsx`
   - 左侧：品牌 "Xyvora" / 副标题 / 两个 CTA；右侧终端动画（React island，`client:visible`）
   - Done when：终端有跳动光标、渐变 glow 效果
 
-- [ ] **4.7 TOC 组件**
+- [x] **4.7 TOC 组件**
   - Req: REQ-07-4（TOC）
   - 文件：`src/components/TableOfContents.astro`
   - 从 `render(post).headings` 取 h1-h3；sticky；当前位置高亮（IntersectionObserver）
   - 支持中英切换时重建（从 `data-lang` 属性响应）
   - Done when：文章页右侧出现目录，点击跳转且高亮当前节
 
-- [ ] **4.8 MermaidIsland**
+- [x] **4.8 MermaidIsland**
   - Req: REQ-05-10
   - 文件：`src/components/islands/MermaidIsland.tsx`
   - `client:visible` 时动态 `import('mermaid')` 并渲染页面上所有 `[data-mermaid]`
   - Done when：含 mermaid 的文章页渲染出图；不含 mermaid 的文章无 mermaid.js 加载
 
-- [ ] **4.9 CodeBlockWrapper**
+- [x] **4.9 CodeBlockWrapper**
   - Req: REQ-07-6（借鉴旧前端代码体验）
   - 文件：`src/components/CodeBlockWrapper.astro` + 对应 CSS
   - Shiki 已完成高亮；这里只补：语言标签栏 + 复制按钮 + 长代码折叠（>600px 加"展开"）
   - 以 rehype 插件方式包裹 `<pre>` 或用客户端 JS 在 mount 时包裹
   - Done when：每个代码块左上角显示语言、右上角有复制按钮
 
-- [ ] **4.10 ReadingProgress**
+- [x] **4.10 ReadingProgress**
   - Req: REQ-07-4（进度条）
   - 文件：`src/components/ReadingProgress.astro`
   - 固定 top 的 1px 条；随 scroll 百分比变宽
   - Done when：长文滚动时进度条平滑增长
 
-- [ ] **4.11 返回顶部按钮**
+- [x] **4.11 返回顶部按钮**
   - Req: REQ-07-4（返回顶部）
   - 文件：`src/components/BackToTop.astro`
   - 滚动 > 400px 时 fade-in；点击 scrollTo top smooth
   - Done when：长文滚动时按钮出现
 
-- [ ] **4.12 SearchModal（Ctrl+K / ⌘+K）**
+- [x] **4.12 SearchModal（Ctrl+K / ⌘+K）**
   - Req: REQ-07-5（全局搜索）
   - 文件：`src/components/SearchModal.astro`（外壳）+ 客户端脚本用 Fuse.js
   - 构建时把 slug / title / summary / tags / category 输出到 `/search-index.json`
@@ -308,20 +308,20 @@
   - 结果点击跳文章
   - Done when：Ctrl+K 打开；输入"htb"能搜到相关文章
 
-- [ ] **4.13 Giscus**
+- [x] **4.13 Giscus**
   - Req: REQ-07-4（评论）
   - 文件：`src/components/Giscus.astro`
   - design §11 的代码；主题随 `data-theme` 变化同步
   - Done when：文章页底部加载 Giscus iframe，切深浅色时 Giscus 跟着切
 
-- [ ] **4.14 LockedBanner**
+- [x] **4.14 LockedBanner**
   - Req: REQ-02-2
   - 文件：`src/components/LockedBanner.astro`
   - 复刻原 `post.html` 的 ACCESS DENIED 终端风格（见 §post.html L149-L163）
   - 中英文文案各一份
   - Done when：锁住的文章详情页显示 banner、无正文
 
-- [ ] **4.15 Header / Footer**
+- [x] **4.15 Header / Footer**
   - Req: REQ-07-5, REQ-07-9
   - 文件：`src/components/Header.astro`、`src/components/Footer.astro`
   - Header：Logo（Xyvora）、导航（Home / Archives / Tags / Categories / About）、主题切换、语言切换

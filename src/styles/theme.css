@@ -1,0 +1,25 @@
+/* Theme CSS custom properties — dark/light via [data-theme] on <html> */
+
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --bg-elevated: #111113;
+  --bg-card: #15171e;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e5e7eb;
+  --text-dim: #9ca3af;
+  --primary: #10b981;
+  --primary-soft: rgba(16, 185, 129, 0.12);
+  --code-bg: #1a1d24;
+}
+
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-card: #f8fafc;
+  --border: rgba(0, 0, 0, 0.08);
+  --text: #1f2937;
+  --text-dim: #6b7280;
+  --primary: #059669;
+  --primary-soft: rgba(5, 150, 105, 0.08);
+  --code-bg: #f1f5f9;
+}

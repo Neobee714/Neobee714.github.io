@@ -1,0 +1,64 @@
+---
+/**
+ * Giscus — comment widget powered by GitHub Discussions.
+ * Theme syncs with data-theme attribute.
+ * Env vars: PUBLIC_GISCUS_REPO_ID, PUBLIC_GISCUS_CATEGORY, PUBLIC_GISCUS_CATEGORY_ID
+ */
+const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID || '';
+const category = import.meta.env.PUBLIC_GISCUS_CATEGORY || '';
+const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID || '';
+---
+
+<div class="giscus-wrapper" id="giscus-wrapper">
+  <script
+    src="https://giscus.app/client.js"
+    data-repo="Neobee714/Neobee714.github.io"
+    data-repo-id={repoId}
+    data-category={category}
+    data-category-id={categoryId}
+    data-mapping="pathname"
+    data-strict="0"
+    data-reactions-enabled="1"
+    data-emit-metadata="0"
+    data-input-position="top"
+    data-theme="dark_dimmed"
+    data-lang="zh-CN"
+    data-loading="lazy"
+    crossorigin="anonymous"
+    async
+  ></script>
+</div>
+
+<style>
+  .giscus-wrapper {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+
+<script>
+  function syncGiscusTheme() {
+    const theme = document.documentElement.getAttribute('data-theme');
+    const giscusTheme = theme === 'light' ? 'light' : 'dark_dimmed';
+
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+    if (iframe) {
+      iframe.contentWindow?.postMessage(
+        { giscus: { setConfig: { theme: giscusTheme } } },
+        'https://giscus.app'
+      );
+    }
+  }
+
+  // Watch for theme changes
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.attributeName === 'data-theme') {
+        syncGiscusTheme();
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, { attributes: true });
+</script>

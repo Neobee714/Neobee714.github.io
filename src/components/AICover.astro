@@ -1,0 +1,102 @@
+---
+/**
+ * AICover — decorative placeholder card when no cover image exists.
+ * Maps category to a gradient color scheme; renders title + category badge
+ * over a CSS grid pattern. Pure CSS, no external dependencies.
+ *
+ * Validates: REQ-07-3, REQ-07-6
+ */
+interface Props {
+  category?: string;
+  title: string;
+  slug: string;
+}
+
+const { category = '', title, slug } = Astro.props;
+
+// Category → gradient color mapping
+const gradientMap: Record<string, { from: string; to: string }> = {
+  HTB:         { from: '#10b981', to: '#059669' },
+  方法论:      { from: '#8b5cf6', to: '#6d28d9' },
+  PortSwigger: { from: '#f59e0b', to: '#d97706' },
+  工具:        { from: '#3b82f6', to: '#2563eb' },
+};
+const defaultGradient = { from: '#6b7280', to: '#4b5563' };
+
+const gradient = gradientMap[category] || defaultGradient;
+---
+
+<div
+  class="ai-cover"
+  style={`--grad-from: ${gradient.from}; --grad-to: ${gradient.to};`}
+  data-slug={slug}
+>
+  <div class="ai-cover__gradient"></div>
+  <div class="ai-cover__grid"></div>
+  <div class="ai-cover__badge">{category || 'Blog'}</div>
+  <div class="ai-cover__title">
+    <h3>{title}</h3>
+  </div>
+</div>
+
+<style>
+  .ai-cover {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    aspect-ratio: 16 / 9;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+
+  .ai-cover__gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
+    opacity: 0.85;
+  }
+
+  .ai-cover__grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .ai-cover__badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+  }
+
+  .ai-cover__title {
+    position: absolute;
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 1.25rem;
+  }
+
+  .ai-cover__title h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #ffffff;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+</style>
