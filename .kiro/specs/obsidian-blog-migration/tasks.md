@@ -476,19 +476,19 @@
 
 ## Phase 7：CI/CD
 
-- [ ] **7.1 vault-repo `notify.yml`**
+- [x] **7.1 vault-repo `notify.yml`**
   - Req: REQ-09-1, 防循环
   - 文件：`F:\Work\Obsidian\.github\workflows\notify.yml`
   - design §8.3 完整实现；`paths-ignore: '**/*.en.md'`
   - Done when：vault 推送一次非 `.en.md` 的 md 改动 → Actions 里能看到 `Notify site-repo` 运行成功
 
-- [ ] **7.2 site-repo `build.yml`**
+- [x] **7.2 site-repo `build.yml`**
   - Req: REQ-09-2, REQ-09-3, REQ-09-6, REQ-09-7, REQ-09-8, REQ-09-9
   - 文件：`.github/workflows/build.yml`
   - design §8.1 完整实现：clone vault → translate → commit 回 vault → npm run build → rsync 到 VPS → docker compose reload → smoke test
   - Done when：手动触发（`workflow_dispatch`）能走完全流程，`neobee.top` 能看到占位页之后的真正站点
 
-- [ ] **7.3 端到端测试**
+- [x] **7.3 端到端测试**
   - Req: REQ-09-9
   - 操作：
     1. 在 Obsidian 里随便改一篇已发布文章（加一句"测试"）

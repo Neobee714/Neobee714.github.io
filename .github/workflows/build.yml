@@ -1,0 +1,96 @@
+name: Build & Deploy
+
+on:
+  repository_dispatch:
+    types: [vault-updated]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    env:
+      ASTRO_VAULT_PATH: ${{ github.workspace }}/vault
+      PUBLIC_SITE_URL: https://neobee.top
+
+    steps:
+      - name: Checkout site-repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup SSH for vault clone
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VAULT_SSH_KEY }}" > ~/.ssh/vault_key
+          chmod 600 ~/.ssh/vault_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Clone vault
+        run: |
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/vault_key" git clone --depth 1 git@github.com:Neobee714/obsidian-vault.git vault
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Translate
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: python scripts/translate.py --vault ./vault
+
+      - name: Commit translations back to vault
+        run: |
+          cd vault
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No translation changes to commit"
+          else
+            git add -A '*.en.md'
+            git commit -m "chore: update translations [skip ci]"
+            git remote set-url origin https://x-access-token:${{ secrets.VAULT_PUSH_TOKEN }}@github.com/Neobee714/obsidian-vault.git
+            git push
+          fi
+
+      - name: Build Astro site
+        run: npm run build
+
+      - name: Setup deploy SSH key
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            dist/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_PATH }}/
+
+      - name: Reload container
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd ${{ secrets.VPS_COMPOSE_DIR }} && docker compose up -d --no-deps neobee-blog"
+
+      - name: Smoke test
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://neobee.top/)
+          echo "Status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Smoke test returned $STATUS (expected 200)"
+          fi
