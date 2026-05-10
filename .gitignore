@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node / Astro (Phase 1 之后会用到)
+node_modules/
+dist/
+.astro/
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Legacy Flask 残留（等 Phase 1 清理时一起删）
+blog-data/
+flask_cache/
+analytics.db
