@@ -10,11 +10,11 @@
   id="theme-toggle"
   type="button"
   aria-label="Toggle dark/light theme"
-  class="inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-[var(--accent-soft)] transition-colors cursor-pointer"
+  class="theme-toggle inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text)] hover:border-[var(--border-hover)] transition-colors cursor-pointer"
 >
   <!-- Sun icon (visible in dark mode) -->
   <svg
-    class="theme-icon-sun w-5 h-5 text-[var(--text)]"
+    class="theme-icon-sun w-4 h-4 text-[var(--text)]"
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
@@ -27,7 +27,7 @@
   </svg>
   <!-- Moon icon (visible in light mode) -->
   <svg
-    class="theme-icon-moon w-5 h-5 text-[var(--text)]"
+    class="theme-icon-moon w-4 h-4 text-[var(--text)]"
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
@@ -37,12 +37,16 @@
     <path stroke-linecap="round" stroke-linejoin="round"
       d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
   </svg>
+  <span class="theme-label-light">Light</span>
+  <span class="theme-label-dark">Dark</span>
 </button>
 
 <style>
   /* Show sun in dark mode, moon in light mode */
-  :root[data-theme='dark'] .theme-icon-moon { display: none; }
-  :root[data-theme='light'] .theme-icon-sun { display: none; }
+  :root[data-theme='dark'] .theme-icon-moon,
+  :root[data-theme='dark'] .theme-label-dark { display: none; }
+  :root[data-theme='light'] .theme-icon-sun,
+  :root[data-theme='light'] .theme-label-light { display: none; }
 </style>
 
 <script>

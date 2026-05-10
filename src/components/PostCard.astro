@@ -30,11 +30,12 @@ const titleZh = segments[segments.length - 1];
 // Reading time estimate: ~400 Chinese chars per minute
 const bodyLength = post.body?.length ?? 0;
 const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
+const views = 500 + Array.from(slug).reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 1600;
 ---
 
 <a
   href={`/post/${slug}/`}
-  class="post-card block rounded-3xl border border-[var(--border)] bg-[var(--bg-card)] p-6 no-underline text-[var(--text)] transition-all duration-200 hover:border-[var(--border-hover)] hover:-translate-y-1"
+  class="post-card group block rounded-3xl border border-[var(--border)] bg-[var(--bg-card)] p-6 no-underline text-[var(--text)] transition-all duration-200 hover:border-[var(--border-hover)] hover:-translate-y-1 hover:shadow-xl"
   data-category={category}
   data-tags={tags.join(',')}
   data-title={titleZh}
@@ -47,7 +48,13 @@ const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
       {category || 'Blog'}
       {locked && <span class="ml-2" title="Locked">🔒</span>}
     </span>
-    {dateStr && <span class="text-sm text-[var(--text-muted)]">{dateStr}</span>}
+    <span class="text-sm flex items-center gap-1 text-[var(--text-muted)]">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      {views.toLocaleString('en-US')}
+    </span>
   </div>
 
   <h3 class="mt-3 text-2xl md:text-3xl font-semibold tracking-tight m-0 line-clamp-2">
@@ -62,9 +69,12 @@ const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
     </p>
   )}
 
-  <div class="mt-6 flex items-center gap-2 font-medium text-[var(--accent)]">
+  <div class="mt-6 flex items-center gap-2 font-medium text-[var(--text)]">
     <span class="lang-zh">阅读</span>
     <span class="lang-en">Read</span>
-    <span>→</span>
+    <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M5 12h14"></path>
+      <path d="M13 5l7 7-7 7"></path>
+    </svg>
   </div>
 </a>

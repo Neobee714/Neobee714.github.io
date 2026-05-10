@@ -10,6 +10,11 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  margin: 0;
 }
 
 .text-muted { color: var(--text-muted); }
+
+* {
+  box-sizing: border-box;
+}
