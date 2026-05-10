@@ -84,12 +84,14 @@ const allCategories = [...new Set(posts.map((p) => getCategory(p)).filter(Boolea
     const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
     if (!grid) return;
 
-    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>('.post-card'));
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>('.card-animate'));
     let activeFilter = 'all';
 
     function filterCards() {
       const query = (searchInput?.value || '').toLowerCase();
-      cards.forEach((card) => {
+      cards.forEach((wrapper) => {
+        const card = wrapper.querySelector('.post-card') as HTMLElement | null;
+        if (!card) return;
         const title = (card.dataset.title || '').toLowerCase();
         const slug = (card.dataset.slug || '').toLowerCase();
         const category = (card.dataset.category || '').toLowerCase();
@@ -98,7 +100,7 @@ const allCategories = [...new Set(posts.map((p) => getCategory(p)).filter(Boolea
         const matchesSearch = !query || title.includes(query) || slug.includes(query) || tags.includes(query);
         const matchesFilter = activeFilter === 'all' || category === activeFilter.toLowerCase();
 
-        card.style.display = matchesSearch && matchesFilter ? '' : 'none';
+        wrapper.style.display = matchesSearch && matchesFilter ? '' : 'none';
       });
     }
 
