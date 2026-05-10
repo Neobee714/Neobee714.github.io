@@ -44,27 +44,29 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r scripts/requirements.txt
 
-      - name: Translate
-        continue-on-error: true
-        env:
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
-          LLM_MODEL: ${{ secrets.LLM_MODEL }}
-        run: python scripts/translate.py --vault ./vault
+      # Translation disabled for initial deployment. Enable after first batch
+      # of .en.md files are generated locally and pushed to vault-repo.
+      # - name: Translate
+      #   continue-on-error: true
+      #   env:
+      #     LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      #     LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      #     LLM_MODEL: ${{ secrets.LLM_MODEL }}
+      #   run: python scripts/translate.py --vault ./vault
 
-      - name: Commit translations back to vault
-        run: |
-          cd vault
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet; then
-            echo "No translation changes to commit"
-          else
-            git add -A '*.en.md'
-            git commit -m "chore: update translations [skip ci]"
-            git remote set-url origin https://x-access-token:${{ secrets.VAULT_PUSH_TOKEN }}@github.com/Neobee714/obsidian-vault.git
-            git push
-          fi
+      # - name: Commit translations back to vault
+      #   run: |
+      #     cd vault
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     if git diff --quiet; then
+      #       echo "No translation changes to commit"
+      #     else
+      #       git add -A '*.en.md'
+      #       git commit -m "chore: update translations [skip ci]"
+      #       git remote set-url origin https://x-access-token:${{ secrets.VAULT_PUSH_TOKEN }}@github.com/Neobee714/obsidian-vault.git
+      #       git push
+      #     fi
 
       - name: Build Astro site
         run: npm run build
