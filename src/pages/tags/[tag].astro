@@ -1,0 +1,74 @@
+---
+/**
+ * Tag detail page — list of posts with a specific tag.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getPublishedPosts } from '@/lib/obsidian-parser';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+
+  // Collect all tags -> posts mapping
+  const tagMap = new Map<string, typeof posts>();
+  for (const post of posts) {
+    for (const tag of post.data.tags || []) {
+      if (!tagMap.has(tag)) tagMap.set(tag, []);
+      tagMap.get(tag)!.push(post);
+    }
+  }
+
+  return [...tagMap.entries()].map(([tag, tagPosts]) => ({
+    params: { tag },
+    props: { tag, posts: tagPosts },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout title={`${tag} - Xyvora`} description={`Posts tagged with ${tag}`}>
+  <div class="tag-detail-page">
+    <h1 class="tag-detail-page__title">
+      <span class="tag-detail-page__label">#</span>{tag}
+      <span class="tag-detail-page__count">({posts.length})</span>
+    </h1>
+
+    <div class="tag-detail-page__grid">
+      {posts.map((post) => (
+        <PostCard post={post} />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .tag-detail-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .tag-detail-page__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 2rem;
+  }
+
+  .tag-detail-page__label {
+    color: var(--primary);
+  }
+
+  .tag-detail-page__count {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-left: 0.5rem;
+  }
+
+  .tag-detail-page__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+</style>

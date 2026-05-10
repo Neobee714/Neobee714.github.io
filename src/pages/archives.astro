@@ -1,0 +1,125 @@
+---
+/**
+ * Archives page — posts grouped by year-month.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getPublishedPosts, getDateIso } from '@/lib/obsidian-parser';
+
+const posts = await getPublishedPosts();
+
+// Group by year-month
+const groups = new Map<string, typeof posts>();
+for (const post of posts) {
+  const date = getDateIso(post);
+  const key = date ? date.slice(0, 7) : 'undated'; // YYYY-MM
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key)!.push(post);
+}
+
+// Sort keys descending
+const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+---
+
+<BaseLayout title="归档 - Xyvora" description="All posts by date">
+  <div class="archives-page">
+    <h1 class="archives-page__title">
+      <span class="lang-zh">归档</span>
+      <span class="lang-en">Archives</span>
+    </h1>
+
+    {sortedKeys.map((key) => {
+      const groupPosts = groups.get(key)!;
+      return (
+        <section class="archives-group">
+          <h2 class="archives-group__heading">{key}</h2>
+          <ul class="archives-group__list">
+            {groupPosts.map((post) => {
+              const slug = post.data.Slug!;
+              const date = getDateIso(post);
+              const segments = post.id.replace(/\.md$/, '').split('/');
+              const titleZh = segments[segments.length - 1];
+              return (
+                <li class="archives-group__item">
+                  <time class="archives-group__date">{date}</time>
+                  <a href={`/post/${slug}/`} class="archives-group__link">{titleZh}</a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      );
+    })}
+
+    {posts.length === 0 && (
+      <p class="archives-page__empty">
+        <span class="lang-zh">暂无文章</span>
+        <span class="lang-en">No posts yet</span>
+      </p>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .archives-page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .archives-page__title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 2rem;
+  }
+
+  .archives-page__empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 3rem 0;
+  }
+
+  .archives-group {
+    margin-bottom: 2rem;
+  }
+
+  .archives-group__heading {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .archives-group__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .archives-group__item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+
+  .archives-group__date {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    min-width: 5.5rem;
+  }
+
+  .archives-group__link {
+    font-size: 0.9375rem;
+    color: var(--text);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .archives-group__link:hover {
+    color: var(--primary);
+  }
+</style>

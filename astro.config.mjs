@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import { loadEnv } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@astrojs/react';
+import sitemap from '@astrojs/sitemap';
 
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -28,7 +29,7 @@ for (const key of ['ASTRO_VAULT_PATH', 'PUBLIC_SITE_URL']) {
 
 export default defineConfig({
   site: process.env.PUBLIC_SITE_URL || 'https://neobee.top',
-  integrations: [react(), slugUniquenessCheck(), copyVaultImages()],
+  integrations: [react(), sitemap({ filter: (page) => !page.includes('/404') }), slugUniquenessCheck(), copyVaultImages()],
   markdown: {
     remarkPlugins: [
       remarkDataviewStrip, // drop dataview / templater / %%comments%%

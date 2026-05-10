@@ -1,19 +1,84 @@
 ---
-// Phase 1 scaffold. Will be replaced with real homepage in Phase 5.
+/**
+ * Homepage — Hero, featured post, post grid.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Hero from '@/components/Hero.astro';
+import SearchModal from '@/components/SearchModal.astro';
+import FeaturedPost from '@/components/FeaturedPost.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getPublishedPosts } from '@/lib/obsidian-parser';
+
+const posts = await getPublishedPosts();
+const featured = posts[0];
+const gridPosts = posts.slice(1, 13);
 ---
 
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Xyvora (scaffold)</title>
-  </head>
-  <body>
-    <main style="font-family: ui-sans-serif, system-ui; padding: 2rem; max-width: 680px; margin: 0 auto;">
-      <h1>Xyvora</h1>
-      <p style="color: #666;">Phase 1 骨架就绪。后续阶段将把这里替换为真正的首页。</p>
-    </main>
-  </body>
-</html>
+<BaseLayout title="Xyvora - Web Security & CTF Notes">
+  <Hero />
+  <SearchModal />
+
+  <section class="homepage-posts">
+    {featured && (
+      <div class="homepage-posts__featured">
+        <h2 class="homepage-posts__heading">
+          <span class="lang-zh">最新文章</span>
+          <span class="lang-en">Latest Post</span>
+        </h2>
+        <FeaturedPost post={featured} />
+      </div>
+    )}
+
+    {gridPosts.length > 0 && (
+      <div class="homepage-posts__grid-section">
+        <h2 class="homepage-posts__heading">
+          <span class="lang-zh">更多文章</span>
+          <span class="lang-en">More Posts</span>
+        </h2>
+        <div class="homepage-posts__grid">
+          {gridPosts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {posts.length === 0 && (
+      <div class="homepage-posts__empty">
+        <p class="lang-zh">暂无文章</p>
+        <p class="lang-en">No posts yet</p>
+      </div>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .homepage-posts {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  .homepage-posts__heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 1.5rem;
+    color: var(--text);
+  }
+
+  .homepage-posts__featured {
+    margin-bottom: 3rem;
+  }
+
+  .homepage-posts__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .homepage-posts__empty {
+    text-align: center;
+    padding: 4rem 0;
+    color: var(--text-dim);
+  }
+</style>

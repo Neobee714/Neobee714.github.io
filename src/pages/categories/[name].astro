@@ -1,0 +1,69 @@
+---
+/**
+ * Category detail page — list of posts in a specific category.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getPublishedPosts, getCategory } from '@/lib/obsidian-parser';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+
+  // Collect category -> posts mapping
+  const catMap = new Map<string, typeof posts>();
+  for (const post of posts) {
+    const cat = getCategory(post) || 'uncategorized';
+    if (!catMap.has(cat)) catMap.set(cat, []);
+    catMap.get(cat)!.push(post);
+  }
+
+  return [...catMap.entries()].map(([name, catPosts]) => ({
+    params: { name },
+    props: { name, posts: catPosts },
+  }));
+}
+
+const { name, posts } = Astro.props;
+---
+
+<BaseLayout title={`${name} - Xyvora`} description={`Posts in category: ${name}`}>
+  <div class="category-detail-page">
+    <h1 class="category-detail-page__title">
+      {name}
+      <span class="category-detail-page__count">({posts.length})</span>
+    </h1>
+
+    <div class="category-detail-page__grid">
+      {posts.map((post) => (
+        <PostCard post={post} />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .category-detail-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .category-detail-page__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 2rem;
+  }
+
+  .category-detail-page__count {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-left: 0.5rem;
+  }
+
+  .category-detail-page__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+</style>

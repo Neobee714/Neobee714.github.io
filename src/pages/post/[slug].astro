@@ -1,0 +1,63 @@
+---
+/**
+ * Post detail page — renders article content with bilingual support.
+ * Locked posts show LockedBanner instead of content.
+ */
+import PostLayout from '@/layouts/PostLayout.astro';
+import LockedBanner from '@/components/LockedBanner.astro';
+import { getPublishedPosts, getPostWithTranslation, isLocked } from '@/lib/obsidian-parser';
+import { render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post) => ({
+    params: { slug: post.data.Slug! },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const locked = isLocked(post);
+
+// Get translation pair
+const { en } = await getPostWithTranslation(post.data.Slug!);
+
+// Render Chinese content
+const { Content: ZhContent, headings } = await render(post);
+
+// Render English content if available
+let EnContent: any = null;
+if (en) {
+  const rendered = await render(en);
+  EnContent = rendered.Content;
+}
+---
+
+<PostLayout post={post} headings={headings}>
+  {locked ? (
+    <LockedBanner />
+  ) : (
+    <div class="post-bilingual">
+      <div class="lang-zh">
+        <ZhContent />
+      </div>
+      <div class="lang-en">
+        {EnContent ? (
+          <EnContent />
+        ) : (
+          <p class="post-bilingual__fallback">
+            English translation is not available for this post.
+          </p>
+        )}
+      </div>
+    </div>
+  )}
+</PostLayout>
+
+<style>
+  .post-bilingual__fallback {
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 2rem 0;
+  }
+</style>

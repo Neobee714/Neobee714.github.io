@@ -332,79 +332,79 @@
 
 ## Phase 5：页面
 
-- [ ] **5.1 BaseLayout**
+- [x] **5.1 BaseLayout**
   - Req: REQ-08-1 ~ REQ-08-12, REQ-11-5
   - 文件：`src/layouts/BaseLayout.astro`
   - design §5.1 完整实现：meta / OG / Twitter / canonical / GSC verification / CF Analytics / 主题初始化
   - Done when：每个页面的 `<head>` 都包含这些元素；GSC meta 由环境变量控制
 
-- [ ] **5.2 PostLayout**
+- [x] **5.2 PostLayout**
   - Req: REQ-07-4
   - 文件：`src/layouts/PostLayout.astro`
   - 包含：顶部元信息、正文 slot、TOC、进度条、返回顶部、Giscus
   - Done when：文章页整体布局与 design §5.5 一致
 
-- [ ] **5.3 首页 `/`**
+- [x] **5.3 首页 `/`**
   - Req: REQ-07-5
   - 文件：`src/pages/index.astro`
   - 组件组合：Hero + SearchModal + FeaturedPost + 最新 PostCard 网格
   - Done when：本地 dev 访问 `/` 渲染正常
 
-- [ ] **5.4 文章页 `/post/<slug>/`**
+- [x] **5.4 文章页 `/post/<slug>/`**
   - Req: REQ-03-1, REQ-03-2, REQ-02-1 ~ REQ-02-5, REQ-11-3, REQ-11-4
   - 文件：`src/pages/post/[slug].astro`
   - design §5.4 实现，包括锁住判断、中英双份内容渲染、无英文版时 fallback
   - Done when：`/post/htb-bruno/` 可访问；锁住的文章显示 LockedBanner
 
-- [ ] **5.5 About 页**
+- [x] **5.5 About 页**
   - Req: REQ-03-5
   - 文件：`src/pages/about.astro`
   - 基于旧 `templates/about.html` 视觉迁移（简化）
   - Done when：`/about/` 可访问
 
-- [ ] **5.6 Archives 页**
+- [x] **5.6 Archives 页**
   - Req: REQ-03-5
   - 文件：`src/pages/archives.astro`
   - 按年月分组展示所有已发布文章
   - Done when：`/archives/` 显示"2026 年 1 月 | htb administrator / htb bruno..."
 
-- [ ] **5.7 Tags 页**
+- [x] **5.7 Tags 页**
   - Req: REQ-03-5
   - 文件：`src/pages/tags/index.astro`、`src/pages/tags/[tag].astro`
   - 索引页按标签文章数排序；单标签页列出所有含该 tag 的文章
   - Done when：`/tags/` 和 `/tags/Windows/` 均可访问
 
-- [ ] **5.8 Categories 页**
+- [x] **5.8 Categories 页**
   - Req: REQ-03-5
   - 文件：`src/pages/categories/index.astro`、`src/pages/categories/[name].astro`
   - 同 Tags 页结构
   - Done when：`/categories/` 和 `/categories/HTB/` 均可访问
 
-- [ ] **5.9 404 页**
+- [x] **5.9 404 页**
   - Req: REQ-03-5
   - 文件：`src/pages/404.astro`
   - 复刻原 `templates/404.html` 的视觉
   - Done when：访问不存在页面返回 404 内容
 
-- [ ] **5.10 sitemap**
+- [x] **5.10 sitemap**
   - Req: REQ-08-5
   - 文件：`astro.config.mjs` 中的 `@astrojs/sitemap` integration 已注册
   - 过滤：不包含 `/404`
   - Done when：`/sitemap-index.xml` 可访问，包含所有文章 URL
 
-- [ ] **5.11 robots.txt**
+- [x] **5.11 robots.txt**
   - Req: REQ-08-6, REQ-08-11
   - 文件：`public/robots.txt`（静态）
   - 内容：`User-agent: * / Allow: / / Sitemap: https://neobee.top/sitemap-index.xml`
   - Done when：`/robots.txt` 可访问
 
-- [ ] **5.12 RSS**
+- [x] **5.12 RSS**
   - Req: REQ-08-7
   - 文件：`src/pages/rss.xml.ts`
   - design §10.3 实现，包含最新 20 篇
   - Done when：`/rss.xml` 返回合法 XML
 
-- [ ] **5.13 Schema.org JSON-LD**
+- [x] **5.13 Schema.org JSON-LD**
   - Req: REQ-08-4
   - 位置：`src/layouts/PostLayout.astro` 里输出 `<script type="application/ld+json">`
   - 字段参照旧 `post.html` L40-L64

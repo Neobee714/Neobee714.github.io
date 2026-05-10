@@ -1,0 +1,97 @@
+---
+/**
+ * Tags index — all tags sorted by post count, displayed as pills.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getPublishedPosts } from '@/lib/obsidian-parser';
+
+const posts = await getPublishedPosts();
+
+// Count tags
+const tagCounts = new Map<string, number>();
+for (const post of posts) {
+  for (const tag of post.data.tags || []) {
+    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  }
+}
+
+// Sort by count descending
+const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<BaseLayout title="标签 - Xyvora" description="All tags">
+  <div class="tags-page">
+    <h1 class="tags-page__title">
+      <span class="lang-zh">标签</span>
+      <span class="lang-en">Tags</span>
+    </h1>
+
+    {sortedTags.length > 0 ? (
+      <div class="tags-page__cloud">
+        {sortedTags.map(([tag, count]) => (
+          <a href={`/tags/${tag}/`} class="tags-page__pill">
+            {tag} <span class="tags-page__count">{count}</span>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <p class="tags-page__empty">
+        <span class="lang-zh">暂无标签</span>
+        <span class="lang-en">No tags yet</span>
+      </p>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .tags-page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .tags-page__title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 2rem;
+  }
+
+  .tags-page__cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .tags-page__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.875rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .tags-page__pill:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .tags-page__count {
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    background: var(--bg-elevated);
+    padding: 0.0625rem 0.375rem;
+    border-radius: 9999px;
+  }
+
+  .tags-page__empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 3rem 0;
+  }
+</style>
