@@ -1,6 +1,8 @@
 name: Build & Deploy
 
 on:
+  push:
+    branches: [main]
   repository_dispatch:
     types: [vault-updated]
   workflow_dispatch:
