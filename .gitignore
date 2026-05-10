@@ -20,7 +20,9 @@ venv/
 Thumbs.db
 
 # Editor
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
 .idea/
 *.swp
 
