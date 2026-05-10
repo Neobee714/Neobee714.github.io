@@ -604,12 +604,12 @@
 
 ## Phase 10：清理
 
-- [ ] **10.1 确认旧仓库 main 分支已替换**
+- [x] **10.1 确认旧仓库 main 分支已替换**
   - Req: REQ-13-1, REQ-13-5
   - 动作：`git log origin/main --oneline -5` 确认顶部是 Astro 迁移的 commit，底部有 `legacy-flask-v1` tag
   - Done when：GitHub 仓库主页只见新项目
 
-- [ ] **10.2 更新 README**
+- [x] **10.2 更新 README**
   - Req: REQ-08-12（GSC 文档）
   - 文件：`README.md`
   - 内容：
@@ -621,12 +621,12 @@
     - 如何添加 / 修改 / 删除文章（在 Obsidian 里 push 即可）
   - Done when：README 覆盖上述内容
 
-- [ ] **10.3 删除残留的 legacy 引用**
+- [x] **10.3 删除残留的 legacy 引用**
   - Req: REQ-13-5, REQ-13-7
   - 动作：全局搜索 `Flask` / `Notion` / `notion-client` 关键字，确保代码里没有残留
   - Done when：`grep -r "notion" . --exclude-dir=.git --exclude-dir=vault` 无业务代码匹配
 
-- [ ] **10.4 `.gitignore` 完善**
+- [x] **10.4 `.gitignore` 完善**
   - Req: —
   - 文件：site-repo 的 `.gitignore`
   - 至少包含：`node_modules`、`dist`、`.astro`、`.env`、`.DS_Store`

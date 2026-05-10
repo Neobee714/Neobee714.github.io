@@ -3,11 +3,12 @@
 .env.*
 !.env.example
 
-# Node / Astro (Phase 1 之后会用到)
+# Node / Astro
 node_modules/
 dist/
 .astro/
 .cache/
+*.log
 
 # Python
 __pycache__/
