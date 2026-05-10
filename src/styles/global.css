@@ -18,3 +18,13 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Shiki dual-theme: show dark colors in dark mode */
+:root[data-theme='dark'] .astro-code {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+:root[data-theme='dark'] .astro-code span {
+  color: var(--shiki-dark) !important;
+}
