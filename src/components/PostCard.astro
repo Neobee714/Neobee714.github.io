@@ -30,7 +30,6 @@ const titleZh = segments[segments.length - 1];
 // Reading time estimate: ~400 Chinese chars per minute
 const bodyLength = post.body?.length ?? 0;
 const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
-const views = 500 + Array.from(slug).reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 1600;
 ---
 
 <a
@@ -48,12 +47,8 @@ const views = 500 + Array.from(slug).reduce((sum, ch) => sum + ch.charCodeAt(0),
       {category || 'Blog'}
       {locked && <span class="ml-2" title="Locked">🔒</span>}
     </span>
-    <span class="text-sm flex items-center gap-1 text-[var(--text-muted)]">
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
-      {views.toLocaleString('en-US')}
+    <span class="text-sm text-[var(--text-muted)]">
+      {dateStr || ''}
     </span>
   </div>
 

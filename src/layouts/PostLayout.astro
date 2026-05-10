@@ -59,7 +59,7 @@ const jsonLd = JSON.stringify({
 >
   <ReadingProgress />
 
-  <div class="max-w-4xl mx-auto px-6 py-14">
+  <div class="max-w-5xl mx-auto px-6 py-14">
     <!-- AICover -->
     <AICover category={category} title={titleZh} slug={slug} />
 
@@ -88,19 +88,19 @@ const jsonLd = JSON.stringify({
       </div>
     )}
 
-    <!-- Two-column: TOC sidebar + content -->
-    <div class="grid lg:grid-cols-[220px_1fr] gap-10 mt-12">
-      <!-- TOC Sidebar -->
-      <aside class="hidden lg:block">
-        <div class="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5 sticky top-24">
-          <TableOfContents headings={headings} />
-        </div>
-      </aside>
-
+    <!-- Two-column: content + TOC sidebar (right) -->
+    <div class="grid lg:grid-cols-[1fr_200px] gap-10 mt-12">
       <!-- Article Content -->
       <article class="post-content space-y-8 text-lg leading-9 text-[var(--text-muted)] min-w-0">
         <slot />
       </article>
+
+      <!-- TOC Sidebar (right) -->
+      <aside class="hidden lg:block">
+        <div class="sticky top-24">
+          <TableOfContents headings={headings} />
+        </div>
+      </aside>
     </div>
 
     <!-- Comments -->
