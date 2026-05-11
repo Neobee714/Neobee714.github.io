@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ASTRO_VAULT_PATH: ${{ github.workspace }}/vault
-      PUBLIC_SITE_URL: https://neobee.top
+      PUBLIC_SITE_URL: https://xyvora.me
 
     steps:
       - name: Checkout site-repo
@@ -92,7 +92,7 @@ jobs:
       - name: Smoke test
         run: |
           sleep 5
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://neobee.top/)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://xyvora.me/)
           echo "Status: $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "::warning::Smoke test returned $STATUS (expected 200)"

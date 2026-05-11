@@ -29,7 +29,7 @@ for (const key of ['ASTRO_VAULT_PATH', 'PUBLIC_SITE_URL']) {
 }
 
 export default defineConfig({
-  site: process.env.PUBLIC_SITE_URL || 'https://neobee.top',
+  site: process.env.PUBLIC_SITE_URL || 'https://xyvora.me',
   integrations: [react(), sitemap({ filter: (page) => !page.includes('/404') }), slugUniquenessCheck(), copyVaultImages()],
   markdown: {
     remarkPlugins: [
