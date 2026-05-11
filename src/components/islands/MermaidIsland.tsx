@@ -26,7 +26,7 @@ export default function MermaidIsland() {
 
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i] as HTMLElement;
-        const code = el.getAttribute('data-mermaid') || el.textContent || '';
+        const code = el.getAttribute('data-mermaid') || '';
         if (!code.trim()) continue;
 
         try {

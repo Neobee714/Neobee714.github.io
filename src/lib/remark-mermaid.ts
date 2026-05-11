@@ -16,9 +16,7 @@ export function remarkMermaid() {
       const source = node.value ?? '';
       const html = {
         type: 'html',
-        value: `<div class="mermaid-placeholder" data-mermaid>${escapeHtml(
-          source
-        )}</div>`,
+        value: `<div class="mermaid-placeholder" data-mermaid="${escapeAttr(source)}"></div>`,
       };
       (parent as { children: unknown[] }).children.splice(index, 1, html);
       return [SKIP, index];
@@ -26,9 +24,11 @@ export function remarkMermaid() {
   };
 }
 
-function escapeHtml(s: string): string {
+/** Escape for safe use inside an HTML attribute value (double-quoted). */
+function escapeAttr(s: string): string {
   return s
     .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }

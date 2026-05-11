@@ -17,6 +17,7 @@ import { remarkCallout } from './src/lib/remark-callout.ts';
 import { remarkWikilink } from './src/lib/remark-wikilink.ts';
 import { remarkMermaid } from './src/lib/remark-mermaid.ts';
 import { rehypeImageRewrite } from './src/lib/rehype-image-rewrite.ts';
+import { remarkHighlight } from './src/lib/remark-highlight.ts';
 
 // Load ASTRO_VAULT_PATH / PUBLIC_SITE_URL from .env into process.env so
 // the content loader and integrations can read them.
@@ -33,6 +34,7 @@ export default defineConfig({
   markdown: {
     remarkPlugins: [
       remarkDataviewStrip, // drop dataview / templater / %%comments%%
+      remarkHighlight,     // ==text== -> <mark>
       remarkCallout,       // > [!note] -> <aside class="callout ...">
       remarkWikilink,      // [[note]] / ![[image]]
       remarkMermaid,       // ```mermaid -> placeholder div

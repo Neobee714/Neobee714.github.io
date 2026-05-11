@@ -65,6 +65,9 @@ const canonicalUrl = canonical || new URL(Astro.url.pathname, siteUrl).href;
     <!-- Google Search Console verification -->
     {gscVerification && <meta name="google-site-verification" content={gscVerification} />}
 
+    <!-- KaTeX CSS for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+
     <!-- Theme init (inline to prevent FOUC) -->
     <script is:inline set:html={THEME_INIT_SCRIPT} />
   </head>
