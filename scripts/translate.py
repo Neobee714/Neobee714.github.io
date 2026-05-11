@@ -156,8 +156,18 @@ def translate_note(
     translated_fm["translated_at"] = datetime.now(timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
-    # Keep the same Slug
-    # Tags are preserved as-is (not translated)
+
+    # Translate 简介 (summary) if present
+    jianjie = str(fm.get("简介", "")).strip()
+    if jianjie:
+        try:
+            summary_prompt = "Translate the following Chinese text to English. Return only the translated text, nothing else."
+            translated_summary, summary_tokens = client.translate_chunk(summary_prompt, jianjie)
+            translated_fm["简介"] = translated_summary.strip()
+            total_tokens += summary_tokens
+        except Exception as e:
+            log.warning(f"Failed to translate 简介: {e}")
+            # Keep original if translation fails
 
     return translated_fm, translated_body, total_tokens
 
