@@ -17,6 +17,28 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Load .env file if present (for local development)
+def _load_dotenv():
+    """Load .env file from project root or scripts/ directory."""
+    for env_path in [
+        Path(__file__).resolve().parent.parent / '.env',
+        Path(__file__).resolve().parent / '.env',
+    ]:
+        if env_path.exists():
+            with open(env_path, encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    key, _, value = line.partition('=')
+                    key = key.strip()
+                    value = value.strip().strip('"').strip("'")
+                    if key and key not in os.environ:
+                        os.environ[key] = value
+            break
+
+_load_dotenv()
+
 # Ensure scripts/ is importable when running from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -30,18 +52,23 @@ log = logging.getLogger("translate")
 # --- System Prompt (design §7.5) ---
 
 SYSTEM_PROMPT = """\
-You are a professional translator. Translate the following Chinese Markdown content to English.
-Rules:
-- Preserve all Markdown formatting exactly (headings, lists, code blocks, links, etc.)
-- Do NOT translate content inside code blocks (```...```)
-- Do NOT translate or modify [[wikilinks]] or ![[embeds]]
-- Do NOT translate technical terms, CVE IDs, tool names, or command-line syntax
-- Preserve all frontmatter fields as-is (do not include frontmatter in output)
-- Keep the same paragraph structure
-- Use natural, professional English
+You are a professional technical translator specializing in cybersecurity and CTF writeups.
+Translate the following Chinese Markdown content to English.
 
-You will receive the source between <SOURCE> tags.
-Return the translation between <TRANSLATED> tags, nothing else.
+Rules:
+- Translate all Chinese text to natural, professional English
+- Preserve ALL Markdown formatting exactly (headings, lists, bold, italic, tables, etc.)
+- For code blocks (``` ... ```):
+  - Translate ONLY comments (lines starting with # or //, or inline comments after code)
+  - Do NOT translate commands, variable names, function names, file paths, or any executable code
+  - Do NOT translate tool output, terminal responses, or log lines
+- Do NOT translate or modify [[wikilinks]] or ![[embeds]]
+- Do NOT translate technical terms: CVE IDs, tool names (nmap, gobuster, etc.), protocol names, port numbers, IP addresses, hostnames, hashes, exploit names
+- Do NOT include frontmatter in the output (no --- blocks)
+- Keep the same paragraph and section structure
+- Preserve all URLs, file paths, and command syntax exactly
+
+Return ONLY the translated content between <TRANSLATED> and </TRANSLATED> tags.
 """
 
 

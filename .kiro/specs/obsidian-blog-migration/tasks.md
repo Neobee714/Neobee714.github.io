@@ -503,7 +503,7 @@
 
 ## Phase 8：VPS 容器改造与域名
 
-- [ ] **8.1 SSH 到 VPS，做一次性改造**
+- [x] **8.1 SSH 到 VPS，做一次性改造**
   - Req: REQ-13-4, REQ-13-5, REQ-13-10
   - 动作（按 design §9.5 逐项）：
     1. 清理 `/root/neobee-stack/Neobee714.github.io/` 旧 Flask 源码（Phase 0.7 已备份）
@@ -515,13 +515,13 @@
     7. `curl -I https://neobee.top/` 应 200
   - Done when：`curl https://neobee.top/` 返回占位页 HTML
 
-- [ ] **8.2 跑一次完整 CI 验证**
+- [x] **8.2 跑一次完整 CI 验证**
   - Req: REQ-09-9
   - 动作：手动触发 `build.yml` → 等完成
   - 访问 `https://neobee.top/` 应该从占位页变成 Astro 渲染的真实首页
   - Done when：整个流水线跑通，线上内容正确
 
-- [ ] **8.3 启用 Cloudflare Web Analytics**
+- [x] **8.3 启用 Cloudflare Web Analytics**
   - Req: —（替代旧 analytics.py）
   - 动作：
     1. CF Dashboard → Analytics & Logs → Web Analytics → Add a site → `neobee.top`
@@ -530,7 +530,7 @@
     4. 访问几次站点 → 面板里看到实时数据
   - Done when：CF Web Analytics 面板出现访问数据
 
-- [ ] **8.4 绑定 Google Search Console**
+- [x] **8.4 绑定 Google Search Console**
   - Req: REQ-08-10, REQ-08-12
   - 动作：
     1. GSC → 添加资源 → `https://neobee.top` → 选 HTML 标记验证
@@ -540,7 +540,7 @@
     5. 提交 sitemap `https://neobee.top/sitemap-index.xml`
   - Done when：GSC 显示域名已验证 + sitemap 状态 "成功"
 
-- [ ] **8.5 Giscus 配置（如已启用 Discussions）**
+- [x] **8.5 Giscus 配置（如已启用 Discussions）**
   - Req: REQ-07-4（评论）
   - 动作：
     1. `Neobee714.github.io` Settings → 勾选 Discussions
@@ -550,7 +550,7 @@
     5. 触发重新构建
   - Done when：文章页底部 Giscus iframe 正常显示
 
-- [ ] **8.6 SEO 抽查**
+- [x] **8.6 SEO 抽查**
   - Req: REQ-08-1 ~ REQ-08-9
   - 手工检查一篇文章的 view-source：
     - ✅ `<title>` / `<meta description>` / `<meta keywords>` 存在
@@ -564,21 +564,21 @@
 
 ## Phase 9：质量保障
 
-- [ ] **9.1 Lighthouse 跑分**
+- [x] **9.1 Lighthouse 跑分**
   - Req: REQ-12-3
   - 动作：Chrome DevTools → Lighthouse → 跑首页、1 篇文章页
   - 目标：Performance ≥ 90 / SEO ≥ 95 / Accessibility ≥ 90
   - 若不达标：查 `web.dev` 建议，典型问题是图片尺寸、字体加载、color contrast
   - Done when：3 个分数全达标
 
-- [ ] **9.2 Obsidian 语法覆盖测试**
+- [x] **9.2 Obsidian 语法覆盖测试**
   - Req: REQ-05-1 ~ REQ-05-13
   - 在 vault 里准备一篇"语法测试"笔记（可参考 `F:\Work\Obsidian\类型.md`），设置 `发布: true`
   - 覆盖：标题 / 加粗 / 斜体 / 列表 / 任务列表 / 代码块 / 表格 / wikilink / embed / callout / LaTeX / mermaid / `==高亮==`
   - push → 等构建 → 访问该文章
   - Done when：每种语法都正确渲染，无破损或残留 Obsidian 语法
 
-- [ ] **9.3 锁住 / 未发布 / 破链的边界测试**
+- [x] **9.3 锁住 / 未发布 / 破链的边界测试**
   - Req: REQ-02-1 ~ REQ-02-5, REQ-01-2, REQ-05-3
   - 准备 4 篇测试笔记：
     - A: `发布:true` + `是否锁住:No` → 正常
@@ -595,7 +595,7 @@
     3. 模拟 LLM 失败（把 `LLM_API_KEY` 设成错值）→ push → 查旧 `.en.md` 是否保留（应该是）
   - Done when：3 种场景行为正确
 
-- [ ] **9.5 旧链接兼容性**
+- [x] **9.5 旧链接兼容性**
   - Req: REQ-03-1
   - 操作：在原 Notion 时代分享过的 URL 抽几条（如 `/post/htb-bruno`）访问新站
   - Done when：都能正常访问（302 或直接 200，无 404）

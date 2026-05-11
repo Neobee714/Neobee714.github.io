@@ -13,8 +13,8 @@ from openai import OpenAI
 
 log = logging.getLogger(__name__)
 
-_MAX_RETRIES = 3
-_BACKOFF_SECONDS = [1, 2, 4]
+_MAX_RETRIES = 5
+_BACKOFF_SECONDS = [2, 4, 8, 16, 30]
 
 
 class LlmClient:
@@ -82,6 +82,7 @@ class LlmClient:
                         {"role": "user", "content": f"<SOURCE>\n{content}\n</SOURCE>"},
                     ],
                     temperature=0.3,
+                    max_tokens=4096,
                 )
 
                 if not response.choices:
