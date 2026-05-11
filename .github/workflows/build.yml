@@ -13,6 +13,8 @@ jobs:
     env:
       ASTRO_VAULT_PATH: ${{ github.workspace }}/vault
       PUBLIC_SITE_URL: https://xyvora.me
+      GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
+      PUBLIC_CF_ANALYTICS_TOKEN: ${{ secrets.PUBLIC_CF_ANALYTICS_TOKEN }}
 
     steps:
       - name: Checkout site-repo
