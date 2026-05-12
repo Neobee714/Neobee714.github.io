@@ -157,8 +157,8 @@ def translate_note(
     translated_fm["lang"] = "en"
     translated_fm["source"] = src_path.name
     translated_fm["source_hash"] = src_hash
-    translated_fm["translated_at"] = datetime.now(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+    translated_fm["translated_at"] = '"{}"'.format(
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     )
 
     # Translate 简介 (summary) if present
