@@ -35,4 +35,6 @@ def write_note(path: Union[str, Path], fm: dict, body: str) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     post = frontmatter.Post(body, **fm)
-    path.write_text(frontmatter.dumps(post), encoding="utf-8")
+    content = frontmatter.dumps(post)
+    # Ensure UTF-8 encoding is used explicitly
+    path.write_bytes(content.encode("utf-8"))
