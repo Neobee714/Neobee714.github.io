@@ -57,8 +57,12 @@ Translate the following Chinese Markdown content to English.
 
 Rules:
 - Translate all Chinese text to natural, professional English
-- Preserve ALL Markdown formatting exactly (headings, lists, bold, italic, tables, etc.)
-- For code blocks (``` ... ```):
+- CRITICAL: Preserve ALL Markdown formatting EXACTLY as-is:
+  - Code blocks MUST keep their opening ``` and closing ``` fences
+  - Code block language tags (```python, ```bash, etc.) MUST be preserved
+  - Do NOT convert code blocks to plain text
+  - Do NOT remove or modify ``` fences under any circumstances
+- For content INSIDE code blocks (``` ... ```):
   - Translate ONLY comments (lines starting with # or //, or inline comments after code)
   - Do NOT translate commands, variable names, function names, file paths, or any executable code
   - Do NOT translate tool output, terminal responses, or log lines
