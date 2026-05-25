@@ -13,6 +13,7 @@ Usage:
 import argparse
 import logging
 import os
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,19 +56,43 @@ SYSTEM_PROMPT = """\
 You are a professional technical translator specializing in cybersecurity and CTF writeups.
 Translate the following Chinese Markdown content to English.
 
-Rules:
+=== RULE #1: CODE BLOCK INTEGRITY (HIGHEST PRIORITY) ===
+
+Every fenced code block (``` ... ```) in the input MUST appear EXACTLY once in the output,
+with the SAME opening fence (including language tag), SAME closing fence, and ALL original
+lines preserved between them. Count the ``` fences in your output — it MUST match the input.
+
+NEVER do any of these:
+- Close a ``` fence early (before all code lines are included)
+- Split one code block into multiple code blocks
+- Move code lines outside of their ``` fences
+- Drop the language tag (```bash, ```python, etc.)
+- Add extra ``` fences that don't exist in the input
+
+WRONG (broken code block):
+  ```bash
+  # Exploit Title: TextPattern CMS
+  ```
+  # Date: 2021/09/06          ← THIS LINE SHOULD BE INSIDE THE CODE BLOCK
+
+CORRECT (intact code block):
+  ```bash
+  # Exploit Title: TextPattern CMS
+  # Date: 2021/09/06
+  ```
+
+=== RULE #2: TRANSLATION INSIDE CODE BLOCKS ===
+
+For content INSIDE code blocks:
+- Translate ONLY comment lines (lines starting with # or //) and inline comments
+- Do NOT translate commands, variable names, function names, file paths, output, or any executable code
+- Do NOT translate tool output, terminal responses, or log lines
+
+=== RULE #3: GENERAL TRANSLATION ===
+
 - Translate all Chinese text to natural, professional English
-- CRITICAL: Preserve ALL Markdown formatting EXACTLY as-is:
-  - Code blocks MUST keep their opening ``` and closing ``` fences
-  - Code block language tags (```python, ```bash, etc.) MUST be preserved
-  - Do NOT convert code blocks to plain text
-  - Do NOT remove or modify ``` fences under any circumstances
-- For content INSIDE code blocks (``` ... ```):
-  - Translate ONLY comments (lines starting with # or //, or inline comments after code)
-  - Do NOT translate commands, variable names, function names, file paths, or any executable code
-  - Do NOT translate tool output, terminal responses, or log lines
 - Do NOT translate or modify [[wikilinks]] or ![[embeds]]
-- Do NOT translate technical terms: CVE IDs, tool names (nmap, gobuster, etc.), protocol names, port numbers, IP addresses, hostnames, hashes, exploit names
+- Do NOT translate technical terms: CVE IDs, tool names, protocol names, ports, IPs, hostnames, hashes
 - Do NOT include frontmatter in the output (no --- blocks)
 - Keep the same paragraph and section structure
 - Preserve all URLs, file paths, and command syntax exactly
@@ -190,6 +215,11 @@ def main() -> None:
     ap.add_argument("--force", action="store_true", help="Ignore cache, retranslate all")
     ap.add_argument("--only", type=str, help="Only translate this slug")
     ap.add_argument("--dry-run", action="store_true", help="List files without translating")
+    ap.add_argument(
+        "--move-dest", type=Path, default=None,
+        help="Destination for .en.md files (default: <vault>/../Translated)",
+    )
+    ap.add_argument("--no-move", action="store_true", help="Keep .en.md files in vault")
     args = ap.parse_args()
 
     logging.basicConfig(
@@ -279,6 +309,21 @@ def main() -> None:
                 f.write(f"| Tokens used | {stats['tokens']} |\n")
         except Exception as e:
             log.warning(f"Could not write GITHUB_STEP_SUMMARY: {e}")
+
+    # 6. Move translated files (default: to <vault>/../Translated)
+    if not args.no_move:
+        dest_root = (args.move_dest or vault / "Translated").resolve()
+        en_files = sorted(vault.rglob("*.en.md"))
+        # Exclude files already in dest
+        en_files = [f for f in en_files if dest_root not in f.parents]
+        moved = 0
+        for src in en_files:
+            rel = src.relative_to(vault)
+            dst = dest_root / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dst))
+            moved += 1
+        log.info(f"Moved {moved} translated file(s) to {dest_root}")
 
     sys.exit(0 if stats["failed"] == 0 else 1)
 

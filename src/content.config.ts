@@ -86,6 +86,7 @@ const posts = defineCollection({
     // logs are excluded.
     pattern: [
       'SecNotes/**/*.md',
+      'Translated/SecNotes/**/*.md',
       '!SecNotes/**/Templates/**',
       '!**/.obsidian/**',
       '!**/.trash/**',

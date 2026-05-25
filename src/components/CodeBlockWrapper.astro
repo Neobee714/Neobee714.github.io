@@ -1,14 +1,81 @@
 ---
 /**
  * CodeBlockWrapper — client-side script that enhances all <pre> elements with:
- * - Language label (top-left)
- * - Copy button (top-right)
+ * - Language label with color dot (top-left)
+ * - Copy button with clipboard icon (top-right)
  * - Long code collapse (if height > 600px)
- * Pure vanilla JS, no framework needed.
+ * iOS / Xcode inspired styling.
  */
 ---
 
 <script>
+  const LANG_COLORS: Record<string, string> = {
+    python: '#3572A5',
+    py: '#3572A5',
+    javascript: '#f1e05a',
+    js: '#f1e05a',
+    typescript: '#3178c6',
+    ts: '#3178c6',
+    bash: '#89e051',
+    sh: '#89e051',
+    shell: '#89e051',
+    zsh: '#89e051',
+    rust: '#dea584',
+    go: '#00ADD8',
+    java: '#b07219',
+    ruby: '#701516',
+    php: '#4F5D95',
+    css: '#563d7c',
+    html: '#e34c26',
+    json: '#292929',
+    yaml: '#cb171e',
+    yml: '#cb171e',
+    sql: '#e38c00',
+    c: '#555555',
+    cpp: '#f34b7d',
+    'c++': '#f34b7d',
+    swift: '#F05138',
+    kotlin: '#A97BFF',
+    dart: '#00B4AB',
+    lua: '#000080',
+    markdown: '#083fa1',
+    md: '#083fa1',
+    dockerfile: '#384d54',
+    xml: '#0060ac',
+    toml: '#9c4221',
+    ini: '#0060ac',
+    makefile: '#427819',
+    powershell: '#012456',
+    ps1: '#012456',
+    vim: '#199f4b',
+    r: '#198CE7',
+    scala: '#c22d40',
+    perl: '#0298c3',
+    elixir: '#6e4a7e',
+    erlang: '#B83998',
+    haskell: '#5e5086',
+    clojure: '#db5855',
+    matlab: '#e16737',
+    groovy: '#4298b8',
+    vue: '#41b883',
+    svelte: '#ff3e00',
+    graphql: '#e10098',
+    graphqlschema: '#e10098',
+    diff: '#276d3b',
+    git: '#F14E32',
+    nginx: '#009639',
+    apache: '#d22128',
+    tex: '#3D6117',
+    latex: '#3D6117',
+  };
+
+  function getLangColor(lang: string): string {
+    return LANG_COLORS[lang.toLowerCase()] || '#8e8e93';
+  }
+
+  const CLIPBOARD_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  const CHECK_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
   function initCodeBlocks() {
     const pres = document.querySelectorAll<HTMLPreElement>('pre');
 
@@ -27,30 +94,59 @@
       toolbar.className = 'code-block-toolbar';
       wrapper.insertBefore(toolbar, pre);
 
-      // Language label
+      // Left group: lang pill + optional filename
+      const leftGroup = document.createElement('div');
+      leftGroup.className = 'code-block-left';
+      toolbar.appendChild(leftGroup);
+
+      // Language label with color dot
       const code = pre.querySelector('code');
       const lang = pre.dataset.language || code?.dataset.language || code?.className.match(/language-(\w+)/)?.[1] || '';
       if (lang) {
         const label = document.createElement('span');
         label.className = 'code-block-lang';
-        label.textContent = lang;
-        toolbar.appendChild(label);
+
+        const dot = document.createElement('span');
+        dot.className = 'code-block-lang-dot';
+        dot.style.backgroundColor = getLangColor(lang);
+        label.appendChild(dot);
+
+        const langText = document.createElement('span');
+        langText.textContent = lang;
+        label.appendChild(langText);
+
+        leftGroup.appendChild(label);
       }
 
-      // Copy button
+      // Filename label
+      const filename = pre.dataset.filename;
+      if (filename) {
+        const fn = document.createElement('span');
+        fn.className = 'code-block-filename';
+        fn.textContent = filename;
+        leftGroup.appendChild(fn);
+      }
+
+      // Copy button with icon
       const copyBtn = document.createElement('button');
       copyBtn.className = 'code-block-copy';
-      copyBtn.textContent = 'Copy';
       copyBtn.type = 'button';
+      copyBtn.innerHTML = `${CLIPBOARD_SVG}<span>Copy</span>`;
       copyBtn.addEventListener('click', async () => {
         const text = code?.textContent || pre.textContent || '';
         try {
           await navigator.clipboard.writeText(text);
-          copyBtn.textContent = '✓';
-          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+          copyBtn.classList.add('copied');
+          copyBtn.innerHTML = `${CHECK_SVG}<span>Copied</span>`;
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = `${CLIPBOARD_SVG}<span>Copy</span>`;
+          }, 2000);
         } catch {
-          copyBtn.textContent = 'Failed';
-          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+          copyBtn.innerHTML = `${CLIPBOARD_SVG}<span>Failed</span>`;
+          setTimeout(() => {
+            copyBtn.innerHTML = `${CLIPBOARD_SVG}<span>Copy</span>`;
+          }, 2000);
         }
       });
       toolbar.appendChild(copyBtn);
@@ -76,53 +172,100 @@
 </script>
 
 <style is:global>
+  /* ── Container ── */
   .code-block-wrapper {
     position: relative;
     margin: 1.5rem 0;
-    border-radius: 0.75rem;
+    border-radius: 16px;
     overflow: hidden;
-    border: 1px solid var(--border);
-  }
-
-  .code-block-wrapper pre {
-    margin: 0;
-    border-radius: 0;
     border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06);
   }
 
+  /* ── Toolbar (frosted glass) ── */
   .code-block-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.375rem 0.75rem;
-    background: var(--code-bg);
-    border-bottom: 1px solid var(--border);
-    font-size: 0.6875rem;
+    padding: 10px 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    font-size: 0.75rem;
   }
 
+  /* ── Left group (lang + filename) ── */
+  .code-block-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  /* ── Language pill ── */
   .code-block-lang {
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
     font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
   }
 
+  .code-block-lang-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Filename label ── */
+  .code-block-filename {
+    font-size: 0.6875rem;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Copy button ── */
   .code-block-copy {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.625rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: inherit;
     cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease;
   }
 
-  .code-block-copy:hover {
-    color: var(--primary);
-    border-color: var(--primary);
+  .code-block-copy svg {
+    flex-shrink: 0;
   }
 
+  /* ── Code area ── */
+  .code-block-wrapper pre {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    padding: 14px 16px;
+    font-size: 0.75rem;
+    line-height: 1.7;
+  }
+
+  .code-block-wrapper .astro-code {
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  /* ── Collapse ── */
   .code-block-collapsed pre {
     max-height: 600px;
     overflow: hidden;
@@ -133,17 +276,109 @@
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 1.5rem 0 0.75rem;
-    background: linear-gradient(transparent, var(--code-bg) 60%);
+    padding: 2rem 0 0.75rem;
     border: none;
-    color: var(--primary);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
     text-align: center;
+    border-radius: 0 0 16px 16px;
+    transition: opacity 0.15s ease;
   }
 
   .code-block-expand:hover {
-    text-decoration: underline;
+    opacity: 0.8;
+  }
+
+  /* ══════════════════════════════
+     Dark theme
+     ══════════════════════════════ */
+  :root[data-theme='dark'] .code-block-wrapper {
+    background: #1c1c1e;
+  }
+
+  :root[data-theme='dark'] .code-block-toolbar {
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+  }
+
+  :root[data-theme='dark'] .code-block-lang {
+    background: rgba(255, 255, 255, 0.08);
+    color: #aeaeb2;
+  }
+
+  :root[data-theme='dark'] .code-block-filename {
+    color: #636366;
+  }
+
+  :root[data-theme='dark'] .code-block-copy {
+    background: rgba(255, 255, 255, 0.08);
+    color: #aeaeb2;
+  }
+
+  :root[data-theme='dark'] .code-block-copy:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+  }
+
+  :root[data-theme='dark'] .code-block-copy.copied {
+    background: rgba(52, 199, 89, 0.2);
+    color: #34c759;
+  }
+
+  :root[data-theme='dark'] .code-block-wrapper pre,
+  :root[data-theme='dark'] .code-block-wrapper .astro-code {
+    color: #e5e5ea !important;
+  }
+
+  :root[data-theme='dark'] .code-block-expand {
+    background: #252526;
+    color: #0a84ff;
+  }
+
+  /* ══════════════════════════════
+     Light theme
+     ══════════════════════════════ */
+  :root[data-theme='light'] .code-block-wrapper {
+    background: #fff;
+  }
+
+  :root[data-theme='light'] .code-block-toolbar {
+    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+  }
+
+  :root[data-theme='light'] .code-block-lang {
+    background: rgba(0, 0, 0, 0.04);
+    color: #636366;
+  }
+
+  :root[data-theme='light'] .code-block-filename {
+    color: #aeaeb2;
+  }
+
+  :root[data-theme='light'] .code-block-copy {
+    background: rgba(0, 0, 0, 0.04);
+    color: #636366;
+  }
+
+  :root[data-theme='light'] .code-block-copy:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #1c1c1e;
+  }
+
+  :root[data-theme='light'] .code-block-copy.copied {
+    background: rgba(52, 199, 89, 0.15);
+    color: #248a3d;
+  }
+
+  :root[data-theme='light'] .code-block-wrapper pre,
+  :root[data-theme='light'] .code-block-wrapper .astro-code {
+    color: #3c3c43 !important;
+  }
+
+  :root[data-theme='light'] .code-block-expand {
+    background: #f7f7f7;
+    color: #007aff;
   }
 </style>

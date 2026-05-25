@@ -61,7 +61,10 @@ function getOriginalName(src: string, alt: unknown): string {
 function copyAsset(assetPath: string, normalized: string): void {
   if (copied.has(normalized)) return;
 
-  const outDir = path.resolve('dist', '_images');
+  const isDev = process.env.NODE_ENV !== 'production' && !process.argv.includes('build');
+  const outDir = isDev
+    ? path.resolve('public', '_images')
+    : path.resolve('dist', '_images');
   const outFile = path.join(outDir, normalized);
 
   try {

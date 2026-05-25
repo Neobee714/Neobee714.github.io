@@ -91,10 +91,12 @@ class LlmClient:
                 tokens = response.usage.total_tokens if response.usage else 0
 
                 # Extract content between <TRANSLATED> tags if present
-                if "<TRANSLATED>" in text and "</TRANSLATED>" in text:
+                if "<TRANSLATED>" in text:
                     start = text.index("<TRANSLATED>") + len("<TRANSLATED>")
-                    end = text.index("</TRANSLATED>")
-                    text = text[start:end].strip()
+                    text = text[start:]
+                if "</TRANSLATED>" in text:
+                    text = text[:text.index("</TRANSLATED>")]
+                text = text.strip()
 
                 return text, tokens
 

@@ -9,6 +9,11 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+
+/* Code font */
+code, pre, .astro-code {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace !important;
+}
   -webkit-font-smoothing: antialiased;
   margin: 0;
 }
