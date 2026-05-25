@@ -81,6 +81,22 @@ CORRECT (intact code block):
   # Date: 2021/09/06
   ```
 
+=== RULE #1b: STRUCTURAL INTEGRITY ===
+
+The input is one CHUNK of a larger document. Preserve its structure exactly:
+- Every heading (# ## ###) in the input MUST appear in the output at the same position
+- Every list item (- item) MUST have content. NEVER output bare - with no text
+- Every paragraph break in the input MUST remain in the output
+- Do NOT merge multiple paragraphs into one
+- Do NOT merge a heading with its following paragraph
+
+=== RULE #1c: CODE BLOCK COMPLETENESS ===
+
+For each code block in the input:
+- The opening ``` (with language tag) and closing ``` MUST both appear in output
+- ALL lines between them MUST be preserved (translated only if they are comments)
+- Count your code block fences: input count MUST equal output count
+
 === RULE #2: TRANSLATION INSIDE CODE BLOCKS ===
 
 For content INSIDE code blocks:
@@ -150,6 +166,39 @@ def get_slug(path: Path) -> str:
         return ""
 
 
+def validate_chunk(original: str, translated: str) -> bool:
+    """Validate structural integrity of a translated chunk.
+
+    Checks:
+    1. Code block fence count matches (must both be even or both odd)
+    2. Heading count matches
+
+    Returns True if valid, False otherwise.
+    """
+    # 1. Code block fence count
+    orig_fences = original.count("```")
+    trans_fences = translated.count("```")
+    if orig_fences % 2 == 0 and trans_fences % 2 != 0:
+        return False
+    if orig_fences > 0 and trans_fences == 0:
+        return False
+
+    # 2. Heading count
+    orig_headings = len(re.findall(r"^#{1,3}\s", original, re.MULTILINE))
+    trans_headings = len(re.findall(r"^#{1,3}\s", translated, re.MULTILINE))
+    if orig_headings != trans_headings:
+        return False
+
+    return True
+
+
+RETRY_PROMPT = (
+    "Your previous response lost structural elements. "
+    "Preserve ALL headings, code blocks, and list items exactly. "
+    "Try again."
+)
+
+
 def translate_note(
     client: LlmClient, src_path: Path, src_hash: str
 ) -> tuple[dict, str, int]:
@@ -172,8 +221,26 @@ def translate_note(
 
     for chunk in chunks:
         translated_text, tokens = client.translate_chunk(SYSTEM_PROMPT, chunk)
-        translated_chunks.append(translated_text)
         total_tokens += tokens
+
+        # Validate structural integrity, retry if broken
+        max_retries = 2
+        for attempt in range(max_retries):
+            if validate_chunk(chunk, translated_text):
+                break
+            log.warning(
+                f"  Chunk validation failed (attempt {attempt + 1}/{max_retries}), retrying..."
+            )
+            retry_system = SYSTEM_PROMPT + "\n\n" + RETRY_PROMPT
+            translated_text, retry_tokens = client.translate_chunk(retry_system, chunk)
+            total_tokens += retry_tokens
+        else:
+            # All retries exhausted — check one more time
+            if not validate_chunk(chunk, translated_text):
+                log.warning("  Chunk still invalid after retries, using original")
+                translated_text = chunk
+
+        translated_chunks.append(translated_text)
 
     translated_body = "\n\n".join(translated_chunks)
 
