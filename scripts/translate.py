@@ -167,6 +167,16 @@ def get_slug(path: Path) -> str:
         return ""
 
 
+def _get_translated_path(vault: Path, src: Path, move_dest: Path | None) -> Path | None:
+    """Get the path where a translated .en.md file would be in the Translated/ directory."""
+    dest_root = (move_dest or vault / "Translated").resolve()
+    try:
+        rel = src.relative_to(vault)
+    except ValueError:
+        return None
+    return dest_root / rel.with_suffix(".en.md")
+
+
 def validate_chunk(original: str, translated: str) -> bool:
     """Validate structural integrity of a translated chunk.
 
@@ -310,6 +320,7 @@ def main() -> None:
         log.info(f"Filtered to {len(originals)} file(s) matching slug '{args.only}'")
 
     stats = {"translated": 0, "cached": 0, "failed": 0, "skipped": 0, "tokens": 0}
+    move_dest = args.move_dest
 
     # In dry-run mode we don't need the LLM client
     client = None
@@ -326,16 +337,32 @@ def main() -> None:
         src_hash = compute_source_hash(fm, body)
         en_path = src.with_suffix(".en.md")
 
-        # Check cache
-        if not args.force and en_path.exists():
-            try:
-                en_fm, _ = read_note(en_path)
-                if en_fm.get("source_hash") == src_hash:
-                    log.info(f"  [CACHED] {src.relative_to(vault)}")
-                    stats["cached"] += 1
-                    continue
-            except Exception:
-                pass  # If we can't read the en file, retranslate
+        # Check cache: look in both source dir and Translated/ dir
+        cached = False
+        if not args.force:
+            # Check next to source file first
+            if en_path.exists():
+                try:
+                    en_fm, _ = read_note(en_path)
+                    if en_fm.get("source_hash") == src_hash:
+                        cached = True
+                except Exception:
+                    pass
+            # Check in Translated/ directory
+            if not cached:
+                translated_path = _get_translated_path(vault, src, move_dest)
+                if translated_path and translated_path.exists():
+                    try:
+                        en_fm, _ = read_note(translated_path)
+                        if en_fm.get("source_hash") == src_hash:
+                            cached = True
+                            en_path = translated_path  # Update path for move step
+                    except Exception:
+                        pass
+        if cached:
+            log.info(f"  [CACHED] {src.relative_to(vault)}")
+            stats["cached"] += 1
+            continue
 
         # Dry-run: just report what would be translated
         if args.dry_run:

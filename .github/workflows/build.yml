@@ -6,6 +6,12 @@ on:
   repository_dispatch:
     types: [vault-updated]
   workflow_dispatch:
+    inputs:
+      translate:
+        description: 'Run LLM translation (only for new articles)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-deploy:
@@ -49,6 +55,7 @@ jobs:
         run: pip install -r scripts/requirements.txt
 
       - name: Translate
+        if: false  # Skip: translations done locally
         continue-on-error: true
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
