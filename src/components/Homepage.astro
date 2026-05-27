@@ -1,0 +1,658 @@
+---
+import FeaturedPost from '@/components/FeaturedPost.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getCategory, getPostWithTranslation, getPublishedPosts } from '@/lib/obsidian-parser';
+
+const posts = await getPublishedPosts();
+const featured = posts[0];
+const secondary = posts.slice(1, 4);
+const gridPosts = posts.slice(4, 10);
+
+const categories = [...new Set(posts.map((post) => getCategory(post)).filter(Boolean))];
+const latestDate = posts[0]?.data.日期
+  ? posts[0].data.日期.toISOString().slice(0, 10)
+  : '';
+
+const stats = [
+  {
+    label: 'Posts',
+    value: String(posts.length).padStart(2, '0'),
+    noteZh: '已发布文章',
+    noteEn: 'Published notes',
+  },
+  {
+    label: 'Topics',
+    value: String(categories.length).padStart(2, '0'),
+    noteZh: '当前专题',
+    noteEn: 'Tracked topics',
+  },
+  {
+    label: 'Updated',
+    value: latestDate || '--',
+    noteZh: '最近更新',
+    noteEn: 'Latest publish date',
+  },
+];
+
+const topicCards = categories.slice(0, 6).map((name, index) => ({
+  name,
+  index: String(index + 1).padStart(2, '0'),
+  count: posts.filter((post) => getCategory(post) === name).length,
+}));
+
+const homepagePosts = [featured, ...secondary, ...gridPosts].filter(Boolean);
+const translationEntries = await Promise.all(
+  homepagePosts.map(async (post) => {
+    const { en } = await getPostWithTranslation(post.data.Slug!);
+    return [post.data.Slug!, en] as const;
+  })
+);
+const translationBySlug = new Map(translationEntries);
+---
+
+<section class="preview-shell preview-reveal" data-reveal>
+  <div class="preview-eyebrow preview-reveal__item" data-reveal-item>
+    <span class="preview-eyebrow__dot"></span>
+    <span class="lang-zh">Xyvora 安全研究</span>
+    <span class="lang-en">Xyvora Security Research</span>
+  </div>
+
+  <div class="preview-hero">
+    <div class="preview-hero__copy preview-reveal__item" data-reveal-item>
+      <p class="preview-kicker">
+        <span class="lang-zh">Xyvora / 安全研究日志</span>
+        <span class="lang-en">Xyvora / Security Research Journal</span>
+      </p>
+      <h1>
+        <span class="lang-zh">安全研究与实战笔记。</span>
+        <span class="lang-en">Security research and field notes.</span>
+      </h1>
+
+      <div class="preview-actions">
+          <a href="#preview-featured" class="preview-button preview-button--primary">
+            <span class="lang-zh">最新重点</span>
+            <span class="lang-en">Featured</span>
+          </a>
+          <a href="#preview-topics" class="preview-button">
+            <span class="lang-zh">浏览专题</span>
+            <span class="lang-en">Topics</span>
+          </a>
+      </div>
+    </div>
+
+    <aside class="preview-panel preview-reveal__item" data-reveal-item>
+      <div class="preview-panel__label">Snapshot</div>
+      <div class="preview-panel__grid">
+        {stats.map((item) => (
+          <div class="preview-stat">
+            <div class="preview-stat__label">{item.label}</div>
+            <div class="preview-stat__value">{item.value}</div>
+            <div class="preview-stat__note">
+              <span class="lang-zh">{item.noteZh}</span>
+              <span class="lang-en">{item.noteEn}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
+  </div>
+</section>
+
+{featured && (
+  <section id="preview-featured" class="preview-section preview-reveal" data-reveal>
+    <div class="preview-section__head preview-reveal__item" data-reveal-item>
+      <div>
+        <p class="preview-section__eyebrow">
+          <span class="lang-zh">精选研究</span>
+          <span class="lang-en">Featured Research</span>
+        </p>
+        <h2>
+          <span class="lang-zh">精选研究</span>
+          <span class="lang-en">Featured Research</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="preview-reveal__item" data-reveal-item>
+      <FeaturedPost post={featured} translation={translationBySlug.get(featured.data.Slug!)} />
+    </div>
+
+    {secondary.length > 0 && (
+      <div class="preview-mini-grid">
+        {secondary.map((post) => (
+          <article class="preview-mini-card preview-reveal__item" data-reveal-item>
+            <div class="preview-mini-card__meta">{getCategory(post) || 'Blog'}</div>
+            <h3 class="preview-mini-card__title">
+              <a href={`/post/${post.data.Slug!}/`}>
+                <span class="lang-zh">{post.id.replace(/\.md$/, '').split('/').pop()}</span>
+                <span class="lang-en">{post.data.Slug!}</span>
+              </a>
+            </h3>
+            <p class="preview-mini-card__text">
+              <span class="lang-zh">{(post.data.简介 || 'Research note preview').slice(0, 90)}</span>
+              <span class="lang-en">{(translationBySlug.get(post.data.Slug!)?.data.简介 || 'Research note preview').slice(0, 90)}</span>
+            </p>
+          </article>
+        ))}
+      </div>
+    )}
+  </section>
+)}
+
+{topicCards.length > 0 && (
+  <section id="preview-topics" class="preview-section preview-reveal" data-reveal>
+    <div class="preview-section__head preview-reveal__item" data-reveal-item>
+      <div>
+        <p class="preview-section__eyebrow">
+          <span class="lang-zh">专题导航</span>
+          <span class="lang-en">Topic Navigation</span>
+        </p>
+        <h2>
+          <span class="lang-zh">专题导航</span>
+          <span class="lang-en">Topic Navigation</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="preview-topic-grid">
+      {topicCards.map((topic) => (
+        <a href={`/categories/${topic.name}/`} class="preview-topic-card preview-reveal__item" data-reveal-item>
+          <div class="preview-topic-card__index">{topic.index}</div>
+          <div class="preview-topic-card__body">
+            <h3>{topic.name}</h3>
+            <p>{topic.count} posts</p>
+          </div>
+          <div class="preview-topic-card__arrow">↗</div>
+        </a>
+      ))}
+    </div>
+  </section>
+)}
+
+{gridPosts.length > 0 && (
+  <section class="preview-section preview-reveal" data-reveal>
+    <div class="preview-section__head preview-reveal__item" data-reveal-item>
+      <div>
+        <p class="preview-section__eyebrow">
+          <span class="lang-zh">最近更新</span>
+          <span class="lang-en">Recent Updates</span>
+        </p>
+        <h2>
+          <span class="lang-zh">最近更新</span>
+          <span class="lang-en">Recent Updates</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="preview-card-grid">
+      {gridPosts.map((post) => (
+        <div class="preview-reveal__item" data-reveal-item>
+          <PostCard post={post} translation={translationBySlug.get(post.data.Slug!)} />
+        </div>
+      ))}
+    </div>
+  </section>
+)}
+
+<style>
+  .preview-reveal {
+  }
+
+  :global(.word-reveal) {
+    display: inline-block;
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(16px);
+    transition:
+      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--word-delay, 0ms);
+    will-change: opacity, filter, transform;
+  }
+
+  :global(.preview-reveal.is-visible .word-reveal) {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
+
+  .preview-reveal__item {
+    opacity: 0;
+    transform: translateY(32px);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--item-delay, 0) * 1ms + 160ms);
+  }
+
+  .preview-reveal.is-visible .preview-reveal__item {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(1) { --item-delay: 0; }
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(2) { --item-delay: 120; }
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(3) { --item-delay: 240; }
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(4) { --item-delay: 360; }
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(5) { --item-delay: 480; }
+  .preview-reveal.is-visible .preview-reveal__item:nth-child(6) { --item-delay: 600; }
+
+  .preview-shell,
+  .preview-section {
+    max-width: 74rem;
+    margin: 0 auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .preview-shell {
+    padding-top: 5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .preview-eyebrow,
+  .preview-section__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.55rem 0.9rem;
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--bg-card) 86%, transparent);
+    backdrop-filter: blur(18px);
+    font-size: 0.8rem;
+  }
+
+  .preview-eyebrow__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #22c55e, #06b6d4);
+    box-shadow: 0 0 18px rgba(6, 182, 212, 0.7);
+  }
+
+  .preview-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    align-items: stretch;
+  }
+
+  .preview-hero__copy,
+  .preview-panel,
+  .preview-mini-card,
+  .preview-topic-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 95%, transparent), color-mix(in srgb, var(--bg) 92%, transparent)),
+      radial-gradient(circle at top right, rgba(6, 182, 212, 0.12), transparent 30%);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.14);
+  }
+
+  .preview-hero__copy {
+    border-radius: 2rem;
+    padding: 2rem;
+  }
+
+  .preview-hero__copy::after,
+  .preview-panel::after,
+  .preview-mini-card::after,
+  .preview-topic-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent);
+    opacity: 0.5;
+  }
+
+  .preview-kicker {
+    margin: 0;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    font-size: 0.72rem;
+  }
+
+  .preview-hero h1,
+  .preview-section h2 {
+    margin: 0;
+    color: var(--text);
+    letter-spacing: -0.04em;
+  }
+
+  .preview-hero h1 {
+    margin-top: 1rem;
+    font-size: clamp(2.6rem, 7vw, 5.2rem);
+    line-height: 0.96;
+    max-width: 12ch;
+  }
+
+  .preview-summary,
+  .preview-section__desc {
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .preview-summary {
+    margin: 1.5rem 0 0;
+    max-width: 42rem;
+    font-size: 1rem;
+  }
+
+  .preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .preview-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 8rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    padding: 0.85rem 1.15rem;
+    color: var(--text);
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .preview-button:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-hover);
+  }
+
+  .preview-button--primary {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(34, 211, 238, 0.12));
+  }
+
+  .preview-panel {
+    border-radius: 1.75rem;
+    padding: 1.5rem;
+  }
+
+  .preview-panel__label {
+    position: relative;
+    z-index: 1;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.72rem;
+  }
+
+  .preview-panel__grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1rem;
+  }
+
+  .preview-stat {
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1rem;
+    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+  }
+
+  .preview-stat__label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+
+  .preview-stat__value {
+    margin-top: 0.65rem;
+    color: var(--text);
+    font-size: clamp(1.35rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .preview-stat__note {
+    margin-top: 0.55rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .preview-section {
+    padding-top: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .preview-section__head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .preview-section__head h2 {
+    margin-top: 1rem;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    line-height: 1.02;
+  }
+
+  .preview-section__desc {
+    max-width: 25rem;
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .preview-mini-grid,
+  .preview-topic-grid,
+  .preview-card-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .preview-mini-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 1rem;
+  }
+
+  .preview-mini-card {
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+  }
+
+  .preview-mini-card__meta {
+    position: relative;
+    z-index: 1;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.7rem;
+  }
+
+  .preview-mini-card__title {
+    position: relative;
+    z-index: 1;
+    margin: 0.75rem 0 0;
+    font-size: 1.1rem;
+    line-height: 1.35;
+  }
+
+  .preview-mini-card__title a {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .preview-mini-card__text {
+    position: relative;
+    z-index: 1;
+    margin: 0.75rem 0 0;
+    color: var(--text-muted);
+    line-height: 1.7;
+    font-size: 0.92rem;
+  }
+
+  .preview-topic-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .preview-topic-card {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    border-radius: 1.5rem;
+    padding: 1.35rem 1.25rem;
+    color: var(--text);
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .preview-topic-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+  }
+
+  .preview-topic-card__index,
+  .preview-topic-card__arrow,
+  .preview-topic-card__body {
+    position: relative;
+    z-index: 1;
+  }
+
+  .preview-topic-card__index {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+  }
+
+  .preview-topic-card__body h3,
+  .preview-topic-card__body p {
+    margin: 0;
+  }
+
+  .preview-topic-card__body h3 {
+    font-size: 1.05rem;
+  }
+
+  .preview-topic-card__body p {
+    margin-top: 0.35rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+
+  .preview-topic-card__arrow {
+    color: var(--accent);
+    font-size: 1rem;
+  }
+
+  .preview-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 960px) {
+    .preview-hero,
+    .preview-mini-grid,
+    .preview-topic-grid,
+    .preview-card-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .preview-section__head {
+      align-items: start;
+      flex-direction: column;
+    }
+
+    .preview-section__desc {
+      max-width: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.word-reveal) {
+      opacity: 1;
+      filter: none;
+      transform: none;
+      transition: none;
+    }
+
+    .preview-reveal__item {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function initPreviewReveal() {
+    const sections = Array.from(document.querySelectorAll('[data-reveal]'));
+    if (!sections.length) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function splitIntoWords(text) {
+      const tokens = [];
+      const re = /[^，。；：、]+[，。；：、]?/g;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        if (m[0].trim()) tokens.push(m[0]);
+      }
+      return tokens;
+    }
+
+    document.querySelectorAll('.preview-hero h1, .preview-section h2').forEach((heading) => {
+      const sources = heading.querySelectorAll('.lang-zh, .lang-en');
+      const targets = sources.length ? Array.from(sources) : [heading];
+
+      targets.forEach((target) => {
+        if (target.classList.contains('word-reveal-ready')) return;
+
+        const tokens = splitIntoWords(target.textContent || '');
+        let wordIndex = 0;
+        target.innerHTML = tokens
+          .map((token) => {
+            if (/^\s+$/.test(token)) return token;
+            const delay = wordIndex * 120;
+            wordIndex++;
+            return `<span class="word-reveal" style="--word-delay:${delay}ms">${token}</span>`;
+          })
+          .join('');
+        target.classList.add('word-reveal-ready');
+      });
+    });
+
+    if (reduceMotion) {
+      sections.forEach((section) => section.classList.add('is-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+      },
+      {
+        threshold: 0.12,
+        rootMargin: '0px 0px -8% 0px',
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+  }
+
+  initPreviewReveal();
+  document.addEventListener('astro:after-swap', initPreviewReveal);
+</script>

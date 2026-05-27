@@ -8,18 +8,21 @@ import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
   post: Post;
+  translation?: Post;
 }
 
-const { post } = Astro.props;
+const { post, translation } = Astro.props;
 
 const slug = post.data.Slug!;
 const category = getCategory(post);
 const dateStr = getDateIso(post);
 const locked = isLocked(post);
-const summary = post.data.简介 || '';
+const summaryZh = post.data.简介 || '';
+const summaryEn = translation?.data.简介 || '';
 // Derive Chinese title from file path (last segment without extension)
 const segments = post.id.replace(/\.md$/, '').split('/');
 const titleZh = segments[segments.length - 1];
+const showDualTitle = titleZh !== slug;
 ---
 
 <a
@@ -42,14 +45,20 @@ const titleZh = segments[segments.length - 1];
     </div>
 
     <h3 class="mt-3 text-2xl md:text-3xl font-semibold tracking-tight m-0 line-clamp-2">
-      <span class="lang-zh">{titleZh}</span>
-      <span class="lang-en">{slug}</span>
+      {showDualTitle ? (
+        <>
+          <span class="lang-zh">{titleZh}</span>
+          <span class="lang-en">{slug}</span>
+        </>
+      ) : (
+        <span>{titleZh}</span>
+      )}
     </h3>
 
-    {summary && (
+    {(summaryZh || summaryEn) && (
       <p class="mt-3 text-[var(--text-muted)] m-0 line-clamp-2 text-sm">
-        <span class="lang-zh">{summary.length > 100 ? summary.slice(0, 100) + '…' : summary}</span>
-        <span class="lang-en">{summary.length > 100 ? summary.slice(0, 100) + '…' : summary}</span>
+        {summaryZh && <span class="lang-zh">{summaryZh.length > 100 ? summaryZh.slice(0, 100) + '…' : summaryZh}</span>}
+        {summaryEn && <span class="lang-en">{summaryEn.length > 100 ? summaryEn.slice(0, 100) + '…' : summaryEn}</span>}
       </p>
     )}
 

@@ -14,13 +14,13 @@ body {
     radial-gradient(circle at right top, rgba(139, 92, 246, 0.12), transparent 28%),
     radial-gradient(circle at 12% 26%, rgba(6, 182, 212, 0.1), transparent 20%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
 
 /* Code font */
 code, pre, .astro-code {
   font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace !important;
-}
-  -webkit-font-smoothing: antialiased;
-  margin: 0;
 }
 
 .text-muted { color: var(--text-muted); }

@@ -27,13 +27,15 @@ const { Content: ZhContent, headings } = await render(post);
 
 // Render English content if available
 let EnContent: any = null;
+let headingsEn: { depth: number; slug: string; text: string }[] = [];
 if (en) {
   const rendered = await render(en);
   EnContent = rendered.Content;
+  headingsEn = rendered.headings;
 }
 ---
 
-<PostLayout post={post} headings={headings}>
+<PostLayout post={post} postEn={en} headings={headings} headingsEn={headingsEn}>
   {locked ? (
     <LockedBanner />
   ) : (

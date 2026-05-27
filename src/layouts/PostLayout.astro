@@ -17,21 +17,25 @@ import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
   post: Post;
+  postEn?: Post;
   headings: { depth: number; slug: string; text: string }[];
+  headingsEn?: { depth: number; slug: string; text: string }[];
 }
 
-const { post, headings } = Astro.props;
+const { post, postEn, headings, headingsEn = [] } = Astro.props;
 
 const slug = post.data.Slug!;
 const category = getCategory(post);
 const dateStr = getDateIso(post);
 const locked = isLocked(post);
 const tags = post.data.tags || [];
-const summary = post.data.简介 || '';
+const summaryZh = post.data.简介 || '';
+const summaryEn = postEn?.data.简介 || '';
 
 // Derive Chinese title from file path
 const segments = post.id.replace(/\.md$/, '').split('/');
 const titleZh = segments[segments.length - 1];
+const titleEn = postEn?.data.Slug || slug;
 
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://xyvora.me';
 const postUrl = `${siteUrl}/post/${slug}/`;
@@ -46,14 +50,14 @@ const jsonLd = JSON.stringify({
     '@type': 'Person',
     name: 'Xyvora',
   },
-  description: summary || `${titleZh} - Xyvora`,
+  description: summaryZh || `${titleZh} - Xyvora`,
   url: postUrl,
 });
 ---
 
 <BaseLayout
   title={`${titleZh} - Xyvora`}
-  description={summary || `${titleZh} - Xyvora`}
+  description={summaryZh || `${titleZh} - Xyvora`}
   ogType="article"
   canonical={postUrl}
 >
@@ -64,10 +68,18 @@ const jsonLd = JSON.stringify({
     <AICover category={category} title={titleZh} slug={slug} publishedAt={dateStr} />
 
     <!-- Title -->
-    <h1 class="mt-8 text-5xl md:text-7xl font-semibold tracking-tight">{titleZh}</h1>
+    <h1 class="mt-8 text-5xl md:text-7xl font-semibold tracking-tight">
+      <span class="lang-zh">{titleZh}</span>
+      <span class="lang-en">{titleEn}</span>
+    </h1>
 
     <!-- Description / Meta -->
-    {summary && <p class="mt-4 text-2xl text-[var(--text-muted)]">{summary}</p>}
+    {(summaryZh || summaryEn) && (
+      <p class="mt-4 text-2xl text-[var(--text-muted)]">
+        {summaryZh && <span class="lang-zh">{summaryZh}</span>}
+        {summaryEn && <span class="lang-en">{summaryEn}</span>}
+      </p>
+    )}
 
     <div class="flex items-center gap-4 mt-4 text-sm text-[var(--text-muted)]">
       {dateStr && <time datetime={dateStr}>{dateStr}</time>}
@@ -98,7 +110,7 @@ const jsonLd = JSON.stringify({
       <!-- TOC Sidebar (right) -->
       <aside class="hidden lg:block">
         <div class="sticky top-24">
-          <TableOfContents headings={headings} />
+          <TableOfContents headings={headings} headingsEn={headingsEn} />
         </div>
       </aside>
     </div>
