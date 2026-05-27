@@ -13,6 +13,7 @@
 import type { AstroIntegration } from 'astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { resolveVaultPath } from '../resolve-vault-path.ts';
 
 async function walkMd(dir: string, out: string[] = []): Promise<string[]> {
   let entries;
@@ -62,8 +63,8 @@ export function slugUniquenessCheck(): AstroIntegration {
     hooks: {
       'astro:config:done': async ({ logger }) => {
         const vaultPath =
-          process.env.ASTRO_VAULT_PATH?.trim() || path.resolve('./vault');
-        const vaultAbs = path.resolve(vaultPath);
+          process.env.ASTRO_VAULT_PATH?.trim() || './vault';
+        const vaultAbs = resolveVaultPath(vaultPath);
 
         // Only scan SecNotes/ (blog content root)
         const scanRoot = path.join(vaultAbs, 'SecNotes');

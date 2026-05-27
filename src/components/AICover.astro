@@ -1,43 +1,1321 @@
 ---
 /**
  * AICover — decorative placeholder card when no cover image exists.
- * Maps category to a gradient color scheme; renders title + category badge
- * over a CSS grid pattern. Matches premium minimal design.
- *
- * Validates: REQ-07-3, REQ-07-6
+ * Uses multiple reusable cover templates with deterministic per-post variation.
+ * Theme-aware: light and dark modes render distinct visual treatments.
  */
 interface Props {
   category?: string;
   title: string;
   slug: string;
+  publishedAt?: string;
 }
 
-const { category = '', title, slug } = Astro.props;
+const { category = '', title, slug, publishedAt = '' } = Astro.props;
 
-// Category → Tailwind gradient class mapping
-const gradientMap: Record<string, string> = {
-  HTB:         'from-emerald-500/20',
-  Security:    'from-cyan-500/20',
-  方法论:      'from-cyan-500/20',
-  学习:        'from-sky-500/20',
-  PortSwigger: 'from-rose-500/20',
-  工具:        'from-indigo-500/20',
-  Tech:        'from-indigo-500/20',
-  CTF:         'from-violet-500/20',
+const normalizedCategory = category.trim().toLowerCase();
+const source = `${slug}:${title}:${category}`;
+const seed = [...source].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
+
+const themedPools: Record<string, readonly string[]> = {
+  htb: ['mesh', 'topology', 'blueprint', 'signal', 'grid', 'terminal', 'radar', 'schematic', 'beams', 'orbits', 'lattice', 'waveform', 'nodes', 'slates', 'prism'],
+  'active directory': ['topology', 'glass', 'signal', 'terminal', 'schematic', 'radar', 'nodes', 'lattice'],
+  research: ['glass', 'blueprint', 'topology', 'shards', 'grid', 'beams', 'schematic', 'waveform', 'prism'],
+  mazesec: ['blueprint', 'mesh', 'signal', 'shards', 'radar', 'orbits', 'slates'],
+  ctf: ['mesh', 'topology', 'glass', 'signal', 'terminal', 'beams', 'radar', 'waveform', 'prism'],
+  security: ['topology', 'mesh', 'glass', 'grid', 'signal', 'schematic', 'radar', 'nodes', 'lattice'],
+  tech: ['glass', 'blueprint', 'grid', 'terminal', 'beams', 'waveform', 'slates'],
+  工具: ['blueprint', 'glass', 'grid', 'schematic', 'lattice'],
+  方法论: ['topology', 'mesh', 'signal', 'schematic', 'nodes'],
+  学习: ['glass', 'blueprint', 'grid', 'beams', 'orbits'],
 };
-const gradientClass = gradientMap[category] || 'from-zinc-500/20';
+
+const fallbackThemes = ['mesh', 'topology', 'glass', 'blueprint', 'signal', 'shards', 'grid', 'terminal', 'radar', 'schematic', 'beams', 'orbits', 'lattice', 'waveform', 'nodes', 'slates', 'prism'] as const;
+const themePool = themedPools[normalizedCategory] || fallbackThemes;
+const publishedDays = /^\d{4}-\d{2}-\d{2}$/.test(publishedAt)
+  ? Math.floor(Date.parse(`${publishedAt}T00:00:00Z`) / 86400000)
+  : null;
+const themeIndex = publishedDays !== null ? Math.abs(publishedDays) % themePool.length : seed % themePool.length;
+const theme = themePool[themeIndex];
+
+const coverStyle = [
+  `--cover-accent-x:${12 + (seed % 24)}%`,
+  `--cover-accent-y:${10 + (seed % 18)}%`,
+  `--cover-secondary-x:${62 + (seed % 16)}%`,
+  `--cover-secondary-y:${56 + (seed % 18)}%`,
+  `--cover-ring-size:${8.5 + (seed % 4) * 0.55}rem`,
+  `--cover-ring-top:${-2.8 + (seed % 3) * 0.5}rem`,
+  `--cover-ring-right:${1.4 + (seed % 4) * 0.45}rem`,
+  `--cover-glow-size:${14 + (seed % 5) * 1.1}rem`,
+  `--cover-glass-a-rotate:${-9 - (seed % 5)}deg`,
+  `--cover-glass-b-rotate:${5 + (seed % 5)}deg`,
+  `--cover-frame-inset:${1.8 + (seed % 3) * 0.35}rem`,
+  `--cover-circle-left:${2.6 + (seed % 4) * 0.45}rem`,
+  `--cover-diamond-right:${2.5 + (seed % 4) * 0.35}rem`,
+].join(';');
 ---
 
 <div
-  class="ai-cover h-48 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] relative overflow-hidden"
+  class={`ai-cover ai-cover--${theme}`}
   data-slug={slug}
+  data-theme={theme}
+  style={coverStyle}
 >
-  <div class={`absolute inset-0 bg-gradient-to-br ${gradientClass} to-transparent`}></div>
-  <div class="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:22px_22px]"></div>
-  <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-white/10"></div>
-  <div class="absolute right-8 top-10 h-16 w-16 rounded-full border border-white/10"></div>
-  <div class="absolute left-5 right-5 bottom-5">
-    <div class="text-xs uppercase tracking-[0.25em] text-zinc-400">{category || 'Blog'}</div>
-    <h3 class="mt-2 text-xl font-semibold leading-tight text-[var(--text)] m-0 line-clamp-2">{title}</h3>
+  <div class="ai-cover__shine"></div>
+
+  {theme === 'mesh' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--mesh-gradient"></div>
+      <div class="ai-cover__layer ai-cover__layer--mesh-highlight"></div>
+      <div class="ai-cover__ring"></div>
+      <div class="ai-cover__glow"></div>
+    </>
+  )}
+
+  {theme === 'topology' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--topology-gradient"></div>
+      <svg class="ai-cover__svg" viewBox="0 0 100 100" aria-hidden="true">
+        <line x1="20" y1="20" x2="70" y2="40"></line>
+        <line x1="70" y1="40" x2="50" y2="80"></line>
+        <line x1="30" y1="70" x2="50" y2="80"></line>
+        <circle cx="20" cy="20" r="3"></circle>
+        <circle cx="70" cy="40" r="3"></circle>
+        <circle cx="50" cy="80" r="3"></circle>
+        <circle cx="30" cy="70" r="3"></circle>
+      </svg>
+      <div class="ai-cover__layer ai-cover__layer--topology-grid"></div>
+    </>
+  )}
+
+  {theme === 'glass' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--glass-gradient"></div>
+      <div class="ai-cover__glass ai-cover__glass--a"></div>
+      <div class="ai-cover__glass ai-cover__glass--b"></div>
+      <div class="ai-cover__layer ai-cover__layer--glass-radial"></div>
+    </>
+  )}
+
+  {theme === 'blueprint' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--blueprint-gradient"></div>
+      <div class="ai-cover__layer ai-cover__layer--blueprint-grid"></div>
+      <div class="ai-cover__frame"></div>
+      <div class="ai-cover__circle"></div>
+      <div class="ai-cover__diamond"></div>
+    </>
+  )}
+
+  {theme === 'signal' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--signal-gradient"></div>
+      <div class="ai-cover__signal ai-cover__signal--h"></div>
+      <div class="ai-cover__signal ai-cover__signal--v"></div>
+      <div class="ai-cover__signal-node ai-cover__signal-node--a"></div>
+      <div class="ai-cover__signal-node ai-cover__signal-node--b"></div>
+      <div class="ai-cover__signal-node ai-cover__signal-node--c"></div>
+    </>
+  )}
+
+  {theme === 'shards' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--shards-gradient"></div>
+      <div class="ai-cover__shard ai-cover__shard--a"></div>
+      <div class="ai-cover__shard ai-cover__shard--b"></div>
+      <div class="ai-cover__shard ai-cover__shard--c"></div>
+    </>
+  )}
+
+  {theme === 'grid' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--grid-gradient"></div>
+      <div class="ai-cover__layer ai-cover__layer--grid-matrix"></div>
+      <div class="ai-cover__grid-box ai-cover__grid-box--a"></div>
+      <div class="ai-cover__grid-box ai-cover__grid-box--b"></div>
+    </>
+  )}
+
+  {theme === 'terminal' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--terminal-gradient"></div>
+      <div class="ai-cover__terminal"></div>
+      <div class="ai-cover__terminal-line ai-cover__terminal-line--a"></div>
+      <div class="ai-cover__terminal-line ai-cover__terminal-line--b"></div>
+      <div class="ai-cover__terminal-line ai-cover__terminal-line--c"></div>
+    </>
+  )}
+
+  {theme === 'radar' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--radar-gradient"></div>
+      <div class="ai-cover__radar-ring ai-cover__radar-ring--a"></div>
+      <div class="ai-cover__radar-ring ai-cover__radar-ring--b"></div>
+      <div class="ai-cover__radar-sweep"></div>
+      <div class="ai-cover__radar-dot ai-cover__radar-dot--a"></div>
+      <div class="ai-cover__radar-dot ai-cover__radar-dot--b"></div>
+    </>
+  )}
+
+  {theme === 'schematic' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--schematic-gradient"></div>
+      <div class="ai-cover__schematic-path ai-cover__schematic-path--a"></div>
+      <div class="ai-cover__schematic-path ai-cover__schematic-path--b"></div>
+      <div class="ai-cover__schematic-chip ai-cover__schematic-chip--a"></div>
+      <div class="ai-cover__schematic-chip ai-cover__schematic-chip--b"></div>
+      <div class="ai-cover__schematic-chip ai-cover__schematic-chip--c"></div>
+    </>
+  )}
+
+  {theme === 'beams' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--beams-gradient"></div>
+      <div class="ai-cover__beam ai-cover__beam--a"></div>
+      <div class="ai-cover__beam ai-cover__beam--b"></div>
+      <div class="ai-cover__beam ai-cover__beam--c"></div>
+      <div class="ai-cover__beam-glow"></div>
+    </>
+  )}
+
+  {theme === 'orbits' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--orbits-gradient"></div>
+      <div class="ai-cover__orbit ai-cover__orbit--a"></div>
+      <div class="ai-cover__orbit ai-cover__orbit--b"></div>
+      <div class="ai-cover__orbit ai-cover__orbit--c"></div>
+      <div class="ai-cover__orbit-dot ai-cover__orbit-dot--a"></div>
+      <div class="ai-cover__orbit-dot ai-cover__orbit-dot--b"></div>
+    </>
+  )}
+
+  {theme === 'lattice' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--lattice-gradient"></div>
+      <div class="ai-cover__lattice ai-cover__lattice--a"></div>
+      <div class="ai-cover__lattice ai-cover__lattice--b"></div>
+      <div class="ai-cover__lattice ai-cover__lattice--c"></div>
+    </>
+  )}
+
+  {theme === 'waveform' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--waveform-gradient"></div>
+      <div class="ai-cover__wave ai-cover__wave--a"></div>
+      <div class="ai-cover__wave ai-cover__wave--b"></div>
+      <div class="ai-cover__wave ai-cover__wave--c"></div>
+    </>
+  )}
+
+  {theme === 'nodes' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--nodes-gradient"></div>
+      <div class="ai-cover__node-link ai-cover__node-link--a"></div>
+      <div class="ai-cover__node-link ai-cover__node-link--b"></div>
+      <div class="ai-cover__node-link ai-cover__node-link--c"></div>
+      <div class="ai-cover__node ai-cover__node--a"></div>
+      <div class="ai-cover__node ai-cover__node--b"></div>
+      <div class="ai-cover__node ai-cover__node--c"></div>
+      <div class="ai-cover__node ai-cover__node--d"></div>
+    </>
+  )}
+
+  {theme === 'slates' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--slates-gradient"></div>
+      <div class="ai-cover__slate ai-cover__slate--a"></div>
+      <div class="ai-cover__slate ai-cover__slate--b"></div>
+      <div class="ai-cover__slate ai-cover__slate--c"></div>
+    </>
+  )}
+
+  {theme === 'prism' && (
+    <>
+      <div class="ai-cover__layer ai-cover__layer--prism-gradient"></div>
+      <div class="ai-cover__prism ai-cover__prism--a"></div>
+      <div class="ai-cover__prism ai-cover__prism--b"></div>
+      <div class="ai-cover__prism ai-cover__prism--c"></div>
+    </>
+  )}
+
+  <div class="ai-cover__content">
+    <div class="ai-cover__tag">{category || 'Blog'}</div>
+    <h3 class="ai-cover__title">{title}</h3>
   </div>
 </div>
+
+<style>
+  .ai-cover {
+    position: relative;
+    height: 12rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: #0b0e14;
+    --cover-accent-x: 14%;
+    --cover-accent-y: 12%;
+    --cover-secondary-x: 74%;
+    --cover-secondary-y: 72%;
+    --cover-ring-size: 10rem;
+    --cover-ring-top: -2.5rem;
+    --cover-ring-right: 2.5rem;
+    --cover-glow-size: 18rem;
+    --cover-glass-a-rotate: -12deg;
+    --cover-glass-b-rotate: 8deg;
+    --cover-frame-inset: 2.5rem;
+    --cover-circle-left: 3.5rem;
+    --cover-diamond-right: 3.5rem;
+  }
+
+  .ai-cover__shine,
+  .ai-cover__layer,
+  .ai-cover__svg,
+  .ai-cover__ring,
+  .ai-cover__glow,
+  .ai-cover__glass,
+  .ai-cover__frame,
+  .ai-cover__circle,
+  .ai-cover__diamond,
+  .ai-cover__signal,
+  .ai-cover__signal-node,
+  .ai-cover__shard,
+  .ai-cover__grid-box,
+  .ai-cover__terminal,
+  .ai-cover__terminal-line,
+  .ai-cover__radar-ring,
+  .ai-cover__radar-sweep,
+  .ai-cover__radar-dot,
+  .ai-cover__schematic-path,
+  .ai-cover__schematic-chip,
+  .ai-cover__beam,
+  .ai-cover__beam-glow,
+  .ai-cover__orbit,
+  .ai-cover__orbit-dot,
+  .ai-cover__lattice,
+  .ai-cover__wave,
+  .ai-cover__node-link,
+  .ai-cover__node,
+  .ai-cover__slate,
+  .ai-cover__prism {
+    position: absolute;
+  }
+
+  .ai-cover__shine {
+    inset: 0;
+    background:
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+    pointer-events: none;
+  }
+
+  .ai-cover__content {
+    position: absolute;
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1;
+  }
+
+  .ai-cover__tag {
+    color: #71717a;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+  }
+
+  .ai-cover__title {
+    margin: 0.5rem 0 0;
+    color: #f4f4f5;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+
+  .ai-cover--mesh .ai-cover__layer--mesh-gradient {
+    inset: 0;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.1) 56%, transparent 84%);
+  }
+
+  .ai-cover--mesh .ai-cover__layer--mesh-highlight {
+    inset: 0;
+    opacity: 0.4;
+    background:
+      radial-gradient(circle at var(--cover-accent-x) var(--cover-accent-y), rgba(255, 255, 255, 0.12), transparent 30%),
+      radial-gradient(circle at var(--cover-secondary-x) var(--cover-secondary-y), rgba(16, 185, 129, 0.2), transparent 35%);
+  }
+
+  .ai-cover__ring {
+    top: var(--cover-ring-top);
+    right: var(--cover-ring-right);
+    width: var(--cover-ring-size);
+    height: var(--cover-ring-size);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    border-radius: 999px;
+  }
+
+  .ai-cover__glow {
+    left: 0;
+    bottom: 0;
+    width: var(--cover-glow-size);
+    height: var(--cover-glow-size);
+    border-radius: 999px;
+    background: rgba(6, 182, 212, 0.1);
+    filter: blur(64px);
+  }
+
+  .ai-cover--topology .ai-cover__layer--topology-gradient {
+    inset: 0;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(239, 68, 68, 0.05) 58%, transparent);
+  }
+
+  .ai-cover__svg {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.4;
+  }
+
+  .ai-cover__svg line {
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1;
+  }
+
+  .ai-cover__svg circle {
+    fill: rgba(251, 146, 60, 0.9);
+  }
+
+  .ai-cover__svg circle:nth-of-type(2) {
+    fill: rgba(239, 68, 68, 0.9);
+  }
+
+  .ai-cover__svg circle:nth-of-type(3) {
+    fill: rgba(255, 255, 255, 0.9);
+  }
+
+  .ai-cover--topology .ai-cover__layer--topology-grid {
+    inset: 0;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .ai-cover--glass .ai-cover__layer--glass-gradient {
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(217, 70, 239, 0.1) 58%, transparent);
+  }
+
+  .ai-cover__glass {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(24px);
+  }
+
+  .ai-cover__glass--a {
+    top: 2.5rem;
+    left: 2.5rem;
+    width: 14rem;
+    height: 8rem;
+    border-radius: 2rem;
+    transform: rotate(var(--cover-glass-a-rotate));
+  }
+
+  .ai-cover__glass--b {
+    right: 2.5rem;
+    bottom: 2rem;
+    width: 12rem;
+    height: 7rem;
+    border-radius: 1.75rem;
+    transform: rotate(var(--cover-glass-b-rotate));
+  }
+
+  .ai-cover--glass .ai-cover__layer--glass-radial {
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(168, 85, 247, 0.18), transparent 40%);
+  }
+
+  .ai-cover--blueprint .ai-cover__layer--blueprint-gradient {
+    inset: 0;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(79, 70, 229, 0.05) 58%, transparent);
+  }
+
+  .ai-cover--blueprint .ai-cover__layer--blueprint-grid {
+    inset: 0;
+    opacity: 0.3;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .ai-cover__frame {
+    top: var(--cover-frame-inset);
+    right: var(--cover-frame-inset);
+    bottom: var(--cover-frame-inset);
+    left: var(--cover-frame-inset);
+    border: 1px dashed rgba(34, 211, 238, 0.2);
+    border-radius: 1rem;
+  }
+
+  .ai-cover__circle {
+    top: 4rem;
+    left: var(--cover-circle-left);
+    width: 10rem;
+    height: 10rem;
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    border-radius: 999px;
+  }
+
+  .ai-cover__diamond {
+    right: var(--cover-diamond-right);
+    bottom: 3rem;
+    width: 6rem;
+    height: 6rem;
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    transform: rotate(45deg);
+  }
+
+  .ai-cover--signal .ai-cover__layer--signal-gradient {
+    inset: 0;
+    background:
+      radial-gradient(circle at 22% 25%, rgba(34, 197, 94, 0.16), transparent 24%),
+      linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(59, 130, 246, 0.08) 58%, transparent);
+  }
+
+  .ai-cover__signal {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .ai-cover__signal--h {
+    left: 18%;
+    top: 34%;
+    width: 56%;
+    height: 1px;
+  }
+
+  .ai-cover__signal--v {
+    left: 58%;
+    top: 18%;
+    width: 1px;
+    height: 50%;
+  }
+
+  .ai-cover__signal-node {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    box-shadow: 0 0 18px currentColor;
+  }
+
+  .ai-cover__signal-node--a {
+    left: 18%;
+    top: 31%;
+    color: #22c55e;
+    background: currentColor;
+  }
+
+  .ai-cover__signal-node--b {
+    left: 56%;
+    top: 31%;
+    color: #38bdf8;
+    background: currentColor;
+  }
+
+  .ai-cover__signal-node--c {
+    left: 55.7%;
+    top: 64%;
+    color: #f59e0b;
+    background: currentColor;
+  }
+
+  .ai-cover--shards .ai-cover__layer--shards-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(168, 85, 247, 0.14), rgba(59, 130, 246, 0.08) 58%, transparent),
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.1), transparent 28%);
+  }
+
+  .ai-cover__shard {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    clip-path: polygon(18% 0%, 100% 0%, 82% 100%, 0% 100%);
+  }
+
+  .ai-cover__shard--a {
+    top: 1.8rem;
+    left: 2rem;
+    width: 8rem;
+    height: 6.5rem;
+    transform: rotate(-12deg);
+  }
+
+  .ai-cover__shard--b {
+    right: 2.4rem;
+    top: 2.3rem;
+    width: 6.8rem;
+    height: 5.4rem;
+    transform: rotate(10deg);
+  }
+
+  .ai-cover__shard--c {
+    right: 5rem;
+    bottom: 2rem;
+    width: 9rem;
+    height: 4.8rem;
+    transform: rotate(-8deg);
+  }
+
+  .ai-cover--grid .ai-cover__layer--grid-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.08) 56%, transparent),
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.1), transparent 28%);
+  }
+
+  .ai-cover--grid .ai-cover__layer--grid-matrix {
+    inset: 0;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .ai-cover__grid-box {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .ai-cover__grid-box--a {
+    left: 2rem;
+    top: 2.2rem;
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .ai-cover__grid-box--b {
+    right: 2.2rem;
+    bottom: 2rem;
+    width: 6.4rem;
+    height: 3.8rem;
+  }
+
+  .ai-cover--terminal .ai-cover__layer--terminal-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08) 55%, transparent),
+      radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.08), transparent 26%);
+  }
+
+  .ai-cover__terminal {
+    left: 2rem;
+    right: 2rem;
+    top: 2rem;
+    bottom: 2rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(7, 9, 13, 0.28);
+    backdrop-filter: blur(18px);
+  }
+
+  .ai-cover__terminal-line {
+    left: 3rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .ai-cover__terminal-line--a {
+    top: 3.3rem;
+    width: 4.8rem;
+  }
+
+  .ai-cover__terminal-line--b {
+    top: 4.7rem;
+    width: 8rem;
+  }
+
+  .ai-cover__terminal-line--c {
+    top: 6.1rem;
+    width: 5.6rem;
+    background: rgba(16, 185, 129, 0.22);
+  }
+
+  .ai-cover--radar .ai-cover__layer--radar-gradient {
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.12), transparent 32%),
+      linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(16, 185, 129, 0.08) 58%, transparent);
+  }
+
+  .ai-cover__radar-ring {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+  }
+
+  .ai-cover__radar-ring--a {
+    inset: 2.1rem 5rem;
+  }
+
+  .ai-cover__radar-ring--b {
+    inset: 3.6rem 6.5rem;
+  }
+
+  .ai-cover__radar-sweep {
+    left: 50%;
+    top: 50%;
+    width: 8rem;
+    height: 1px;
+    transform-origin: left center;
+    transform: rotate(-28deg);
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.7), transparent);
+  }
+
+  .ai-cover__radar-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: #4ade80;
+    box-shadow: 0 0 16px rgba(74, 222, 128, 0.9);
+  }
+
+  .ai-cover__radar-dot--a {
+    right: 4.5rem;
+    top: 4rem;
+  }
+
+  .ai-cover__radar-dot--b {
+    left: 4.3rem;
+    bottom: 3.2rem;
+  }
+
+  .ai-cover--schematic .ai-cover__layer--schematic-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08) 58%, transparent),
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 24%);
+  }
+
+  .ai-cover__schematic-path {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .ai-cover__schematic-path--a {
+    left: 2.4rem;
+    top: 3.2rem;
+    width: 9rem;
+    height: 1px;
+  }
+
+  .ai-cover__schematic-path--b {
+    right: 3rem;
+    top: 3.2rem;
+    width: 1px;
+    height: 5.5rem;
+  }
+
+  .ai-cover__schematic-chip {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  }
+
+  .ai-cover__schematic-chip--a {
+    left: 2rem;
+    top: 2.4rem;
+    width: 3.2rem;
+    height: 2rem;
+    border-radius: 0.75rem;
+  }
+
+  .ai-cover__schematic-chip--b {
+    left: 7.2rem;
+    top: 5.3rem;
+    width: 4.2rem;
+    height: 2.4rem;
+    border-radius: 0.9rem;
+  }
+
+  .ai-cover__schematic-chip--c {
+    right: 2.2rem;
+    top: 2.5rem;
+    width: 3.2rem;
+    height: 6rem;
+    border-radius: 1rem;
+  }
+
+  .ai-cover--beams .ai-cover__layer--beams-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(244, 114, 182, 0.08) 58%, transparent),
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 24%);
+  }
+
+  .ai-cover__beam {
+    width: 11rem;
+    height: 1.1rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+    filter: blur(0.4px);
+  }
+
+  .ai-cover__beam--a {
+    left: 1.8rem;
+    top: 2.6rem;
+    transform: rotate(-18deg);
+  }
+
+  .ai-cover__beam--b {
+    right: 1.2rem;
+    top: 4.1rem;
+    transform: rotate(14deg);
+  }
+
+  .ai-cover__beam--c {
+    left: 4.4rem;
+    bottom: 2.5rem;
+    width: 8rem;
+    transform: rotate(-8deg);
+  }
+
+  .ai-cover__beam-glow {
+    right: 2rem;
+    top: 1.4rem;
+    width: 9rem;
+    height: 9rem;
+    border-radius: 999px;
+    background: rgba(244, 114, 182, 0.12);
+    filter: blur(36px);
+  }
+
+  .ai-cover--orbits .ai-cover__layer--orbits-gradient {
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.14), transparent 24%),
+      linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(168, 85, 247, 0.08) 58%, transparent);
+  }
+
+  .ai-cover__orbit {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+  }
+
+  .ai-cover__orbit--a {
+    inset: 1.8rem 6rem 3rem 2rem;
+  }
+
+  .ai-cover__orbit--b {
+    inset: 3.6rem 2.5rem 2rem 7rem;
+  }
+
+  .ai-cover__orbit--c {
+    inset: 2.8rem 8rem 4rem 5rem;
+  }
+
+  .ai-cover__orbit-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: #38bdf8;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.8);
+  }
+
+  .ai-cover__orbit-dot--a {
+    right: 4rem;
+    top: 3rem;
+  }
+
+  .ai-cover__orbit-dot--b {
+    left: 4.4rem;
+    bottom: 3rem;
+  }
+
+  .ai-cover--lattice .ai-cover__layer--lattice-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(34, 197, 94, 0.06) 56%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 60%);
+  }
+
+  .ai-cover__lattice {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transform: rotate(45deg);
+  }
+
+  .ai-cover__lattice--a {
+    left: 2.5rem;
+    top: 2.2rem;
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .ai-cover__lattice--b {
+    left: 7rem;
+    top: 3.8rem;
+    width: 5.4rem;
+    height: 5.4rem;
+  }
+
+  .ai-cover__lattice--c {
+    right: 3rem;
+    top: 2rem;
+    width: 3.4rem;
+    height: 3.4rem;
+  }
+
+  .ai-cover--waveform .ai-cover__layer--waveform-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.08) 58%, transparent),
+      radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.08), transparent 24%);
+  }
+
+  .ai-cover__wave {
+    left: 1.8rem;
+    right: 1.8rem;
+    height: 2.2rem;
+    opacity: 0.7;
+    background-repeat: repeat-x;
+    background-size: 6rem 100%;
+  }
+
+  .ai-cover__wave--a {
+    top: 2.4rem;
+    background-image: radial-gradient(circle at 1.5rem 2rem, transparent 1.3rem, rgba(255, 255, 255, 0.16) 1.35rem, rgba(255, 255, 255, 0.16) 1.55rem, transparent 1.6rem);
+  }
+
+  .ai-cover__wave--b {
+    top: 4.8rem;
+    background-image: radial-gradient(circle at 1.5rem 0.1rem, transparent 1.3rem, rgba(255, 255, 255, 0.14) 1.35rem, rgba(255, 255, 255, 0.14) 1.55rem, transparent 1.6rem);
+  }
+
+  .ai-cover__wave--c {
+    top: 7.2rem;
+    background-image: radial-gradient(circle at 1.5rem 2rem, transparent 1.3rem, rgba(255, 255, 255, 0.1) 1.35rem, rgba(255, 255, 255, 0.1) 1.55rem, transparent 1.6rem);
+  }
+
+  .ai-cover--nodes .ai-cover__layer--nodes-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(59, 130, 246, 0.08) 56%, transparent),
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 24%);
+  }
+
+  .ai-cover__node-link {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.14);
+    transform-origin: left center;
+  }
+
+  .ai-cover__node-link--a {
+    left: 3rem;
+    top: 3rem;
+    width: 6rem;
+    transform: rotate(18deg);
+  }
+
+  .ai-cover__node-link--b {
+    left: 8.6rem;
+    top: 4.8rem;
+    width: 4rem;
+    transform: rotate(58deg);
+  }
+
+  .ai-cover__node-link--c {
+    left: 5rem;
+    top: 7.1rem;
+    width: 5.5rem;
+    transform: rotate(-20deg);
+  }
+
+  .ai-cover__node {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .ai-cover__node--a {
+    left: 2.7rem;
+    top: 2.7rem;
+  }
+
+  .ai-cover__node--b {
+    left: 8.4rem;
+    top: 4.5rem;
+    background: #38bdf8;
+  }
+
+  .ai-cover__node--c {
+    left: 11.9rem;
+    top: 10rem;
+    background: #22c55e;
+  }
+
+  .ai-cover__node--d {
+    left: 4.8rem;
+    top: 7rem;
+    background: #f59e0b;
+  }
+
+  .ai-cover--slates .ai-cover__layer--slates-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(71, 85, 105, 0.12), rgba(59, 130, 246, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 60%);
+  }
+
+  .ai-cover__slate {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px);
+    border-radius: 1.25rem;
+  }
+
+  .ai-cover__slate--a {
+    left: 2rem;
+    top: 2rem;
+    width: 7rem;
+    height: 5.5rem;
+    transform: rotate(-8deg);
+  }
+
+  .ai-cover__slate--b {
+    left: 6rem;
+    top: 3.4rem;
+    width: 7.5rem;
+    height: 4.5rem;
+    transform: rotate(7deg);
+  }
+
+  .ai-cover__slate--c {
+    right: 2.2rem;
+    bottom: 2rem;
+    width: 5.8rem;
+    height: 4rem;
+    transform: rotate(-6deg);
+  }
+
+  .ai-cover--prism .ai-cover__layer--prism-gradient {
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(244, 114, 182, 0.08), rgba(168, 85, 247, 0.1) 58%, transparent),
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 24%);
+  }
+
+  .ai-cover__prism {
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .ai-cover__prism--a {
+    left: 2.4rem;
+    bottom: 2rem;
+    width: 4rem;
+    height: 5rem;
+  }
+
+  .ai-cover__prism--b {
+    left: 7rem;
+    top: 2.2rem;
+    width: 5rem;
+    height: 6.5rem;
+  }
+
+  .ai-cover__prism--c {
+    right: 2.6rem;
+    bottom: 2.3rem;
+    width: 3.5rem;
+    height: 4.8rem;
+  }
+
+  :root[data-theme='light'] .ai-cover {
+    border-color: rgba(15, 23, 42, 0.06);
+    background:
+      radial-gradient(circle at var(--cover-accent-x) var(--cover-accent-y), rgba(255, 255, 255, 0.78), transparent 24%),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+
+  :root[data-theme='light'] .ai-cover__shine {
+    background:
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.56), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 56%);
+  }
+
+  :root[data-theme='light'] .ai-cover__tag {
+    color: #6b7280;
+  }
+
+  :root[data-theme='light'] .ai-cover__title {
+    color: #0f172a;
+  }
+
+  :root[data-theme='light'] .ai-cover--mesh .ai-cover__layer--mesh-gradient {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.1) 56%, transparent 84%);
+  }
+
+  :root[data-theme='light'] .ai-cover--mesh .ai-cover__layer--mesh-highlight {
+    opacity: 0.5;
+    background:
+      radial-gradient(circle at var(--cover-accent-x) var(--cover-accent-y), rgba(255, 255, 255, 0.22), transparent 30%),
+      radial-gradient(circle at var(--cover-secondary-x) var(--cover-secondary-y), rgba(16, 185, 129, 0.16), transparent 35%);
+  }
+
+  :root[data-theme='light'] .ai-cover__ring {
+    border-color: rgba(34, 211, 238, 0.16);
+  }
+
+  :root[data-theme='light'] .ai-cover__glow {
+    background: rgba(6, 182, 212, 0.08);
+    filter: blur(56px);
+  }
+
+  :root[data-theme='light'] .ai-cover--topology .ai-cover__layer--topology-gradient {
+    background:
+      linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(239, 68, 68, 0.06) 56%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 65%);
+  }
+
+  :root[data-theme='light'] .ai-cover__svg {
+    opacity: 0.46;
+  }
+
+  :root[data-theme='light'] .ai-cover__svg line {
+    stroke: rgba(15, 23, 42, 0.16);
+  }
+
+  :root[data-theme='light'] .ai-cover__svg circle:nth-of-type(3) {
+    fill: rgba(255, 255, 255, 0.98);
+    stroke: rgba(15, 23, 42, 0.12);
+    stroke-width: 0.8;
+  }
+
+  :root[data-theme='light'] .ai-cover--topology .ai-cover__layer--topology-grid {
+    background:
+      linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  :root[data-theme='light'] .ai-cover--glass .ai-cover__layer--glass-gradient {
+    background:
+      linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(217, 70, 239, 0.08) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 64%);
+  }
+
+  :root[data-theme='light'] .ai-cover__glass {
+    border-color: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 20px 50px rgba(88, 28, 135, 0.08);
+  }
+
+  :root[data-theme='light'] .ai-cover--glass .ai-cover__layer--glass-radial {
+    background: radial-gradient(circle at top, rgba(168, 85, 247, 0.16), transparent 40%);
+  }
+
+  :root[data-theme='light'] .ai-cover--blueprint .ai-cover__layer--blueprint-gradient {
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(79, 70, 229, 0.04) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 62%);
+  }
+
+  :root[data-theme='light'] .ai-cover--blueprint .ai-cover__layer--blueprint-grid {
+    opacity: 0.3;
+    background:
+      linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  :root[data-theme='light'] .ai-cover__frame,
+  :root[data-theme='light'] .ai-cover__circle,
+  :root[data-theme='light'] .ai-cover__diamond {
+    border-color: rgba(34, 211, 238, 0.18);
+  }
+
+  :root[data-theme='light'] .ai-cover--signal .ai-cover__layer--signal-gradient {
+    background:
+      radial-gradient(circle at 22% 25%, rgba(34, 197, 94, 0.12), transparent 24%),
+      linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(59, 130, 246, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 62%);
+  }
+
+  :root[data-theme='light'] .ai-cover__signal {
+    background: rgba(15, 23, 42, 0.12);
+  }
+
+  :root[data-theme='light'] .ai-cover--shards .ai-cover__layer--shards-gradient {
+    background:
+      linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(59, 130, 246, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 62%);
+  }
+
+  :root[data-theme='light'] .ai-cover__shard {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 16px 34px rgba(99, 102, 241, 0.06);
+  }
+
+  :root[data-theme='light'] .ai-cover--grid .ai-cover__layer--grid-gradient {
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(99, 102, 241, 0.05) 56%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 62%);
+  }
+
+  :root[data-theme='light'] .ai-cover--grid .ai-cover__layer--grid-matrix {
+    background:
+      linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  :root[data-theme='light'] .ai-cover__grid-box {
+    border-color: rgba(15, 23, 42, 0.1);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-theme='light'] .ai-cover--terminal .ai-cover__layer--terminal-gradient {
+    background:
+      linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.06) 55%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 62%);
+  }
+
+  :root[data-theme='light'] .ai-cover__terminal {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  }
+
+  :root[data-theme='light'] .ai-cover__terminal-line {
+    background: rgba(15, 23, 42, 0.12);
+  }
+
+  :root[data-theme='light'] .ai-cover__terminal-line--c {
+    background: rgba(16, 185, 129, 0.18);
+  }
+
+  :root[data-theme='light'] .ai-cover--radar .ai-cover__layer--radar-gradient {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.1), transparent 32%),
+      linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(16, 185, 129, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__radar-ring {
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  :root[data-theme='light'] .ai-cover__radar-sweep {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.45), transparent);
+  }
+
+  :root[data-theme='light'] .ai-cover--schematic .ai-cover__layer--schematic-gradient {
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.05) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__schematic-path {
+    background: rgba(15, 23, 42, 0.12);
+  }
+
+  :root[data-theme='light'] .ai-cover__schematic-chip {
+    border-color: rgba(15, 23, 42, 0.1);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-theme='light'] .ai-cover--beams .ai-cover__layer--beams-gradient {
+    background:
+      linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(244, 114, 182, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__beam {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04));
+  }
+
+  :root[data-theme='light'] .ai-cover__beam-glow {
+    background: rgba(244, 114, 182, 0.08);
+  }
+
+  :root[data-theme='light'] .ai-cover--orbits .ai-cover__layer--orbits-gradient {
+    background:
+      radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.1), transparent 24%),
+      linear-gradient(135deg, rgba(14, 165, 233, 0.06), rgba(168, 85, 247, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__orbit {
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  :root[data-theme='light'] .ai-cover--lattice .ai-cover__layer--lattice-gradient {
+    background:
+      linear-gradient(135deg, rgba(20, 184, 166, 0.08), rgba(34, 197, 94, 0.05) 56%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__lattice {
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  :root[data-theme='light'] .ai-cover--waveform .ai-cover__layer--waveform-gradient {
+    background:
+      linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.06) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__wave {
+    opacity: 0.55;
+  }
+
+  :root[data-theme='light'] .ai-cover--nodes .ai-cover__layer--nodes-gradient {
+    background:
+      linear-gradient(135deg, rgba(6, 182, 212, 0.06), rgba(59, 130, 246, 0.06) 56%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__node-link {
+    background: rgba(15, 23, 42, 0.12);
+  }
+
+  :root[data-theme='light'] .ai-cover__node--a {
+    background: rgba(15, 23, 42, 0.75);
+  }
+
+  :root[data-theme='light'] .ai-cover--slates .ai-cover__layer--slates-gradient {
+    background:
+      linear-gradient(135deg, rgba(71, 85, 105, 0.08), rgba(59, 130, 246, 0.05) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__slate {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 16px 28px rgba(15, 23, 42, 0.05);
+  }
+
+  :root[data-theme='light'] .ai-cover--prism .ai-cover__layer--prism-gradient {
+    background:
+      linear-gradient(135deg, rgba(244, 114, 182, 0.06), rgba(168, 85, 247, 0.08) 58%, transparent),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+  }
+
+  :root[data-theme='light'] .ai-cover__prism {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  :root[data-theme='light'] .ai-cover--mesh {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+
+  :root[data-theme='light'] .ai-cover--topology,
+  :root[data-theme='light'] .ai-cover--glass,
+  :root[data-theme='light'] .ai-cover--blueprint {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+</style>

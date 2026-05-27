@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveVaultPath } from './resolve-vault-path.ts';
 
 interface VaultIndex {
   /** vault absolute root path */
@@ -29,7 +30,7 @@ export function getVaultIndex(): VaultIndex {
   if (g[CACHE_KEY]) return g[CACHE_KEY];
 
   const vaultRaw = process.env.ASTRO_VAULT_PATH?.trim() || './vault';
-  const root = path.resolve(vaultRaw);
+  const root = resolveVaultPath(vaultRaw);
 
   const notesByName = new Map<string, string>();
   const assetsByName = new Map<string, string>();

@@ -12,13 +12,13 @@
 
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseFlexDate } from './lib/date-parser.ts';
+import { resolveVaultPath } from './lib/resolve-vault-path.ts';
 
 // Resolve vault path from env. Fallback to `./vault` (CI checkout directory).
 const vaultPathRaw = process.env.ASTRO_VAULT_PATH?.trim() || './vault';
-const vaultAbsPath = path.resolve(vaultPathRaw);
+const vaultAbsPath = resolveVaultPath(vaultPathRaw);
 
 // Coerce "truthy-like" values into boolean. Accepts:
 //   - real booleans

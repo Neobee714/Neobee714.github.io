@@ -30,7 +30,7 @@ const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
 
 <a href={`/post/${slug}/`} class="featured-post">
   <div class="featured-post__cover">
-    <AICover category={category} title={titleZh} slug={slug} />
+    <AICover category={category} title={titleZh} slug={slug} publishedAt={dateStr} />
   </div>
 
   <div class="featured-post__body">
