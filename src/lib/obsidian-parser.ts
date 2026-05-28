@@ -137,3 +137,51 @@ export function getCategory(post: Post): string {
 export function getDateIso(post: Post): string {
   return post.data.日期 ? post.data.日期.toISOString().slice(0, 10) : '';
 }
+
+/**
+ * Category display name mapping for SEO titles.
+ * Maps internal 类型 values to human-readable platform names.
+ */
+const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  'HTB': 'HackTheBox',
+  'MazeSec': 'MazeSec',
+  'PWN': 'CTF PWN',
+  'Web应用': 'Web Security',
+  'PortSwigger': 'PortSwigger',
+  '提权': 'Privilege Escalation',
+  '方法论': 'Methodology',
+  'PHP利用': 'PHP Exploitation',
+};
+
+export function getCategoryDisplayName(category: string): string {
+  return CATEGORY_DISPLAY_NAMES[category] || category;
+}
+
+/**
+ * Extract display title for a post.
+ * Priority:
+ *   1. First `# H1` heading from the markdown body (most reliable)
+ *   2. Source note filename (without .md extension)
+ *   3. Slugified post.id fallback
+ */
+export function getPostTitle(post: Post): string {
+  // Priority 1: Extract first H1 from markdown body
+  const body = post.body || '';
+  const h1Match = body.match(/^#\s+(.+)$/m);
+  if (h1Match) {
+    return h1Match[1].trim();
+  }
+
+  // Priority 2: Source note filename
+  const filePath = post.filePath;
+  if (filePath) {
+    const normalized = filePath.replace(/\\/g, '/');
+    const filename = normalized.split('/').pop() || '';
+    const title = filename.replace(/\.en\.md$/i, '').replace(/\.md$/i, '');
+    if (title) return title;
+  }
+
+  // Priority 3: Slugified fallback
+  const segments = post.id.replace(/\.md$/, '').split('/');
+  return segments[segments.length - 1];
+}

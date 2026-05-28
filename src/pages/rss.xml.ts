@@ -3,7 +3,7 @@
  */
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { getPublishedPosts, getDateIso } from '@/lib/obsidian-parser';
+import { getPublishedPosts, getDateIso, getPostTitle } from '@/lib/obsidian-parser';
 
 export async function GET(context: APIContext) {
   const posts = await getPublishedPosts();
@@ -15,8 +15,7 @@ export async function GET(context: APIContext) {
     site: context.site!.toString(),
     items: latest.map((post) => {
       const slug = post.data.Slug!;
-      const segments = post.id.replace(/\.md$/, '').split('/');
-      const titleZh = segments[segments.length - 1];
+      const titleZh = getPostTitle(post);
       const dateStr = getDateIso(post);
 
       return {

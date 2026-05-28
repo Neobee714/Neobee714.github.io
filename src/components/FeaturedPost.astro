@@ -5,7 +5,7 @@
  * Larger than PostCard, used for the first/featured post.
  */
 import AICover from './AICover.astro';
-import { getCategory, getDateIso, isLocked } from '@/lib/obsidian-parser';
+import { getCategory, getDateIso, getPostTitle, isLocked } from '@/lib/obsidian-parser';
 import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
@@ -23,8 +23,7 @@ const summaryZh = post.data.简介 || '';
 const summaryEn = translation?.data.简介 || '';
 const tags = post.data.tags || [];
 
-const segments = post.id.replace(/\.md$/, '').split('/');
-const titleZh = segments[segments.length - 1];
+const titleZh = getPostTitle(post);
 const showDualTitle = titleZh !== slug;
 
 const bodyLength = post.body?.length ?? 0;

@@ -12,7 +12,7 @@ import BackToTop from '@/components/BackToTop.astro';
 import Giscus from '@/components/Giscus.astro';
 import CodeBlockWrapper from '@/components/CodeBlockWrapper.astro';
 import MermaidIsland from '@/components/islands/MermaidIsland.tsx';
-import { getCategory, getDateIso, isLocked } from '@/lib/obsidian-parser';
+import { getCategory, getCategoryDisplayName, getDateIso, getPostTitle, isLocked } from '@/lib/obsidian-parser';
 import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
@@ -32,13 +32,17 @@ const tags = post.data.tags || [];
 const summaryZh = post.data.简介 || '';
 const summaryEn = postEn?.data.简介 || '';
 
-// Derive Chinese title from file path
-const segments = post.id.replace(/\.md$/, '').split('/');
-const titleZh = segments[segments.length - 1];
+const titleZh = getPostTitle(post);
 const titleEn = postEn?.data.Slug || slug;
+const categoryDisplayName = getCategoryDisplayName(category);
 
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://xyvora.me';
 const postUrl = `${siteUrl}/post/${slug}/`;
+
+// SEO title: "HTB Helix Writeup | HackTheBox - Xyvora"
+const seoTitle = categoryDisplayName
+  ? `${titleZh} | ${categoryDisplayName} - Xyvora`
+  : `${titleZh} - Xyvora`;
 
 // Schema.org JSON-LD for BlogPosting
 const jsonLd = JSON.stringify({
@@ -56,7 +60,7 @@ const jsonLd = JSON.stringify({
 ---
 
 <BaseLayout
-  title={`${titleZh} - Xyvora`}
+  title={seoTitle}
   description={summaryZh || `${titleZh} - Xyvora`}
   ogType="article"
   canonical={postUrl}

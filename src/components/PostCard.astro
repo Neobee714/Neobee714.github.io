@@ -3,7 +3,7 @@
  * PostCard — homepage card component.
  */
 import AICover from './AICover.astro';
-import { getCategory, getDateIso, isLocked } from '@/lib/obsidian-parser';
+import { getCategory, getDateIso, getPostTitle, isLocked } from '@/lib/obsidian-parser';
 import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
@@ -19,9 +19,7 @@ const dateStr = getDateIso(post);
 const locked = isLocked(post);
 const summaryZh = post.data.简介 || '';
 const summaryEn = translation?.data.简介 || '';
-// Derive Chinese title from file path (last segment without extension)
-const segments = post.id.replace(/\.md$/, '').split('/');
-const titleZh = segments[segments.length - 1];
+const titleZh = getPostTitle(post);
 const showDualTitle = titleZh !== slug;
 ---
 

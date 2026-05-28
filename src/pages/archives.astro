@@ -3,7 +3,7 @@
  * Archives page — posts grouped by year-month.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { getPublishedPosts, getDateIso } from '@/lib/obsidian-parser';
+import { getPublishedPosts, getDateIso, getPostTitle } from '@/lib/obsidian-parser';
 
 const posts = await getPublishedPosts();
 
@@ -36,8 +36,7 @@ const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
             {groupPosts.map((post) => {
               const slug = post.data.Slug!;
               const date = getDateIso(post);
-              const segments = post.id.replace(/\.md$/, '').split('/');
-              const titleZh = segments[segments.length - 1];
+              const titleZh = getPostTitle(post);
               return (
                 <li class="archives-group__item">
                   <time class="archives-group__date">{date}</time>
