@@ -99,7 +99,20 @@ const filteredEn = headingsEn.filter((h) => h.depth >= 1 && h.depth <= 3);
 </style>
 
 <script>
+  const tocState = ((window as Window & typeof globalThis & {
+    __blogToc?: {
+      cleanup: () => void;
+      afterSwapBound: boolean;
+    };
+  }).__blogToc ??= {
+    cleanup: () => {},
+    afterSwapBound: false,
+  });
+
   function initTOC() {
+    tocState.cleanup();
+    const cleanups: Array<() => void> = [];
+
     document.querySelectorAll<HTMLElement>('.toc').forEach((toc) => {
       const links = toc.querySelectorAll<HTMLAnchorElement>('[data-toc-slug]');
       if (!links.length) return;
@@ -136,16 +149,32 @@ const filteredEn = headingsEn.filter((h) => h.depth >= 1 && h.depth <= 3);
 
       headingEls.forEach((el) => observer.observe(el));
 
-      window.addEventListener('hashchange', () => {
+      const handleHashChange = () => {
         const next = window.location.hash.slice(1);
         if (!next) return;
         currentSlug = next;
         updateActive();
+      };
+
+      window.addEventListener('hashchange', handleHashChange);
+      cleanups.push(() => {
+        observer.disconnect();
+        window.removeEventListener('hashchange', handleHashChange);
       });
     });
+
+    tocState.cleanup = () => {
+      cleanups.forEach((cleanup) => cleanup());
+      tocState.cleanup = () => {};
+    };
   }
 
-  // Run on initial load and after Astro page transitions
-  initTOC();
-  document.addEventListener('astro:after-swap', initTOC);
+  const shouldInitTOC = !tocState.afterSwapBound;
+  if (!tocState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initTOC);
+    tocState.afterSwapBound = true;
+  }
+  if (shouldInitTOC) {
+    initTOC();
+  }
 </script>

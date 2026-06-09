@@ -22,21 +22,44 @@
 </style>
 
 <script>
+  const readingProgressState = ((window as Window & typeof globalThis & {
+    __blogReadingProgress?: {
+      scrollBound: boolean;
+      afterSwapBound: boolean;
+    };
+  }).__blogReadingProgress ??= {
+    scrollBound: false,
+    afterSwapBound: false,
+  });
+
+  function updateReadingProgress() {
+    const bar = document.getElementById('reading-progress');
+    if (!bar) return;
+
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    bar.style.width = `${Math.min(100, progress)}%`;
+  }
+
   function initReadingProgress() {
     const bar = document.getElementById('reading-progress');
     if (!bar) return;
 
-    function updateProgress() {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      bar.style.width = `${Math.min(100, progress)}%`;
+    if (!readingProgressState.scrollBound) {
+      window.addEventListener('scroll', updateReadingProgress, { passive: true });
+      readingProgressState.scrollBound = true;
     }
 
-    window.addEventListener('scroll', updateProgress, { passive: true });
-    updateProgress();
+    updateReadingProgress();
   }
 
-  initReadingProgress();
-  document.addEventListener('astro:after-swap', initReadingProgress);
+  const shouldInitReadingProgress = !readingProgressState.afterSwapBound;
+  if (!readingProgressState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initReadingProgress);
+    readingProgressState.afterSwapBound = true;
+  }
+  if (shouldInitReadingProgress) {
+    initReadingProgress();
+  }
 </script>

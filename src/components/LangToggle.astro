@@ -17,12 +17,29 @@
 </button>
 
 <script>
-  document.getElementById('lang-toggle')?.addEventListener('click', () => {
+  const langToggleState = ((window as Window & typeof globalThis & {
+    __blogLangToggle?: {
+      clickBound: boolean;
+    };
+  }).__blogLangToggle ??= {
+    clickBound: false,
+  });
+
+  function toggleLang() {
     const html = document.documentElement;
     const cur = html.getAttribute('data-lang');
     const next = cur === 'zh' ? 'en' : 'zh';
     html.setAttribute('data-lang', next);
     html.setAttribute('lang', next === 'en' ? 'en' : 'zh-CN');
     localStorage.setItem('lang', next);
-  });
+  }
+
+  if (!langToggleState.clickBound) {
+    document.addEventListener('click', (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest('#lang-toggle')) return;
+      toggleLang();
+    });
+    langToggleState.clickBound = true;
+  }
 </script>

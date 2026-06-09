@@ -9,6 +9,14 @@
 ---
 
 <script>
+  const codeBlockState = ((window as Window & typeof globalThis & {
+    __blogCodeBlocks?: {
+      afterSwapBound: boolean;
+    };
+  }).__blogCodeBlocks ??= {
+    afterSwapBound: false,
+  });
+
   const LANG_COLORS: Record<string, string> = {
     python: '#3572A5',
     py: '#3572A5',
@@ -167,8 +175,14 @@
     });
   }
 
-  initCodeBlocks();
-  document.addEventListener('astro:after-swap', initCodeBlocks);
+  const shouldInitCodeBlocks = !codeBlockState.afterSwapBound;
+  if (!codeBlockState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initCodeBlocks);
+    codeBlockState.afterSwapBound = true;
+  }
+  if (shouldInitCodeBlocks) {
+    initCodeBlocks();
+  }
 </script>
 
 <style is:global>

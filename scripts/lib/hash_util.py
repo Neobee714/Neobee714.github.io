@@ -6,10 +6,6 @@ always produces the same hash regardless of when it's computed.
 """
 
 import hashlib
-from pathlib import Path
-from typing import Union
-
-from .frontmatter import read_note
 
 # Frontmatter keys that affect translation output
 _KEYS_TO_HASH = [
@@ -35,16 +31,3 @@ def compute_source_hash(fm: dict, body: str) -> str:
     m.update(b"\n---\n")
     m.update(body.encode("utf-8"))
     return m.hexdigest()
-
-
-def compute_source_hash_from_file(path: Union[str, Path]) -> str:
-    """Convenience: read a note file and compute its source hash.
-
-    Args:
-        path: Path to the .md file.
-
-    Returns:
-        Hex digest of the SHA-256 hash.
-    """
-    fm, body = read_note(path)
-    return compute_source_hash(fm, body)

@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { isDraftStatus, normalizeFrontmatterScalar } from './publishing.ts';
 import { resolveVaultPath } from './resolve-vault-path.ts';
 
 interface VaultIndex {
@@ -126,13 +127,12 @@ function extractPublishedSlug(raw: string): string | undefined {
     if (m) fields[m[1].trim()] = m[2].trim();
   }
 
-  const pub = (fields['发布'] ?? '').toLowerCase();
+  const pub = normalizeFrontmatterScalar(fields['发布']).toLowerCase();
   if (!['true', 'yes', '是'].includes(pub)) return undefined;
 
-  const status = (fields['状态'] ?? '').toLowerCase();
-  if (['进行中', 'draft', 'wip'].includes(status)) return undefined;
+  if (isDraftStatus(fields['状态'])) return undefined;
 
-  const slug = fields['Slug']?.trim();
+  const slug = normalizeFrontmatterScalar(fields['Slug']);
   return slug || undefined;
 }
 

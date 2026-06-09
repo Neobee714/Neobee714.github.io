@@ -50,11 +50,28 @@
 </style>
 
 <script>
-  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+  const themeToggleState = ((window as Window & typeof globalThis & {
+    __blogThemeToggle?: {
+      clickBound: boolean;
+    };
+  }).__blogThemeToggle ??= {
+    clickBound: false,
+  });
+
+  function toggleTheme() {
     const html = document.documentElement;
     const current = html.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
-  });
+  }
+
+  if (!themeToggleState.clickBound) {
+    document.addEventListener('click', (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest('#theme-toggle')) return;
+      toggleTheme();
+    });
+    themeToggleState.clickBound = true;
+  }
 </script>

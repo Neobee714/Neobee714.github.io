@@ -33,9 +33,15 @@ if (en) {
   EnContent = rendered.Content;
   headingsEn = rendered.headings;
 }
+
+const mermaidFence = ['`', '`', '`', 'mermaid'].join('');
+const hasMermaid =
+  !locked &&
+  ((post.body || '').toLowerCase().includes(mermaidFence) ||
+    (en?.body || '').toLowerCase().includes(mermaidFence));
 ---
 
-<PostLayout post={post} postEn={en} headings={headings} headingsEn={headingsEn}>
+<PostLayout post={post} postEn={en} headings={headings} headingsEn={headingsEn} hasMermaid={hasMermaid}>
   {locked ? (
     <LockedBanner />
   ) : (

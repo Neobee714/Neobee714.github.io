@@ -3,7 +3,8 @@
  *
  * - External http(s) images are left unchanged.
  * - Local images are resolved through the vault asset index.
- * - Resolved files are copied to dist/_images/<normalized-name>.
+ * - In dev, resolved files are copied to public/_images/<normalized-name>.
+ * - Production file copying is handled by the post-build integration.
  * - Missing files become <span class="missing-image">Missing: ...</span>.
  */
 import fs from 'node:fs';
@@ -62,9 +63,9 @@ function copyAsset(assetPath: string, normalized: string): void {
   if (copied.has(normalized)) return;
 
   const isDev = process.env.NODE_ENV !== 'production' && !process.argv.includes('build');
-  const outDir = isDev
-    ? path.resolve('public', '_images')
-    : path.resolve('dist', '_images');
+  if (!isDev) return;
+
+  const outDir = path.resolve('public', '_images');
   const outFile = path.join(outDir, normalized);
 
   try {

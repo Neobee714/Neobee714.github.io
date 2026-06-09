@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check .en.md files for missing code blocks compared to their Chinese originals.
+"""Check .en.md files for code block mismatches compared to Chinese originals.
 
 Usage:
     python scripts/check_codeblocks.py --vault F:/Work/Obsidian
@@ -11,17 +11,10 @@ import re
 import sys
 from pathlib import Path
 
-# Match opening fences: ```python, ```bash, ``` etc.
-FENCE_OPEN = re.compile(r'^```(\w*)', re.MULTILINE)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-
-def count_fenced_blocks(text: str) -> dict:
-    """Return {lang: count} for all fenced code blocks."""
-    counts: dict[str, int] = {}
-    for m in FENCE_OPEN.finditer(text):
-        lang = m.group(1).lower() or 'plain'
-        counts[lang] = counts.get(lang, 0) + 1
-    return counts
+from lib.codeblocks import codeblock_count_issue
+from lib.translation_paths import source_for_translation
 
 
 def main():
@@ -37,22 +30,17 @@ def main():
     broken = []
 
     for en_path in en_files:
-        zh_path = Path(str(en_path).replace('.en.md', '.md'))
+        zh_path = source_for_translation(en_path, vault)
         if not zh_path.exists():
             continue
 
         zh_text = zh_path.read_text(encoding='utf-8')
         en_text = en_path.read_text(encoding='utf-8')
 
-        zh_counts = count_fenced_blocks(zh_text)
-        en_counts = count_fenced_blocks(en_text)
-
-        # Check if any language has fewer blocks in EN than ZH
         issues = []
-        for lang, zh_n in zh_counts.items():
-            en_n = en_counts.get(lang, 0)
-            if en_n < zh_n:
-                issues.append(f'{lang}: ZH={zh_n} EN={en_n}')
+        issue = codeblock_count_issue(zh_text, en_text)
+        if issue:
+            issues.append(issue)
 
         if issues:
             # Extract slug from frontmatter
@@ -64,12 +52,12 @@ def main():
         print('✅ All .en.md files have matching code blocks.')
         return
 
-    print(f'❌ Found {len(broken)} file(s) with missing code blocks:\n')
+    print(f'❌ Found {len(broken)} file(s) with code block mismatches:\n')
     for slug, rel_path, issues in broken:
         print(f'  {rel_path}')
         print(f'    Slug: {slug}')
         for issue in issues:
-            print(f'    Missing: {issue}')
+            print(f'    Issue: {issue}')
         print()
 
     if args.fix:

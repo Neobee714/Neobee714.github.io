@@ -6,7 +6,6 @@ Each chunk is self-contained and includes the heading it starts with.
 """
 
 import re
-from typing import List
 
 # Matches lines that start with #, ## or ### (h1/h2/h3 headings)
 _HEADING_SPLIT = re.compile(r"(?=^#{1,3}\s)", re.MULTILINE)
@@ -99,7 +98,7 @@ def _clean_list_blank_lines(text: str) -> str:
     return "\n".join(result)
 
 
-def chunk_by_headings(body: str, max_chars: int = 2000) -> List[str]:
+def chunk_by_headings(body: str, max_chars: int = 2000) -> list[str]:
     """Split body text into chunks at h1/h2/h3 heading boundaries.
 
     Args:
@@ -119,7 +118,7 @@ def chunk_by_headings(body: str, max_chars: int = 2000) -> List[str]:
     # Split at heading boundaries (lookahead keeps the heading with its section)
     parts = _HEADING_SPLIT.split(protected)
 
-    chunks: List[str] = []
+    chunks: list[str] = []
     current = ""
 
     for part in parts:
@@ -146,10 +145,10 @@ def chunk_by_headings(body: str, max_chars: int = 2000) -> List[str]:
     return [_clean_list_blank_lines(_restore_code_blocks(c, code_map)) for c in chunks]
 
 
-def _split_by_paragraphs(text: str, max_chars: int) -> List[str]:
+def _split_by_paragraphs(text: str, max_chars: int) -> list[str]:
     """Fallback: split a long section by double-newline paragraphs."""
     paragraphs = re.split(r'\n\n+', text)
-    chunks: List[str] = []
+    chunks: list[str] = []
     current = ""
 
     for para in paragraphs:

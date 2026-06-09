@@ -13,6 +13,7 @@
 import type { AstroIntegration } from 'astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isDraftStatus, normalizeFrontmatterScalar } from '../publishing.ts';
 import { resolveVaultPath } from '../resolve-vault-path.ts';
 
 async function walkMd(dir: string, out: string[] = []): Promise<string[]> {
@@ -52,9 +53,17 @@ function extractFrontmatter(raw: string): Record<string, string> | null {
   return result;
 }
 
-function isPublishedFm(fm: Record<string, string>): boolean {
-  const v = (fm['发布'] ?? '').toLowerCase();
+export function isPublishedFm(fm: Record<string, string>): boolean {
+  return hasPublishFlag(fm) && !isDraftFm(fm) && Boolean(normalizeFrontmatterScalar(fm['Slug']));
+}
+
+function hasPublishFlag(fm: Record<string, string>): boolean {
+  const v = normalizeFrontmatterScalar(fm['发布']).toLowerCase();
   return v === 'true' || v === 'yes' || v === '是';
+}
+
+function isDraftFm(fm: Record<string, string>): boolean {
+  return isDraftStatus(fm['状态']);
 }
 
 export function slugUniquenessCheck(): AstroIntegration {
@@ -82,15 +91,18 @@ export function slugUniquenessCheck(): AstroIntegration {
         const seen = new Map<string, string>();
         const conflicts: string[] = [];
         let published = 0;
+        let missingSlug = 0;
 
         for (const file of files) {
           const raw = await fs.readFile(file, 'utf8');
           const fm = extractFrontmatter(raw);
           if (!fm) continue;
+          if (hasPublishFlag(fm) && !isDraftFm(fm) && !normalizeFrontmatterScalar(fm['Slug'])) {
+            missingSlug++;
+          }
           if (!isPublishedFm(fm)) continue;
 
-          const slug = fm['Slug']?.trim();
-          if (!slug) continue;
+          const slug = normalizeFrontmatterScalar(fm['Slug']);
 
           published++;
           const prior = seen.get(slug);
@@ -116,6 +128,11 @@ export function slugUniquenessCheck(): AstroIntegration {
         logger.info(
           `Slug uniqueness check passed (${published} published posts, ${seen.size} unique slugs)`
         );
+        if (missingSlug > 0) {
+          logger.warn(
+            `Skipped ${missingSlug} published non-draft note(s) without Slug`
+          );
+        }
       },
     },
   };

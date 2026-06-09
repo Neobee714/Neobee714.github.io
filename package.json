@@ -10,19 +10,18 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test:node": "node --import tsx --test tests/*.test.ts",
+    "test:python": "python3 -m unittest discover -s tests -p 'test_*.py'",
+    "test": "npm run test:node && npm run test:python"
   },
   "dependencies": {
-    "@astrojs/mdx": "^5.0.4",
     "@astrojs/react": "^5.0.4",
     "@astrojs/rss": "^4.0.18",
     "@astrojs/sitemap": "^3.7.2",
-    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^6.3.1",
-    "framer-motion": "^12.38.0",
     "fuse.js": "^7.3.0",
-    "lucide-react": "^1.14.0",
     "mermaid": "^11.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -31,11 +30,11 @@
     "rehype-slug": "^6.0.0",
     "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.0",
-    "unist-util-remove": "^4.0.0",
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.22.4"
   }
 }

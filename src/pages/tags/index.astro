@@ -29,7 +29,7 @@ const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
     {sortedTags.length > 0 ? (
       <div class="tags-page__cloud">
         {sortedTags.map(([tag, count]) => (
-          <a href={`/tags/${tag}/`} class="tags-page__pill">
+          <a href={`/tags/${encodeURIComponent(tag)}/`} class="tags-page__pill">
             {tag} <span class="tags-page__count">{count}</span>
           </a>
         ))}

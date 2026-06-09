@@ -5,12 +5,11 @@ and ensures lossless round-trip (same content in = same content out).
 """
 
 from pathlib import Path
-from typing import Union
 
 import frontmatter
 
 
-def read_note(path: Union[str, Path]) -> tuple[dict, str]:
+def read_note(path: str | Path) -> tuple[dict, str]:
     """Read an Obsidian note and return (frontmatter_dict, body_string).
 
     Args:
@@ -24,7 +23,7 @@ def read_note(path: Union[str, Path]) -> tuple[dict, str]:
     return dict(post.metadata), post.content
 
 
-def write_note(path: Union[str, Path], fm: dict, body: str) -> None:
+def write_note(path: str | Path, fm: dict, body: str) -> None:
     """Write a note with frontmatter and body content.
 
     Args:

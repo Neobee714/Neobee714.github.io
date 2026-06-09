@@ -1,0 +1,85 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Xyvora redesign preview' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style is:global>
+      :root {
+        --vp-bg: #efe7db;
+        --vp-bg-soft: #f8f3eb;
+        --vp-panel: rgba(255, 251, 245, 0.72);
+        --vp-panel-strong: rgba(255, 252, 248, 0.9);
+        --vp-ink: #16110d;
+        --vp-muted: #62574f;
+        --vp-line: rgba(24, 17, 13, 0.14);
+        --vp-line-strong: rgba(24, 17, 13, 0.24);
+        --vp-accent: #b4491f;
+        --vp-accent-soft: rgba(180, 73, 31, 0.12);
+        --vp-cyan: #0d7c86;
+        --vp-shadow: 0 28px 80px rgba(36, 25, 17, 0.12);
+        --vp-radius-xl: 2rem;
+        --vp-radius-lg: 1.4rem;
+        --vp-radius-md: 1rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(13, 124, 134, 0.1), transparent 24rem),
+          radial-gradient(circle at 85% 12%, rgba(180, 73, 31, 0.12), transparent 20rem),
+          linear-gradient(180deg, #f8f4ee 0%, var(--vp-bg) 32%, #ece2d4 100%);
+        color: var(--vp-ink);
+        font-family: 'IBM Plex Sans', sans-serif;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(rgba(22, 17, 13, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(22, 17, 13, 0.035) 1px, transparent 1px);
+        background-size: 36px 36px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 92%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .vp-shell {
+        width: min(1280px, calc(100vw - 32px));
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

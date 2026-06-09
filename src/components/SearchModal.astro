@@ -138,21 +138,48 @@
 </style>
 
 <script>
-  let fuseInstance: any = null;
-  let searchData: any[] = [];
+  const searchState = ((window as Window & typeof globalThis & {
+    __blogSearchModal?: {
+      fuseInstance: any;
+      searchData: any[];
+      loadPromise: Promise<void> | null;
+      keyboardBound: boolean;
+      afterSwapBound: boolean;
+    };
+  }).__blogSearchModal ??= {
+    fuseInstance: null,
+    searchData: [],
+    loadPromise: null,
+    keyboardBound: false,
+    afterSwapBound: false,
+  });
 
   async function loadSearchIndex() {
-    if (searchData.length) return;
+    if (searchState.searchData.length || searchState.loadPromise) {
+      await searchState.loadPromise;
+      return;
+    }
+
+    searchState.loadPromise = (async () => {
+      try {
+        const res = await fetch('/search-index.json');
+        searchState.searchData = await res.json();
+        const Fuse = (await import('fuse.js')).default;
+        searchState.fuseInstance = new Fuse(searchState.searchData, {
+          keys: ['titleZh', 'slug', 'category', 'tags', 'summary'],
+          threshold: 0.4,
+        });
+      } catch (err) {
+        console.warn('[SearchModal] Failed to load search index:', err);
+      } finally {
+        searchState.loadPromise = null;
+      }
+    })();
+
     try {
-      const res = await fetch('/search-index.json');
-      searchData = await res.json();
-      const Fuse = (await import('fuse.js')).default;
-      fuseInstance = new Fuse(searchData, {
-        keys: ['titleZh', 'slug', 'category', 'tags', 'summary'],
-        threshold: 0.4,
-      });
-    } catch (err) {
-      console.warn('[SearchModal] Failed to load search index:', err);
+      await searchState.loadPromise;
+    } finally {
+      searchState.loadPromise = null;
     }
   }
 
@@ -174,55 +201,81 @@
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     if (input) input.value = '';
-    if (results) results.innerHTML = '';
+    results?.replaceChildren();
   }
-
   function renderResults(query: string) {
     const results = document.getElementById('search-results');
-    if (!results || !fuseInstance) return;
-
+    if (!results || !searchState.fuseInstance) return;
     if (!query.trim()) {
-      results.innerHTML = '';
+      results.replaceChildren();
       return;
     }
 
-    const matches = fuseInstance.search(query).slice(0, 8);
-    results.innerHTML = matches
-      .map(({ item }: any) => `
-        <a href="/post/${item.slug}/" class="search-result-item">
-          <p class="search-result-item__title">${item.titleZh}</p>
-          <p class="search-result-item__meta">${item.category || 'Blog'} · ${item.slug}</p>
-        </a>
-      `)
-      .join('');
+    const matches = searchState.fuseInstance.search(query).slice(0, 8);
+    results.replaceChildren(
+      ...matches.map(({ item }: any) => {
+        const slug = String(item.slug || '');
+        const link = document.createElement('a');
+        link.href = `/post/${encodeURIComponent(slug)}/`;
+        link.className = 'search-result-item';
+
+        const title = document.createElement('p');
+        title.className = 'search-result-item__title';
+        title.textContent = String(item.titleZh || slug);
+        link.appendChild(title);
+
+        const meta = document.createElement('p');
+        meta.className = 'search-result-item__meta';
+        meta.textContent = `${String(item.category || 'Blog')} · ${slug}`;
+        link.appendChild(meta);
+
+        return link;
+      })
+    );
   }
 
   function initSearch() {
     // Keyboard shortcut
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        const modal = document.getElementById('search-modal');
-        if (modal?.classList.contains('open')) {
-          closeSearch();
-        } else {
-          openSearch();
+    if (!searchState.keyboardBound) {
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          const modal = document.getElementById('search-modal');
+          if (modal?.classList.contains('open')) {
+            closeSearch();
+          } else {
+            openSearch();
+          }
         }
-      }
-      if (e.key === 'Escape') {
-        closeSearch();
-      }
-    });
+        if (e.key === 'Escape') {
+          closeSearch();
+        }
+      });
+      searchState.keyboardBound = true;
+    }
 
     // Backdrop click
-    document.querySelector('.search-modal__backdrop')?.addEventListener('click', closeSearch);
+    const backdrop = document.querySelector<HTMLElement>('.search-modal__backdrop');
+    if (backdrop && !backdrop.dataset.searchBound) {
+      backdrop.addEventListener('click', closeSearch);
+      backdrop.dataset.searchBound = 'true';
+    }
 
     // Input handler
-    document.getElementById('search-input')?.addEventListener('input', (e) => {
-      renderResults((e.target as HTMLInputElement).value);
-    });
+    const input = document.getElementById('search-input');
+    if (input && !input.dataset.searchBound) {
+      input.addEventListener('input', (e) => {
+        renderResults((e.target as HTMLInputElement).value);
+      });
+      input.dataset.searchBound = 'true';
+    }
   }
-
-  initSearch();
-  document.addEventListener('astro:after-swap', initSearch);
+  const shouldInitSearch = !searchState.afterSwapBound;
+  if (!searchState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initSearch);
+    searchState.afterSwapBound = true;
+  }
+  if (shouldInitSearch) {
+    initSearch();
+  }
 </script>

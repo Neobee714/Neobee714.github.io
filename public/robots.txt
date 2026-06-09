@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://xyvora.me/sitemap-index.xml

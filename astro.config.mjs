@@ -31,7 +31,17 @@ for (const key of ['ASTRO_VAULT_PATH', 'PUBLIC_SITE_URL']) {
 
 export default defineConfig({
   site: process.env.PUBLIC_SITE_URL || 'https://xyvora.me',
-  integrations: [react(), sitemap({ filter: (page) => !page.includes('/404') }), slugUniquenessCheck(), copyVaultImages()],
+  integrations: [
+    react(),
+    sitemap({
+      filter: (page) =>
+        !page.includes('/404') &&
+        !page.includes('/test-render') &&
+        !page.includes('/visual-preview'),
+    }),
+    slugUniquenessCheck(),
+    copyVaultImages(),
+  ],
   markdown: {
     remarkPlugins: [
       remarkDataviewStrip, // drop dataview / templater / %%comments%%
@@ -58,5 +68,10 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // Mermaid is loaded only by the article island when a post contains a
+      // diagram, but its core lazy chunk is larger than Vite's default limit.
+      chunkSizeWarningLimit: 750,
+    },
   },
 });

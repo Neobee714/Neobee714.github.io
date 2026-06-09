@@ -7,27 +7,30 @@
 const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID || '';
 const category = import.meta.env.PUBLIC_GISCUS_CATEGORY || '';
 const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID || '';
+const enabled = Boolean(repoId && category && categoryId);
 ---
 
-<div class="giscus-wrapper" id="giscus-wrapper">
-  <script
-    src="https://giscus.app/client.js"
-    data-repo="Neobee714/Neobee714.github.io"
-    data-repo-id={repoId}
-    data-category={category}
-    data-category-id={categoryId}
-    data-mapping="pathname"
-    data-strict="0"
-    data-reactions-enabled="1"
-    data-emit-metadata="0"
-    data-input-position="top"
-    data-theme="dark_dimmed"
-    data-lang="zh-CN"
-    data-loading="lazy"
-    crossorigin="anonymous"
-    async
-  ></script>
-</div>
+{enabled && (
+  <div class="giscus-wrapper" id="giscus-wrapper">
+    <script
+      src="https://giscus.app/client.js"
+      data-repo="Neobee714/Neobee714.github.io"
+      data-repo-id={repoId}
+      data-category={category}
+      data-category-id={categoryId}
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="dark_dimmed"
+      data-lang="zh-CN"
+      data-loading="lazy"
+      crossorigin="anonymous"
+      async
+    ></script>
+  </div>
+)}
 
 <style>
   .giscus-wrapper {
@@ -38,6 +41,14 @@ const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID || '';
 </style>
 
 <script>
+  const giscusState = ((window as Window & typeof globalThis & {
+    __blogGiscus?: {
+      themeObserverBound: boolean;
+    };
+  }).__blogGiscus ??= {
+    themeObserverBound: false,
+  });
+
   function syncGiscusTheme() {
     const theme = document.documentElement.getAttribute('data-theme');
     const giscusTheme = theme === 'light' ? 'light' : 'dark_dimmed';
@@ -51,14 +62,19 @@ const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID || '';
     }
   }
 
-  // Watch for theme changes
-  const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      if (m.attributeName === 'data-theme') {
-        syncGiscusTheme();
-      }
-    }
-  });
+  if (document.getElementById('giscus-wrapper')) {
+    if (!giscusState.themeObserverBound) {
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.attributeName === 'data-theme') {
+            syncGiscusTheme();
+          }
+        }
+      });
 
-  observer.observe(document.documentElement, { attributes: true });
+      observer.observe(document.documentElement, { attributes: true });
+      giscusState.themeObserverBound = true;
+    }
+    syncGiscusTheme();
+  }
 </script>

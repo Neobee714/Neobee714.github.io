@@ -9,20 +9,22 @@
 
 import type { CollectionEntry } from 'astro:content';
 import { getCollection } from 'astro:content';
+import { isDraftStatus, isLockedStatus } from './publishing.ts';
 
 export type Post = CollectionEntry<'posts'>;
 
-// Status values that suppress publishing even when 发布:true.
-// 状态值中若出现以下任意一种，文章被视为草稿（不发布）。
-const DRAFT_STATUS_VALUES = new Set(['进行中', 'draft', 'wip', 'writing']);
-
-// Status values that imply locked (synonymous with 是否锁住:Yes).
-// 为了向后兼容 Notion 时代的 `状态: 已锁住` 值，这些值被视为锁住。
-const LOCKED_STATUS_VALUES = new Set(['已锁住', 'locked']);
-
-function normalizeStatus(raw: string | undefined): string {
-  return (raw ?? '').trim().toLowerCase();
+interface PostIndex {
+  published: Post[];
+  publishedBySlug: Map<string, Post>;
+  translationsBySlug: Map<string, Post>;
+  translationsBySourceId: Map<string, Post>;
 }
+
+const CACHE_KEY = '__xyvora_post_index__';
+
+type GlobalWithCache = typeof globalThis & {
+  [CACHE_KEY]?: Promise<PostIndex>;
+};
 
 /**
  * Is this entry a translation artifact (e.g. `htb bruno.en.md`)?
@@ -36,8 +38,7 @@ function isTranslation(post: Post): boolean {
  */
 export function isLocked(post: Post): boolean {
   if (post.data.是否锁住 === true) return true;
-  const status = normalizeStatus(post.data.状态);
-  return LOCKED_STATUS_VALUES.has(status);
+  return isLockedStatus(post.data.状态);
 }
 
 /**
@@ -49,19 +50,93 @@ function isPublishable(post: Post): boolean {
 
   // Must have a Slug (REQ-03-3)
   if (!post.data.Slug || post.data.Slug.trim() === '') {
-    console.warn(
-      `[obsidian-parser] Skipping post without Slug: ${post.id}`
-    );
     return false;
   }
-
   // Status drafts are skipped even if 发布:true
-  const status = normalizeStatus(post.data.状态);
-  if (DRAFT_STATUS_VALUES.has(status)) {
+  if (isDraftStatus(post.data.状态)) {
     return false;
   }
 
   return true;
+}
+
+async function getPostIndex() {
+  const g = globalThis as GlobalWithCache;
+  if (!g[CACHE_KEY]) {
+    g[CACHE_KEY] = (async () => buildPostIndex(await getCollection('posts')))().catch((error) => {
+      delete g[CACHE_KEY];
+      throw error;
+    });
+  }
+  return g[CACHE_KEY];
+}
+
+function buildPostIndex(all: Post[]): PostIndex {
+  const published: Post[] = [];
+  const publishedBySlug = new Map<string, Post>();
+  const translationsBySlug = new Map<string, Post>();
+  const translationsBySourceId = new Map<string, Post>();
+
+  for (const post of all) {
+    if (isTranslation(post)) {
+      const slug = post.data.Slug?.trim();
+      if (slug) {
+        translationsBySlug.set(slug, post);
+      }
+
+      const sourceId = getTranslationSourceId(post);
+      if (sourceId) {
+        translationsBySourceId.set(sourceId, post);
+      }
+      continue;
+    }
+
+    if (!isPublishable(post)) continue;
+
+    const slug = post.data.Slug!;
+    const existing = publishedBySlug.get(slug);
+    if (existing && existing !== post) {
+      throw new Error(
+        `[obsidian-parser] Duplicate Slug "${slug}" found in:\n` +
+        `  - ${existing.id}\n` +
+        `  - ${post.id}`
+      );
+    }
+
+    publishedBySlug.set(slug, post);
+    published.push(post);
+  }
+
+  published.sort((a, b) => {
+    const da = a.data.日期?.getTime() ?? 0;
+    const db = b.data.日期?.getTime() ?? 0;
+    return db - da;
+  });
+
+  return {
+    published,
+    publishedBySlug,
+    translationsBySlug,
+    translationsBySourceId,
+  };
+}
+
+function getTranslationSourceId(post: Post): string | undefined {
+  const source = post.data.source?.trim();
+  if (!source) return undefined;
+  return normalizeNoteRef(source);
+}
+
+function getPostSourceId(post: Post): string {
+  if (post.filePath) {
+    return normalizeNoteRef(post.filePath);
+  }
+  return normalizeNoteRef(post.id);
+}
+
+function normalizeNoteRef(value: string): string {
+  const normalized = value.replace(/\\/g, '/').split('/').pop() || value;
+  return normalized.replace(/\.en\.md$/i, '').replace(/\.md$/i, '').trim().toLowerCase();
 }
 
 /**
@@ -70,34 +145,8 @@ function isPublishable(post: Post): boolean {
  * lists with the ACCESS DENIED banner on the detail page).
  */
 export async function getPublishedPosts(): Promise<Post[]> {
-  const all = await getCollection('posts');
-
-  const originals = all.filter((p) => !isTranslation(p) && isPublishable(p));
-
-  // Detect duplicate slugs — fail the build rather than silently drop posts.
-  // (Hard failure implements REQ-03-4. Integration in Phase 2.5 will also
-  // run this check more formally, but duplicating the guard here is cheap.)
-  const seen = new Map<string, string>();
-  for (const p of originals) {
-    const slug = p.data.Slug!;
-    const existing = seen.get(slug);
-    if (existing && existing !== p.id) {
-      throw new Error(
-        `[obsidian-parser] Duplicate Slug "${slug}" found in:\n` +
-        `  - ${existing}\n` +
-        `  - ${p.id}`
-      );
-    }
-    seen.set(slug, p.id);
-  }
-
-  originals.sort((a, b) => {
-    const da = a.data.日期?.getTime() ?? 0;
-    const db = b.data.日期?.getTime() ?? 0;
-    return db - da;
-  });
-
-  return originals;
+  const index = await getPostIndex();
+  return index.published;
 }
 
 /**
@@ -106,20 +155,11 @@ export async function getPublishedPosts(): Promise<Post[]> {
 export async function getPostWithTranslation(
   slug: string
 ): Promise<{ zh: Post | undefined; en: Post | undefined }> {
-  const all = await getCollection('posts');
-
-  const zh = all.find(
-    (p) => !isTranslation(p) && p.data.Slug === slug && isPublishable(p)
-  );
-
-  // The translation's `source` field stores the original relative path;
-  // we match via that when present, otherwise fall back to `Slug` alignment.
-  const en = all.find((p) => {
-    if (!isTranslation(p)) return false;
-    if (p.data.Slug === slug) return true;
-    if (p.data.source && zh && p.data.source.endsWith(zh.id + '.md')) return true;
-    return false;
-  });
+  const index = await getPostIndex();
+  const zh = index.publishedBySlug.get(slug);
+  const en =
+    index.translationsBySlug.get(slug) ||
+    (zh ? index.translationsBySourceId.get(getPostSourceId(zh)) : undefined);
 
   return { zh, en };
 }

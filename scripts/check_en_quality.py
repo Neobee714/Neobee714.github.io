@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check .en.md files for quality issues:
 1. Corrupted frontmatter (garbled Chinese field names)
-2. Missing code block fences (fewer ``` than original)
+2. Code block fence mismatch compared to original
 3. <SOURCE> tags leaked into content
 4. translated_at is unquoted ISO datetime (YAML parses as object)
 
@@ -15,7 +15,11 @@ import re
 import sys
 from pathlib import Path
 
-FENCE_OPEN = re.compile(r'^```', re.MULTILINE)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lib.codeblocks import codeblock_count_issue
+from lib.translation_paths import source_for_translation
+
 GARBLED = re.compile(r'[\u9489-\u9fff\u5c0f-\u5c1f]{2,}:')  # garbled CJK field names
 UNQUOTED_TS = re.compile(r'^translated_at:\s+\d{4}-\d{2}-\d{2}T', re.MULTILINE)
 SOURCE_TAG = re.compile(r'<SOURCE>')
@@ -40,13 +44,12 @@ def check_file(en_path: Path, zh_path: Path) -> list[str]:
     if UNQUOTED_TS.search(en_text):
         issues.append('unquoted translated_at (YAML will parse as object)')
 
-    # 4. Missing code blocks
+    # 4. Code block mismatch
     if zh_path.exists():
         zh_text = zh_path.read_text(encoding='utf-8')
-        zh_fences = len(FENCE_OPEN.findall(zh_text))
-        en_fences = len(FENCE_OPEN.findall(en_text))
-        if en_fences < zh_fences:
-            issues.append(f'missing code fences: ZH={zh_fences} EN={en_fences}')
+        issue = codeblock_count_issue(zh_text, en_text)
+        if issue:
+            issues.append(f'code block mismatch: {issue}')
 
     return issues
 
@@ -62,7 +65,7 @@ def main():
 
     bad = []
     for en_path in en_files:
-        zh_path = Path(str(en_path).replace('.en.md', '.md'))
+        zh_path = source_for_translation(en_path, vault)
         issues = check_file(en_path, zh_path)
         if issues:
             slug_match = re.search(r'^Slug:\s*(.+)$',

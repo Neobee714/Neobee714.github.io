@@ -50,22 +50,46 @@
 </style>
 
 <script>
+  const backToTopState = ((window as Window & typeof globalThis & {
+    __blogBackToTop?: {
+      scrollBound: boolean;
+      afterSwapBound: boolean;
+    };
+  }).__blogBackToTop ??= {
+    scrollBound: false,
+    afterSwapBound: false,
+  });
+
+  function toggleBackToTopVisibility() {
+    const btn = document.getElementById('back-to-top');
+    btn?.classList.toggle('visible', window.scrollY > 400);
+  }
+
   function initBackToTop() {
     const btn = document.getElementById('back-to-top');
     if (!btn) return;
 
-    function toggleVisibility() {
-      btn.classList.toggle('visible', window.scrollY > 400);
+    if (!backToTopState.scrollBound) {
+      window.addEventListener('scroll', toggleBackToTopVisibility, { passive: true });
+      backToTopState.scrollBound = true;
     }
 
-    window.addEventListener('scroll', toggleVisibility, { passive: true });
-    toggleVisibility();
+    toggleBackToTopVisibility();
 
-    btn.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    if (!btn.dataset.backToTopBound) {
+      btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      btn.dataset.backToTopBound = 'true';
+    }
   }
 
-  initBackToTop();
-  document.addEventListener('astro:after-swap', initBackToTop);
+  const shouldInitBackToTop = !backToTopState.afterSwapBound;
+  if (!backToTopState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initBackToTop);
+    backToTopState.afterSwapBound = true;
+  }
+  if (shouldInitBackToTop) {
+    initBackToTop();
+  }
 </script>

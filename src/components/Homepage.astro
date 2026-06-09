@@ -69,14 +69,14 @@ const translationBySlug = new Map(translationEntries);
       </h1>
 
       <div class="preview-actions">
-          <a href="#preview-featured" class="preview-button preview-button--primary">
-            <span class="lang-zh">最新重点</span>
-            <span class="lang-en">Featured</span>
-          </a>
-          <a href="#preview-topics" class="preview-button">
-            <span class="lang-zh">浏览专题</span>
-            <span class="lang-en">Topics</span>
-          </a>
+        <a href="#preview-featured" class="preview-button preview-button--primary">
+          <span class="lang-zh">最新重点</span>
+          <span class="lang-en">Featured</span>
+        </a>
+        <a href="#preview-topics" class="preview-button">
+          <span class="lang-zh">浏览专题</span>
+          <span class="lang-en">Topics</span>
+        </a>
       </div>
     </div>
 
@@ -156,7 +156,7 @@ const translationBySlug = new Map(translationEntries);
 
     <div class="preview-topic-grid">
       {topicCards.map((topic) => (
-        <a href={`/categories/${topic.name}/`} class="preview-topic-card preview-reveal__item" data-reveal-item>
+        <a href={`/categories/${encodeURIComponent(topic.name)}/`} class="preview-topic-card preview-reveal__item" data-reveal-item>
           <div class="preview-topic-card__index">{topic.index}</div>
           <div class="preview-topic-card__body">
             <h3>{topic.name}</h3>
@@ -195,9 +195,6 @@ const translationBySlug = new Map(translationEntries);
 )}
 
 <style>
-  .preview-reveal {
-  }
-
   :global(.word-reveal) {
     display: inline-block;
     opacity: 0;
@@ -337,18 +334,6 @@ const translationBySlug = new Map(translationEntries);
     max-width: 12ch;
   }
 
-  .preview-summary,
-  .preview-section__desc {
-    color: var(--text-muted);
-    line-height: 1.8;
-  }
-
-  .preview-summary {
-    margin: 1.5rem 0 0;
-    max-width: 42rem;
-    font-size: 1rem;
-  }
-
   .preview-actions {
     display: flex;
     flex-wrap: wrap;
@@ -445,12 +430,6 @@ const translationBySlug = new Map(translationEntries);
     margin-top: 1rem;
     font-size: clamp(1.8rem, 4vw, 2.8rem);
     line-height: 1.02;
-  }
-
-  .preview-section__desc {
-    max-width: 25rem;
-    margin: 0;
-    font-size: 0.95rem;
   }
 
   .preview-mini-grid,
@@ -572,9 +551,6 @@ const translationBySlug = new Map(translationEntries);
       flex-direction: column;
     }
 
-    .preview-section__desc {
-      max-width: none;
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -594,9 +570,23 @@ const translationBySlug = new Map(translationEntries);
 </style>
 
 <script>
+  const homepageRevealState = ((window as Window & typeof globalThis & {
+    __blogHomepageReveal?: {
+      cleanup: () => void;
+      afterSwapBound: boolean;
+    };
+  }).__blogHomepageReveal ??= {
+    cleanup: () => {},
+    afterSwapBound: false,
+  });
+
   function initPreviewReveal() {
+    homepageRevealState.cleanup();
     const sections = Array.from(document.querySelectorAll('[data-reveal]'));
-    if (!sections.length) return;
+    if (!sections.length) {
+      homepageRevealState.cleanup = () => {};
+      return;
+    }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -619,20 +609,23 @@ const translationBySlug = new Map(translationEntries);
 
         const tokens = splitIntoWords(target.textContent || '');
         let wordIndex = 0;
-        target.innerHTML = tokens
-          .map((token) => {
-            if (/^\s+$/.test(token)) return token;
-            const delay = wordIndex * 120;
-            wordIndex++;
-            return `<span class="word-reveal" style="--word-delay:${delay}ms">${token}</span>`;
-          })
-          .join('');
+        target.textContent = '';
+
+        tokens.forEach((token) => {
+          const span = document.createElement('span');
+          span.className = 'word-reveal';
+          span.style.setProperty('--word-delay', `${wordIndex * 120}ms`);
+          span.textContent = token;
+          target.appendChild(span);
+          wordIndex++;
+        });
         target.classList.add('word-reveal-ready');
       });
     });
 
     if (reduceMotion) {
       sections.forEach((section) => section.classList.add('is-visible'));
+      homepageRevealState.cleanup = () => {};
       return;
     }
 
@@ -651,8 +644,18 @@ const translationBySlug = new Map(translationEntries);
     );
 
     sections.forEach((section) => observer.observe(section));
+    homepageRevealState.cleanup = () => {
+      observer.disconnect();
+      homepageRevealState.cleanup = () => {};
+    };
   }
 
-  initPreviewReveal();
-  document.addEventListener('astro:after-swap', initPreviewReveal);
+  const shouldInitPreviewReveal = !homepageRevealState.afterSwapBound;
+  if (!homepageRevealState.afterSwapBound) {
+    document.addEventListener('astro:after-swap', initPreviewReveal);
+    homepageRevealState.afterSwapBound = true;
+  }
+  if (shouldInitPreviewReveal) {
+    initPreviewReveal();
+  }
 </script>

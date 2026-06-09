@@ -24,7 +24,7 @@ export function remarkHighlight() {
         }
         children.push({
           type: 'html',
-          value: `<mark>${match[1]}</mark>`,
+          value: `<mark>${escapeHtml(match[1])}</mark>`,
         });
         lastIdx = match.index + match[0].length;
       }
@@ -38,4 +38,12 @@ export function remarkHighlight() {
       return index + children.length;
     });
   };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

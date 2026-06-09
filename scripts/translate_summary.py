@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.frontmatter import read_note, write_note
 from lib.llm_client import LlmClient
+from lib.translation_paths import source_for_translation
 
 log = logging.getLogger("translate_summary")
 
@@ -64,13 +65,14 @@ def main():
     if not args.dry_run:
         client = LlmClient.from_env()
 
-    updated = skipped = failed = 0
+    updated = skipped = failed = missing_sources = 0
 
     for en_path in en_files:
         # Read the original Chinese file to get the 简介
-        zh_path = en_path.with_name(en_path.name.replace(".en.md", ".md"))
+        zh_path = source_for_translation(en_path, vault)
         if not zh_path.exists():
-            log.warning(f"Source not found: {zh_path}")
+            missing_sources += 1
+            skipped += 1
             continue
 
         try:
@@ -109,6 +111,11 @@ def main():
         except Exception as e:
             log.error(f"  [FAIL] {en_path.name}: {e}")
             failed += 1
+
+    if missing_sources:
+        log.warning(
+            f"Skipped {missing_sources} .en.md file(s) whose source note was not found"
+        )
 
     log.info(f"Summary: updated={updated}, skipped={skipped}, failed={failed}")
 

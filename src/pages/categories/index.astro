@@ -28,7 +28,7 @@ const sortedCats = [...catCounts.entries()].sort((a, b) => b[1] - a[1]);
     {sortedCats.length > 0 ? (
       <div class="categories-page__cloud">
         {sortedCats.map(([cat, count]) => (
-          <a href={`/categories/${cat}/`} class="categories-page__pill">
+          <a href={`/categories/${encodeURIComponent(cat)}/`} class="categories-page__pill">
             {cat} <span class="categories-page__count">{count}</span>
           </a>
         ))}

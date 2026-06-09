@@ -295,7 +295,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="List files without translating")
     ap.add_argument(
         "--move-dest", type=Path, default=None,
-        help="Destination for .en.md files (default: <vault>/../Translated)",
+        help="Destination for .en.md files (default: <vault>/Translated)",
     )
     ap.add_argument("--no-move", action="store_true", help="Keep .en.md files in vault")
     args = ap.parse_args()
@@ -319,7 +319,7 @@ def main() -> None:
         originals = [f for f in originals if get_slug(f) == args.only]
         log.info(f"Filtered to {len(originals)} file(s) matching slug '{args.only}'")
 
-    stats = {"translated": 0, "cached": 0, "failed": 0, "skipped": 0, "tokens": 0}
+    stats = {"translated": 0, "cached": 0, "failed": 0, "tokens": 0}
     move_dest = args.move_dest
 
     # In dry-run mode we don't need the LLM client
@@ -387,7 +387,7 @@ def main() -> None:
     # 4. Print summary
     log.info(
         f"Summary: translated={stats['translated']}, cached={stats['cached']}, "
-        f"failed={stats['failed']}, skipped={stats['skipped']}, tokens={stats['tokens']}"
+        f"failed={stats['failed']}, tokens={stats['tokens']}"
     )
 
     # 5. Write GITHUB_STEP_SUMMARY if available
@@ -400,12 +400,11 @@ def main() -> None:
                 f.write(f"| Translated | {stats['translated']} |\n")
                 f.write(f"| Cached | {stats['cached']} |\n")
                 f.write(f"| Failed | {stats['failed']} |\n")
-                f.write(f"| Skipped | {stats['skipped']} |\n")
                 f.write(f"| Tokens used | {stats['tokens']} |\n")
         except Exception as e:
             log.warning(f"Could not write GITHUB_STEP_SUMMARY: {e}")
 
-    # 6. Move translated files (default: to <vault>/../Translated)
+    # 6. Move translated files (default: to <vault>/Translated)
     if not args.no_move:
         dest_root = (args.move_dest or vault / "Translated").resolve()
         en_files = sorted(vault.rglob("*.en.md"))

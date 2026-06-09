@@ -1,13 +1,12 @@
 """LLM client wrapper for translation via OpenAI-compatible API.
 
 Reads LLM_API_KEY, LLM_BASE_URL, LLM_MODEL from environment variables.
-Implements retry with exponential backoff (1s, 2s, 4s).
+Implements retry with exponential backoff (2s, 4s, 8s, 16s, 30s).
 """
 
 import os
 import time
 import logging
-from typing import Tuple
 
 from openai import OpenAI
 
@@ -56,10 +55,10 @@ class LlmClient:
 
         return cls(api_key=api_key, base_url=base_url, model=model)
 
-    def translate_chunk(self, system_prompt: str, content: str) -> Tuple[str, int]:
+    def translate_chunk(self, system_prompt: str, content: str) -> tuple[str, int]:
         """Translate a chunk of content using the LLM.
 
-        Retries up to 3 times with exponential backoff (1s, 2s, 4s).
+        Retries up to 5 times with exponential backoff (2s, 4s, 8s, 16s, 30s).
 
         Args:
             system_prompt: The system prompt with translation instructions.

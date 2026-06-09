@@ -36,7 +36,7 @@ export function copyVaultImages(): AstroIntegration {
         let missing = 0;
         let imgTagCount = 0;
 
-        await walkAndProcessHtml(distRoot, async (htmlPath, html) => {
+        await walkAndProcessHtml(distRoot, async (html) => {
           const tags = html.match(IMG_TAG) ?? [];
           for (const tag of tags) {
             imgTagCount++;
@@ -83,7 +83,7 @@ export function copyVaultImages(): AstroIntegration {
 
 async function walkAndProcessHtml(
   dir: string,
-  fn: (htmlPath: string, html: string) => Promise<void>
+  fn: (html: string) => Promise<void>
 ): Promise<void> {
   let entries;
   try {
@@ -97,7 +97,7 @@ async function walkAndProcessHtml(
       await walkAndProcessHtml(full, fn);
     } else if (e.isFile() && e.name.endsWith('.html')) {
       const html = await fs.readFile(full, 'utf8');
-      await fn(full, html);
+      await fn(html);
     }
   }
 }
