@@ -78,12 +78,6 @@ const canonicalUrl = canonical || new URL(Astro.url.pathname, siteUrl).href;
     <script is:inline set:html={THEME_INIT_SCRIPT} />
   </head>
   <body>
-    <div class="site-background" aria-hidden="true">
-      <div class="site-background__glow site-background__glow--violet"></div>
-      <div class="site-background__glow site-background__glow--cyan"></div>
-      <div class="site-background__grid"></div>
-      <div class="site-background__noise"></div>
-    </div>
     <Header />
     <main>
       <slot />

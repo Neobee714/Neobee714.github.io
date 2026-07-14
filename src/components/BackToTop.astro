@@ -54,10 +54,12 @@
     __blogBackToTop?: {
       scrollBound: boolean;
       afterSwapBound: boolean;
+      rafPending: boolean;
     };
   }).__blogBackToTop ??= {
     scrollBound: false,
     afterSwapBound: false,
+    rafPending: false,
   });
 
   function toggleBackToTopVisibility() {
@@ -65,12 +67,21 @@
     btn?.classList.toggle('visible', window.scrollY > 400);
   }
 
+  function requestBackToTopVisibility() {
+    if (backToTopState.rafPending) return;
+    backToTopState.rafPending = true;
+    window.requestAnimationFrame(() => {
+      backToTopState.rafPending = false;
+      toggleBackToTopVisibility();
+    });
+  }
+
   function initBackToTop() {
     const btn = document.getElementById('back-to-top');
     if (!btn) return;
 
     if (!backToTopState.scrollBound) {
-      window.addEventListener('scroll', toggleBackToTopVisibility, { passive: true });
+      window.addEventListener('scroll', requestBackToTopVisibility, { passive: true });
       backToTopState.scrollBound = true;
     }
 

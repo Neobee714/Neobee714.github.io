@@ -10,11 +10,12 @@ test('SearchModal does not render search data through template innerHTML', () =>
   assert.doesNotMatch(source, /results\.innerHTML\s*=\s*matches/s);
 });
 
-test('Homepage reveal text is built with DOM textContent instead of innerHTML', () => {
+test('Homepage reveal keeps headings intact instead of rebuilding per-word DOM', () => {
   const source = readFileSync('src/components/Homepage.astro', 'utf8');
 
   assert.doesNotMatch(source, /target\.innerHTML\s*=/);
-  assert.match(source, /document\.createElement\('span'\)/);
+  assert.doesNotMatch(source, /word-reveal/);
+  assert.doesNotMatch(source, /document\.createElement\('span'\)/);
 });
 
 test('scroll widgets bind global scroll listeners once', () => {

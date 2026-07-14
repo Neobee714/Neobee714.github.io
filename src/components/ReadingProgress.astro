@@ -26,10 +26,12 @@
     __blogReadingProgress?: {
       scrollBound: boolean;
       afterSwapBound: boolean;
+      rafPending: boolean;
     };
   }).__blogReadingProgress ??= {
     scrollBound: false,
     afterSwapBound: false,
+    rafPending: false,
   });
 
   function updateReadingProgress() {
@@ -42,12 +44,21 @@
     bar.style.width = `${Math.min(100, progress)}%`;
   }
 
+  function requestReadingProgressUpdate() {
+    if (readingProgressState.rafPending) return;
+    readingProgressState.rafPending = true;
+    window.requestAnimationFrame(() => {
+      readingProgressState.rafPending = false;
+      updateReadingProgress();
+    });
+  }
+
   function initReadingProgress() {
     const bar = document.getElementById('reading-progress');
     if (!bar) return;
 
     if (!readingProgressState.scrollBound) {
-      window.addEventListener('scroll', updateReadingProgress, { passive: true });
+      window.addEventListener('scroll', requestReadingProgressUpdate, { passive: true });
       readingProgressState.scrollBound = true;
     }
 

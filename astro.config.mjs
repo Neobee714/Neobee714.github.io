@@ -36,8 +36,7 @@ export default defineConfig({
     sitemap({
       filter: (page) =>
         !page.includes('/404') &&
-        !page.includes('/test-render') &&
-        !page.includes('/visual-preview'),
+        !page.includes('/test-render'),
     }),
     slugUniquenessCheck(),
     copyVaultImages(),

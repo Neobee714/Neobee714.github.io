@@ -2,7 +2,6 @@
 /**
  * PostCard — homepage card component.
  */
-import AICover from './AICover.astro';
 import { getCategory, getDateIso, getPostTitle, isLocked } from '@/lib/obsidian-parser';
 import type { Post } from '@/lib/obsidian-parser';
 
@@ -21,6 +20,9 @@ const summaryZh = post.data.简介 || '';
 const summaryEn = translation?.data.简介 || '';
 const titleZh = getPostTitle(post);
 const showDualTitle = titleZh !== slug;
+const visualSeed = [...`${slug}:${category}`].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
+const visualHue = 180 + (visualSeed % 150);
+const visualStyle = `--post-card-hue:${visualHue}`;
 ---
 
 <a
@@ -31,7 +33,10 @@ const showDualTitle = titleZh !== slug;
   data-title={titleZh}
   data-slug={slug}
 >
-  <AICover category={category} title={titleZh} slug={slug} publishedAt={dateStr} />
+  <div class="post-card__visual" style={visualStyle} aria-hidden="true">
+    <span class="post-card__visual-line"></span>
+    <span class="post-card__visual-dot"></span>
+  </div>
 
   <div class="p-6">
     <div class="flex items-center justify-between text-sm text-[var(--text-muted)]">
@@ -69,16 +74,56 @@ const showDualTitle = titleZh !== slug;
 </a>
 
 <style>
-  .post-card :global(.ai-cover) {
-    border: 0;
+  .post-card__visual {
+    position: relative;
+    height: 9rem;
+    overflow: hidden;
     border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    height: 12rem;
+    background:
+      radial-gradient(circle at 18% 24%, hsl(var(--post-card-hue) 84% 62% / 0.28), transparent 28%),
+      radial-gradient(circle at 80% 18%, hsl(calc(var(--post-card-hue) + 42) 86% 64% / 0.18), transparent 26%),
+      linear-gradient(135deg, color-mix(in srgb, var(--bg-elevated) 86%, transparent), var(--bg-card));
+  }
+
+  .post-card__visual::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.34;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.86), transparent);
+  }
+
+  .post-card__visual-line,
+  .post-card__visual-dot {
+    position: absolute;
+    display: block;
+  }
+
+  .post-card__visual-line {
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 1.35rem;
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--post-card-hue) 90% 65% / 0.8), transparent);
+  }
+
+  .post-card__visual-dot {
+    right: 1.45rem;
+    bottom: 1.1rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: hsl(var(--post-card-hue) 90% 65%);
+    box-shadow: 0 0 18px hsl(var(--post-card-hue) 90% 65% / 0.55);
   }
 
   @media (max-width: 768px) {
-    .post-card :global(.ai-cover) {
-      height: 12rem;
+    .post-card__visual {
+      height: 8rem;
     }
   }
 </style>
