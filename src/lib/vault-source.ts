@@ -90,17 +90,24 @@ function toPosixRelative(root: string, absolutePath: string): string {
   return path.relative(root, absolutePath).split(path.sep).join('/');
 }
 
+type ClassificationField = '发布' | '状态' | 'Slug';
+
 const CLASSIFICATION_FIELD = /^(?:"(发布|状态|Slug)"|'(发布|状态|Slug)'|(发布|状态|Slug))\s*:/;
 
-function extractClassificationFields(raw: string): Record<string, unknown> {
+function classificationFieldName(line: string): ClassificationField | undefined {
+  const match = line.match(CLASSIFICATION_FIELD);
+  return (match?.[1] ?? match?.[2] ?? match?.[3]) as ClassificationField | undefined;
+}
+
+function extractClassificationField(raw: string, field: ClassificationField): unknown {
   const block = extractFrontmatter(raw);
-  if (block === undefined) return {};
+  if (block === undefined) return undefined;
 
   const lines = block.split(/\r?\n/);
   const selectedEntries: string[] = [];
 
   for (let index = 0; index < lines.length; index++) {
-    if (!CLASSIFICATION_FIELD.test(lines[index])) continue;
+    if (classificationFieldName(lines[index]) !== field) continue;
 
     let end = index + 1;
     while (
@@ -113,9 +120,28 @@ function extractClassificationFields(raw: string): Record<string, unknown> {
     index = end - 1;
   }
 
-  if (selectedEntries.length === 0) return {};
+  if (selectedEntries.length === 0) return undefined;
   const synthetic = `---\n${selectedEntries.join('\n')}\n---\n`;
-  return parseFrontmatter(synthetic).frontmatter;
+  return parseFrontmatter(synthetic).frontmatter[field];
+}
+
+function readClassificationField(
+  raw: string,
+  field: ClassificationField,
+  relativePath: string,
+): unknown {
+  try {
+    return extractClassificationField(raw, field);
+  } catch {
+    throw new VaultSourceError(
+      'INVALID_FRONTMATTER',
+      `Invalid ${field} frontmatter in note: ${relativePath}`,
+    );
+  }
+}
+
+function isTextScalar(value: unknown): value is string | boolean {
+  return typeof value === 'string' || typeof value === 'boolean';
 }
 
 export async function discoverPublishedPosts(root: string): Promise<VaultScanResult> {
@@ -164,25 +190,38 @@ export async function discoverPublishedPosts(root: string): Promise<VaultScanRes
       );
     }
 
-    let fields: Record<string, unknown>;
-    try {
-      fields = extractClassificationFields(raw);
-    } catch {
+    const publishValue = readClassificationField(raw, '发布', relativePath);
+    if (publishValue !== undefined && publishValue !== null && !isTextScalar(publishValue)) {
       throw new VaultSourceError(
         'INVALID_FRONTMATTER',
-        `Invalid publishing frontmatter in note: ${relativePath}`,
+        `Invalid 发布 frontmatter type in note: ${relativePath}`,
       );
     }
-    if (!hasPublishFlag(fields['发布'])) {
+    if (!hasPublishFlag(publishValue)) {
       unpublished++;
       continue;
     }
-    if (isDraftStatus(fields['状态'])) {
+
+    const statusValue = readClassificationField(raw, '状态', relativePath);
+    if (statusValue !== undefined && statusValue !== null && !isTextScalar(statusValue)) {
+      throw new VaultSourceError(
+        'INVALID_FRONTMATTER',
+        `Invalid 状态 frontmatter type in note: ${relativePath}`,
+      );
+    }
+    if (isDraftStatus(statusValue)) {
       drafts++;
       continue;
     }
 
-    const slug = normalizeFrontmatterScalar(fields['Slug']);
+    const slugValue = readClassificationField(raw, 'Slug', relativePath);
+    if (slugValue !== undefined && slugValue !== null && typeof slugValue !== 'string') {
+      throw new VaultSourceError(
+        'INVALID_FRONTMATTER',
+        `Invalid Slug frontmatter type in note: ${relativePath}`,
+      );
+    }
+    const slug = normalizeFrontmatterScalar(slugValue);
     if (!slug) {
       missingSlug.push(relativePath);
       continue;

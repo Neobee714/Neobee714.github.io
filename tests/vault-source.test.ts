@@ -193,6 +193,46 @@ test('classifies block scalars for publish, status, and Slug', async () => {
   });
 });
 
+test('does not parse malformed Slugs for private notes or drafts', async () => {
+  await withVault(async (root) => {
+    put(root, 'private.md', markdown('发布: false\nSlug: ['));
+    put(root, 'draft.md', markdown('发布: true\n状态: draft\nSlug: ['));
+    put(root, 'live.md', markdown('发布: true\nSlug: live'));
+
+    const result = await discoverPublishedPosts(root);
+
+    assert.deepEqual(result.posts.map(({ slug }) => slug), ['live']);
+    assert.deepEqual(result.stats, {
+      markdown: 3,
+      published: 1,
+      drafts: 1,
+      unpublished: 1,
+      missingSlug: 0,
+    });
+  });
+});
+
+test('rejects structured and date-like publishing metadata instead of coercing it', async () => {
+  const invalidCases = [
+    ['list publish flag', '发布: [true]\nSlug: list-publish'],
+    ['list status', '发布: true\n状态: [draft]\nSlug: list-status'],
+    ['list Slug', '发布: true\nSlug: [a, b]'],
+    ['mapping Slug', '发布: true\nSlug:\n  nested: value'],
+    ['date Slug', '发布: true\nSlug: 2026-07-18'],
+  ];
+
+  for (const [label, frontmatter] of invalidCases) {
+    await withVault(async (root) => {
+      put(root, 'invalid.md', markdown(frontmatter));
+      const error = await expectVaultError(
+        () => discoverPublishedPosts(root),
+        'INVALID_FRONTMATTER',
+      );
+      assert.match(error.message, /invalid\.md/, label);
+    });
+  }
+});
+
 test('treats YAML null and comment-only Slugs as missing', async () => {
   await withVault(async (root) => {
     put(root, 'null.md', markdown('发布: true\nSlug: null'));
