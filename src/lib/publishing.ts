@@ -1,8 +1,8 @@
 const DRAFT_STATUS_VALUES = new Set(['进行中', 'draft', 'wip', 'writing']);
 const LOCKED_STATUS_VALUES = new Set(['已锁住', 'locked']);
 
-export function normalizeFrontmatterScalar(raw: string | undefined | null): string {
-  const value = (raw ?? '').trim();
+export function normalizeFrontmatterScalar(raw: unknown): string {
+  const value = String(raw ?? '').trim();
   if (value.length >= 2) {
     const first = value[0];
     const last = value[value.length - 1];
@@ -13,14 +13,19 @@ export function normalizeFrontmatterScalar(raw: string | undefined | null): stri
   return value;
 }
 
-export function normalizeStatus(raw: string | undefined | null): string {
+export function hasPublishFlag(raw: unknown): boolean {
+  if (raw === true) return true;
+  return ['true', 'yes', '是'].includes(normalizeFrontmatterScalar(raw).toLowerCase());
+}
+
+export function normalizeStatus(raw: unknown): string {
   return normalizeFrontmatterScalar(raw).toLowerCase();
 }
 
-export function isDraftStatus(raw: string | undefined | null): boolean {
+export function isDraftStatus(raw: unknown): boolean {
   return DRAFT_STATUS_VALUES.has(normalizeStatus(raw));
 }
 
-export function isLockedStatus(raw: string | undefined | null): boolean {
+export function isLockedStatus(raw: unknown): boolean {
   return LOCKED_STATUS_VALUES.has(normalizeStatus(raw));
 }
