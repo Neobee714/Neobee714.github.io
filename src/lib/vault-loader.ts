@@ -6,8 +6,10 @@ import { discoverPublishedPosts } from './vault-source.ts';
 
 const WATCH_DEBOUNCE_MS = 50;
 
-function toPosixRelative(root: string, absolutePath: string): string {
-  return path.relative(root, absolutePath).split(path.sep).join('/');
+function toSiteRelativePath(root: string, absolutePath: string): string | undefined {
+  const relative = path.relative(root, absolutePath);
+  if (path.isAbsolute(relative) || path.win32.isAbsolute(relative)) return undefined;
+  return relative.split(path.sep).join('/');
 }
 
 function isInside(root: string, candidate: string): boolean {
@@ -25,8 +27,8 @@ function errorMessage(error: unknown): string {
 async function scanVault(context: LoaderContext, vaultRoot: string): Promise<void> {
   const result = await discoverPublishedPosts(vaultRoot);
   const siteRoot = fileURLToPath(context.config.root);
+  const entries: Array<Parameters<LoaderContext['store']['set']>[0]> = [];
 
-  context.store.clear();
   for (const post of result.posts) {
     const data = await context.parseData({
       id: post.id,
@@ -37,15 +39,19 @@ async function scanVault(context: LoaderContext, vaultRoot: string): Promise<voi
       fileURL: pathToFileURL(post.absolutePath),
     });
 
-    context.store.set({
+    const filePath = toSiteRelativePath(siteRoot, post.absolutePath);
+    entries.push({
       id: post.id,
       data,
       body: post.body,
-      filePath: toPosixRelative(siteRoot, post.absolutePath),
+      ...(filePath === undefined ? {} : { filePath }),
       digest: context.generateDigest(post.raw),
       rendered,
     });
   }
+
+  context.store.clear();
+  for (const entry of entries) context.store.set(entry);
 
   const { markdown, published, drafts, unpublished, missingSlug } = result.stats;
   context.logger.info(
@@ -55,22 +61,56 @@ async function scanVault(context: LoaderContext, vaultRoot: string): Promise<voi
 }
 
 export function vaultLoader(rawPath?: string): Loader {
+  type Watcher = NonNullable<LoaderContext['watcher']>;
+
   let latestContext: LoaderContext;
   let latestRoot = '';
-  let watcherAttached = false;
+  let attachedWatcher: Watcher | undefined;
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  let rescanPromise = Promise.resolve();
+  let scanQueue = Promise.resolve();
+
+  const enqueueScan = (context: LoaderContext, vaultRoot: string): Promise<void> => {
+    const job = scanQueue.then(() => scanVault(context, vaultRoot));
+    scanQueue = job.catch(() => {});
+    return job;
+  };
 
   const scheduleRescan = (): void => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = undefined;
-      rescanPromise = rescanPromise
-        .then(() => scanVault(latestContext, latestRoot))
-        .catch((error: unknown) => {
-          latestContext.logger.error(`Vault rescan failed: ${errorMessage(error)}`);
-        });
+      const context = latestContext;
+      const vaultRoot = latestRoot;
+      void enqueueScan(context, vaultRoot).catch((error: unknown) => {
+        context.logger.error(`Vault rescan failed: ${errorMessage(error)}`);
+      });
     }, WATCH_DEBOUNCE_MS);
+  };
+
+  const onVaultChange = (changedPath: string): void => {
+    if (isInside(latestRoot, changedPath)) scheduleRescan();
+  };
+
+  const onWatcherError = (error: unknown): void => {
+    latestContext.logger.error(`Vault watcher error: ${errorMessage(error)}`);
+  };
+
+  const bindWatcher = (watcher: LoaderContext['watcher'], vaultRoot: string): void => {
+    if (attachedWatcher) {
+      for (const event of ['add', 'change', 'unlink'] as const) {
+        attachedWatcher.off(event, onVaultChange);
+      }
+      attachedWatcher.off('error', onWatcherError);
+      attachedWatcher = undefined;
+    }
+
+    if (!watcher) return;
+    watcher.add(vaultRoot);
+    for (const event of ['add', 'change', 'unlink'] as const) {
+      watcher.on(event, onVaultChange);
+    }
+    watcher.on('error', onWatcherError);
+    attachedWatcher = watcher;
   };
 
   return {
@@ -80,20 +120,8 @@ export function vaultLoader(rawPath?: string): Loader {
       latestContext = context;
       latestRoot = vaultRoot;
 
-      await scanVault(context, vaultRoot);
-
-      if (!context.watcher || watcherAttached) return;
-      watcherAttached = true;
-      context.watcher.add(vaultRoot);
-
-      for (const event of ['add', 'change', 'unlink'] as const) {
-        context.watcher.on(event, (changedPath) => {
-          if (isInside(latestRoot, changedPath)) scheduleRescan();
-        });
-      }
-      context.watcher.on('error', (error) => {
-        latestContext.logger.error(`Vault watcher error: ${errorMessage(error)}`);
-      });
+      await enqueueScan(context, vaultRoot);
+      bindWatcher(context.watcher, vaultRoot);
     },
   };
 }

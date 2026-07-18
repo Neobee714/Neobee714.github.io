@@ -20,22 +20,57 @@ interface FakeContext {
 
 class FakeWatcher {
   readonly watched: string[] = [];
-  readonly listeners = new Map<string, Array<(filePath: string) => void>>();
+  readonly listeners = new Map<string, Array<(value: any) => void>>();
 
   add(filePath: string): this {
     this.watched.push(filePath);
     return this;
   }
 
-  on(event: string, listener: (filePath: string) => void): this {
+  on(event: string, listener: (value: any) => void): this {
     const eventListeners = this.listeners.get(event) ?? [];
     eventListeners.push(listener);
     this.listeners.set(event, eventListeners);
     return this;
   }
 
-  emit(event: string, filePath: string): void {
-    for (const listener of this.listeners.get(event) ?? []) listener(filePath);
+  off(event: string, listener: (value: any) => void): this {
+    const eventListeners = this.listeners.get(event) ?? [];
+    this.listeners.set(
+      event,
+      eventListeners.filter((candidate) => candidate !== listener),
+    );
+    return this;
+  }
+
+  clearListeners(): void {
+    this.listeners.clear();
+  }
+
+  emit(event: string, value: any): void {
+    for (const listener of this.listeners.get(event) ?? []) listener(value);
+  }
+}
+
+function deferred<T = void>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: unknown) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitFor(predicate: () => boolean, message: string): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error(message);
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
 
@@ -181,6 +216,30 @@ test('rejects an initial scan when the vault has no publishable posts', async ()
   });
 });
 
+test('preserves the previous store when preparing a later entry fails', async () => {
+  await withTempDirectory(async (siteRoot) => {
+    const vaultRoot = path.join(siteRoot, 'vault');
+    put(vaultRoot, 'a-first.md', publishedMarkdown('first'));
+    put(vaultRoot, 'b-second.md', publishedMarkdown('second'));
+    const fake = makeContext(siteRoot);
+    const previousEntry: DataEntry = {
+      id: 'previous',
+      data: { Slug: 'previous' },
+      body: 'Previous body',
+    };
+    fake.entries.set(previousEntry.id, previousEntry);
+    fake.context.parseData = async (options) => {
+      if (options.id === 'b-second') throw new Error('schema rejected second entry');
+      return options.data;
+    };
+
+    await assert.rejects(vaultLoader(vaultRoot).load(fake.context), /schema rejected second entry/);
+
+    assert.equal(fake.clearCount(), 0);
+    assert.deepEqual([...fake.entries.entries()], [['previous', previousEntry]]);
+  });
+});
+
 test('attaches watcher listeners once and debounces full rescans inside the vault', async () => {
   await withTempDirectory(async (siteRoot) => {
     const vaultRoot = path.join(siteRoot, 'vault');
@@ -190,21 +249,81 @@ test('attaches watcher listeners once and debounces full rescans inside the vaul
     const loader = vaultLoader(vaultRoot);
 
     await loader.load(fake.context);
+    watcher.clearListeners();
     await loader.load(fake.context);
 
-    assert.deepEqual(watcher.watched, [vaultRoot]);
+    assert.ok(watcher.watched.every((watchedPath) => watchedPath === vaultRoot));
+    for (const event of ['add', 'change', 'unlink']) {
+      assert.equal(watcher.listeners.get(event)?.length, 1);
+    }
+
+    await loader.load(fake.context);
     for (const event of ['add', 'change', 'unlink']) {
       assert.equal(watcher.listeners.get(event)?.length, 1);
     }
 
     watcher.emit('change', path.join(siteRoot, 'outside.md'));
     await new Promise((resolve) => setTimeout(resolve, 80));
-    assert.equal(fake.clearCount(), 2);
+    assert.equal(fake.clearCount(), 3);
 
     watcher.emit('add', notePath);
     watcher.emit('change', notePath);
     watcher.emit('unlink', notePath);
     await new Promise((resolve) => setTimeout(resolve, 100));
-    assert.equal(fake.clearCount(), 3);
+    assert.equal(fake.clearCount(), 4);
+  });
+});
+
+test('serializes a watcher rescan before a newer load so the newer data wins', async () => {
+  await withTempDirectory(async (siteRoot) => {
+    const vaultRoot = path.join(siteRoot, 'vault');
+    const notePath = put(vaultRoot, 'demo.md', publishedMarkdown('older'));
+    const watcher = new FakeWatcher();
+    const fake = makeContext(siteRoot, watcher);
+    const loader = vaultLoader(vaultRoot);
+    await loader.load(fake.context);
+
+    const watcherParseStarted = deferred();
+    const concurrentParseStarted = deferred();
+    const releaseWatcherParse = deferred();
+    let blockNextParse = true;
+    let activeParses = 0;
+    let maximumActiveParses = 0;
+    fake.context.parseData = async (options) => {
+      activeParses++;
+      maximumActiveParses = Math.max(maximumActiveParses, activeParses);
+      if (activeParses > 1) concurrentParseStarted.resolve();
+      try {
+        if (blockNextParse) {
+          blockNextParse = false;
+          watcherParseStarted.resolve();
+          await releaseWatcherParse.promise;
+        }
+        return options.data;
+      } finally {
+        activeParses--;
+      }
+    };
+
+    watcher.emit('change', notePath);
+    await watcherParseStarted.promise;
+
+    writeFileSync(notePath, publishedMarkdown('newer'), 'utf8');
+    const newerLoad = loader.load(fake.context);
+    const overlappedBeforeRelease = await Promise.race([
+      concurrentParseStarted.promise.then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 500)),
+    ]);
+    releaseWatcherParse.resolve();
+
+    await newerLoad;
+    await waitFor(
+      () => fake.infoMessages.length === 3,
+      'watcher rescan and newer load did not both complete',
+    );
+
+    assert.equal(overlappedBeforeRelease, false);
+    assert.equal(maximumActiveParses, 1);
+    assert.equal(fake.entries.get('demo')?.data.Slug, 'newer');
   });
 });
