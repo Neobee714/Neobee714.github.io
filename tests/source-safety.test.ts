@@ -140,8 +140,10 @@ test('image rewrite keeps build-time copying in the integration layer only', () 
 
   assert.doesNotMatch(rehypeSource, /path\.resolve\('dist', '_images'\)/);
   assert.match(rehypeSource, /path\.resolve\('public', '_images'\)/);
-  assert.match(integrationSource, /async \(html\) =>/);
-  assert.doesNotMatch(integrationSource, /htmlPath/);
+  assert.match(integrationSource, /resolvedAssetsByOutputName/);
+  assert.doesNotMatch(integrationSource, /walkAndProcessHtml/);
+  assert.doesNotMatch(integrationSource, /assetsByName/);
+  assert.doesNotMatch(integrationSource, /attrs\.alt/);
 });
 
 test('publishing status helpers normalize draft and locked states', () => {

@@ -1,25 +1,9 @@
-/**
- * remark plugin: translate Obsidian wiki-style links.
- *
- *   ![[image.png]]                 -> <img src="/_images/image.png">
- *   ![[image.png|300]]             -> <img src="..." width="300">
- *   ![[image.png|300x200]]         -> <img width="300" height="200">
- *   [[note-name]]                  -> <a href="/post/<slug>/">note-name</a>
- *   [[note-name|Display]]          -> <a href="/post/<slug>/">Display</a>
- *   [[note-name#heading]]          -> <a href="/post/<slug>/#heading-slug">
- *
- * Broken links (target not published / not found) get class "wiki-link broken"
- * and the anchor href becomes "#" plus a title attr explaining.
- *
- * Implements REQ-05-1, REQ-05-2, REQ-05-3, REQ-05-4, REQ-05-5.
- */
+/** Translate Obsidian wiki links and embeds using the primed published vault index. */
 import { visit, SKIP } from 'unist-util-visit';
 import type { Root, Text, PhrasingContent } from 'mdast';
-import { getVaultIndex, normalizeAssetName } from './vault-index.ts';
+import { getVaultIndex, resolveVaultAsset, type VaultIndex } from './vault-index.ts';
 
-// Pattern (not a shared /g instance — lastIndex would leak across files).
 const WIKI_PATTERN = String.raw`(!?)\[\[([^\]]+)\]\]`;
-
 const IMG_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
 
 function headingSlug(heading: string): string {
@@ -31,62 +15,51 @@ function headingSlug(heading: string): string {
 }
 
 function fileExt(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot === -1 ? '' : name.slice(dot).toLowerCase();
+  const cleanName = name.split(/[?#]/, 1)[0];
+  const dot = cleanName.lastIndexOf('.');
+  return dot === -1 ? '' : cleanName.slice(dot).toLowerCase();
 }
 
 export function remarkWikilink() {
-  return (tree: Root) => {
-    const idx = getVaultIndex();
+  return (tree: Root, file: { path?: unknown }) => {
+    const index = getVaultIndex();
+    const sourceFilePath = typeof file?.path === 'string' ? file.path : undefined;
 
-    visit(tree, 'text', (node: Text, index, parent) => {
-      if (index === undefined || !parent) return;
-      if (typeof node.value !== 'string') return;
-      if (!node.value.includes('[[')) return;
+    visit(tree, 'text', (node: Text, childIndex, parent) => {
+      if (childIndex === undefined || !parent) return;
+      if (typeof node.value !== 'string' || !node.value.includes('[[')) return;
 
       const value = node.value;
-      const out: PhrasingContent[] = [];
+      const output: PhrasingContent[] = [];
       let cursor = 0;
-      let m: RegExpExecArray | null;
+      let match: RegExpExecArray | null;
+      const wikiPattern = new RegExp(WIKI_PATTERN, 'g');
 
-      const wikiRe = new RegExp(WIKI_PATTERN, 'g');
-      while ((m = wikiRe.exec(value)) !== null) {
-        const [full, bang, inner] = m;
-
-        if (m.index > cursor) {
-          out.push({ type: 'text', value: value.slice(cursor, m.index) });
+      while ((match = wikiPattern.exec(value)) !== null) {
+        const [full, bang, inner] = match;
+        if (match.index > cursor) {
+          output.push({ type: 'text', value: value.slice(cursor, match.index) });
         }
 
-        const pipeIdx = inner.indexOf('|');
-        const hasPipe = pipeIdx !== -1;
-        const targetRaw = (hasPipe ? inner.slice(0, pipeIdx) : inner).trim();
-        const aliasOrSize = hasPipe ? inner.slice(pipeIdx + 1).trim() : '';
+        const pipeIndex = inner.indexOf('|');
+        const targetRaw = (pipeIndex === -1 ? inner : inner.slice(0, pipeIndex)).trim();
+        const aliasOrSize = pipeIndex === -1 ? '' : inner.slice(pipeIndex + 1).trim();
+        const hashIndex = targetRaw.indexOf('#');
+        const target = hashIndex === -1 ? targetRaw : targetRaw.slice(0, hashIndex);
+        const heading = hashIndex === -1 ? '' : targetRaw.slice(hashIndex + 1);
 
-        const hashIdx = targetRaw.indexOf('#');
-        const target = hashIdx === -1 ? targetRaw : targetRaw.slice(0, hashIdx);
-        const heading = hashIdx === -1 ? '' : targetRaw.slice(hashIdx + 1);
-
-        if (bang === '!') {
-          out.push(buildEmbed(target, aliasOrSize, idx));
-        } else {
-          out.push(buildWikiLink(target, heading, aliasOrSize, idx));
-        }
-
-        cursor = m.index + full.length;
+        output.push(
+          bang === '!'
+            ? buildEmbed(target, aliasOrSize, index, sourceFilePath)
+            : buildWikiLink(target, heading, aliasOrSize, index),
+        );
+        cursor = match.index + full.length;
       }
 
       if (cursor === 0) return;
-
-      if (cursor < value.length) {
-        out.push({ type: 'text', value: value.slice(cursor) });
-      }
-
-      (parent as { children: PhrasingContent[] }).children.splice(
-        index,
-        1,
-        ...out
-      );
-      return [SKIP, index + out.length];
+      if (cursor < value.length) output.push({ type: 'text', value: value.slice(cursor) });
+      (parent as { children: PhrasingContent[] }).children.splice(childIndex, 1, ...output);
+      return [SKIP, childIndex + output.length];
     });
   };
 }
@@ -94,75 +67,58 @@ export function remarkWikilink() {
 function buildEmbed(
   target: string,
   sizeSpec: string,
-  idx: ReturnType<typeof getVaultIndex>
+  index: VaultIndex,
+  sourceFilePath?: string,
 ): PhrasingContent {
-  const ext = fileExt(target);
-  if (!IMG_EXTS.has(ext)) {
-    const href = idx.assetsByName.has(target.toLowerCase())
-      ? '/_images/' + normalizeAssetName(target)
-      : '#';
-    return {
-      type: 'link',
-      url: href,
-      children: [{ type: 'text', value: target }],
-      data: {
-        hProperties: {
-          className: ['embed-link'],
-          title: 'Embedded resource',
-        },
-      },
-    } as any;
-  }
+  const resolved = resolveVaultAsset(index, target, sourceFilePath);
+  const isImage = IMG_EXTS.has(fileExt(target));
 
-  const normalized = normalizeAssetName(target);
-  const src = '/_images/' + normalized;
-
-  const known = idx.assetsByName.has(target.toLowerCase());
-  if (!known) {
+  if (!resolved) {
+    if (!isImage) {
+      return {
+        type: 'link',
+        url: '#',
+        children: [{ type: 'text', value: target }],
+        data: { hProperties: { className: ['embed-link'], title: 'Embedded resource' } },
+      } as any;
+    }
     return {
       type: 'html',
-      value: `<span class="missing-image" role="img" aria-label="Missing image">⚠ Missing: ${escapeAttr(
-        target
-      )}</span>`,
+      value: `<span class="missing-image" role="img" aria-label="Missing image">⚠ Missing: ${escapeAttr(target)}</span>`,
     } as any;
   }
 
-  const widthMatch = sizeSpec ? sizeSpec.match(/^(\d+)(?:x(\d+))?/) : null;
-  const sizeAttrs: Record<string, string | number> = {};
-  if (widthMatch) {
-    sizeAttrs.width = Number(widthMatch[1]);
-    if (widthMatch[2]) sizeAttrs.height = Number(widthMatch[2]);
+  const resourceUrl = `/_images/${resolved.outputName}`;
+  if (!isImage) {
+    return {
+      type: 'link',
+      url: resourceUrl,
+      children: [{ type: 'text', value: target }],
+      data: { hProperties: { className: ['embed-link'], title: 'Embedded resource' } },
+    } as any;
   }
 
-  // Emit as raw HTML so we control all attributes (mdast-util-to-hast
-  // strips unknown hProperties on image nodes in some edge cases).
-  const widthAttr =
-    'width' in sizeAttrs ? ` width="${sizeAttrs.width}"` : '';
-  const heightAttr =
-    'height' in sizeAttrs ? ` height="${sizeAttrs.height}"` : '';
-
+  const sizeMatch = sizeSpec ? sizeSpec.match(/^(\d+)(?:x(\d+))?/) : null;
+  const width = sizeMatch ? ` width="${Number(sizeMatch[1])}"` : '';
+  const height = sizeMatch?.[2] ? ` height="${Number(sizeMatch[2])}"` : '';
   return {
     type: 'html',
-    value: `<img src="${src}" alt="${escapeAttr(
-      target
-    )}"${widthAttr}${heightAttr} loading="lazy">`,
+    value: `<img src="${resourceUrl}" alt="${escapeAttr(target)}"${width}${height} loading="lazy">`,
   } as any;
 }
 
 function buildWikiLink(
   target: string,
   heading: string,
-  _alias: string,
-  idx: ReturnType<typeof getVaultIndex>
+  alias: string,
+  index: VaultIndex,
 ): PhrasingContent {
-  const lookupKey = target.toLowerCase();
-  const slug = idx.notesByName.get(lookupKey);
-  const displayText = _alias || target;
+  const lookupKey = target.replace(/\\/g, '/').split('/').at(-1)?.toLowerCase() ?? '';
+  const slug = index.notesByName.get(lookupKey);
+  const displayText = alias || target;
 
   if (slug) {
-    const url = heading
-      ? `/post/${slug}/#${headingSlug(heading)}`
-      : `/post/${slug}/`;
+    const url = heading ? `/post/${slug}/#${headingSlug(heading)}` : `/post/${slug}/`;
     return {
       type: 'link',
       url,
@@ -171,22 +127,16 @@ function buildWikiLink(
     } as any;
   }
 
-  const isUnpublished = idx.unpublishedNames.has(lookupKey);
-  const title = isUnpublished
-    ? `未发布：${target}`
-    : `不存在的链接：${target}`;
-
   return {
     type: 'html',
-    value: `<span class="wiki-link broken" data-broken="true" title="${escapeAttr(
-      title
-    )}">${escapeText(displayText)}</span>`,
+    value: `<span class="wiki-link broken" data-broken="true" title="${escapeAttr(`不存在或未发布的链接：${target}`)}">${escapeText(displayText)}</span>`,
   } as any;
 }
 
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
-function escapeText(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function escapeText(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

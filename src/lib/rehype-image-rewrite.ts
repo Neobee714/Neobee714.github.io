@@ -1,82 +1,71 @@
-/**
- * rehype plugin: rewrite local Obsidian image references to stable web paths.
- *
- * - External http(s) images are left unchanged.
- * - Local images are resolved through the vault asset index.
- * - In dev, resolved files are copied to public/_images/<normalized-name>.
- * - Production file copying is handled by the post-build integration.
- * - Missing files become <span class="missing-image">Missing: ...</span>.
- */
+/** Rewrite local Markdown images through the primed published vault index. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { visit, SKIP } from 'unist-util-visit';
-import { getVaultIndex, normalizeAssetName } from './vault-index.ts';
+import { getVaultIndex, resolveVaultAsset } from './vault-index.ts';
 
 const copied = new Set<string>();
 
 export function rehypeImageRewrite() {
-  return (tree: any) => {
-    const idx = getVaultIndex();
+  return (tree: any, file: { path?: unknown }) => {
+    const index = getVaultIndex();
+    const sourceFilePath = typeof file?.path === 'string' ? file.path : undefined;
 
-    visit(tree, 'element', (node: any, index: number | undefined, parent: any) => {
+    visit(tree, 'element', (node: any, childIndex: number | undefined, parent: any) => {
       if (node.tagName !== 'img') return;
-      const props = (node.properties ||= {});
-      const rawSrc = String(props.src ?? '').trim();
-      if (!rawSrc || isExternal(rawSrc) || rawSrc.startsWith('data:')) return;
+      const properties = (node.properties ||= {});
+      const rawSource = String(properties.src ?? '').trim();
+      if (!rawSource || isExternal(rawSource)) return;
 
-      const originalName = getOriginalName(rawSrc, props.alt);
-      const assetPath = idx.assetsByName.get(originalName.toLowerCase());
-
-      if (!assetPath) {
+      const resolved = resolveVaultAsset(index, rawSource, sourceFilePath);
+      const originalName = displayName(rawSource);
+      if (!resolved) {
         console.warn(`[rehype-image-rewrite] Missing image: ${originalName}`);
-        if (parent && index !== undefined) {
-          parent.children.splice(index, 1, missingImageNode(originalName));
-          return [SKIP, index];
+        if (parent && childIndex !== undefined) {
+          parent.children.splice(childIndex, 1, missingImageNode(originalName));
+          return [SKIP, childIndex];
         }
         return;
       }
 
-      const normalized = normalizeAssetName(originalName);
-      copyAsset(assetPath, normalized);
-
-      props.src = `/_images/${normalized}`;
-      props.loading = props.loading || 'lazy';
-      props.alt = props.alt || originalName;
+      copyAsset(resolved.absolutePath, resolved.outputName, index.contentHashByPath.get(resolved.absolutePath));
+      properties.src = `/_images/${resolved.outputName}`;
+      properties.loading = properties.loading || 'lazy';
+      properties.alt = properties.alt || originalName;
     });
   };
 }
 
-function isExternal(src: string): boolean {
-  return /^https?:\/\//i.test(src) || src.startsWith('//');
+function isExternal(source: string): boolean {
+  return /^https?:\/\//i.test(source) || source.startsWith('//') || /^data:/i.test(source);
 }
 
-function getOriginalName(src: string, alt: unknown): string {
-  const altText = typeof alt === 'string' ? alt.trim() : '';
-  if (altText) return altText;
-
-  const withoutQuery = src.split(/[?#]/, 1)[0];
-  const decoded = decodeURIComponent(withoutQuery);
-  return path.basename(decoded);
+function displayName(source: string): string {
+  const withoutQuery = source.split(/[?#]/, 1)[0];
+  try {
+    return path.basename(decodeURIComponent(withoutQuery));
+  } catch {
+    return path.basename(withoutQuery);
+  }
 }
 
-function copyAsset(assetPath: string, normalized: string): void {
-  if (copied.has(normalized)) return;
+function copyAsset(assetPath: string, outputName: string, contentHash?: string): void {
+  const copyKey = `${outputName}:${assetPath}:${contentHash ?? ''}`;
+  if (copied.has(copyKey)) return;
 
   const isDev = process.env.NODE_ENV !== 'production' && !process.argv.includes('build');
   if (!isDev) return;
 
-  const outDir = path.resolve('public', '_images');
-  const outFile = path.join(outDir, normalized);
-
+  const outputDirectory = path.resolve('public', '_images');
   try {
-    fs.mkdirSync(outDir, { recursive: true });
-    fs.copyFileSync(assetPath, outFile);
-    copied.add(normalized);
-  } catch (err) {
+    fs.mkdirSync(outputDirectory, { recursive: true });
+    fs.copyFileSync(assetPath, path.join(outputDirectory, outputName));
+    copied.add(copyKey);
+  } catch (error) {
     console.warn(
       `[rehype-image-rewrite] Failed to copy ${assetPath}: ${
-        err instanceof Error ? err.message : String(err)
-      }`
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
   }
 }

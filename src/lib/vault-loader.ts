@@ -3,6 +3,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { resolveVaultPath } from './resolve-vault-path.ts';
 import { discoverPublishedPosts } from './vault-source.ts';
+import {
+  buildVaultIndex,
+  clearVaultIndex,
+  getVaultIndex,
+  primeVaultIndex,
+  type VaultIndex,
+} from './vault-index.ts';
 
 const WATCH_DEBOUNCE_MS = 50;
 
@@ -26,28 +33,43 @@ function errorMessage(error: unknown): string {
 
 async function scanVault(context: LoaderContext, vaultRoot: string): Promise<void> {
   const result = await discoverPublishedPosts(vaultRoot);
+  const nextIndex = await buildVaultIndex(vaultRoot, result.posts);
   const siteRoot = fileURLToPath(context.config.root);
   const entries: Array<Parameters<LoaderContext['store']['set']>[0]> = [];
+  let previousIndex: VaultIndex | undefined;
 
-  for (const post of result.posts) {
-    const data = await context.parseData({
-      id: post.id,
-      data: post.frontmatter,
-      filePath: post.absolutePath,
-    });
-    const rendered = await context.renderMarkdown(post.raw, {
-      fileURL: pathToFileURL(post.absolutePath),
-    });
+  try {
+    previousIndex = getVaultIndex();
+  } catch {
+    previousIndex = undefined;
+  }
+  primeVaultIndex(nextIndex);
 
-    const filePath = toSiteRelativePath(siteRoot, post.absolutePath);
-    entries.push({
-      id: post.id,
-      data,
-      body: post.body,
-      ...(filePath === undefined ? {} : { filePath }),
-      digest: context.generateDigest(post.raw),
-      rendered,
-    });
+  try {
+    for (const post of result.posts) {
+      const data = await context.parseData({
+        id: post.id,
+        data: post.frontmatter,
+        filePath: post.absolutePath,
+      });
+      const rendered = await context.renderMarkdown(post.raw, {
+        fileURL: pathToFileURL(post.absolutePath),
+      });
+
+      const filePath = toSiteRelativePath(siteRoot, post.absolutePath);
+      entries.push({
+        id: post.id,
+        data,
+        body: post.body,
+        ...(filePath === undefined ? {} : { filePath }),
+        digest: context.generateDigest(post.raw),
+        rendered,
+      });
+    }
+  } catch (error) {
+    if (previousIndex) primeVaultIndex(previousIndex);
+    else clearVaultIndex();
+    throw error;
   }
 
   context.store.clear();
