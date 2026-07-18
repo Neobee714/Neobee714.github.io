@@ -137,13 +137,18 @@ test('obsidian parser caches collection-derived post index', () => {
 test('image rewrite keeps build-time copying in the integration layer only', () => {
   const rehypeSource = readFileSync('src/lib/rehype-image-rewrite.ts', 'utf8');
   const integrationSource = readFileSync('src/lib/integrations/copy-vault-images.ts', 'utf8');
+  const loaderSource = readFileSync('src/lib/vault-loader.ts', 'utf8');
 
   assert.doesNotMatch(rehypeSource, /path\.resolve\('dist', '_images'\)/);
-  assert.match(rehypeSource, /path\.resolve\('public', '_images'\)/);
+  assert.doesNotMatch(rehypeSource, /copyFileSync/);
+  assert.doesNotMatch(rehypeSource, /path\.resolve\('public', '_images'\)/);
+  assert.match(integrationSource, /reconcileDevVaultAssets/);
   assert.match(integrationSource, /resolvedAssetsByOutputName/);
   assert.doesNotMatch(integrationSource, /walkAndProcessHtml/);
   assert.doesNotMatch(integrationSource, /assetsByName/);
   assert.doesNotMatch(integrationSource, /attrs\.alt/);
+  assert.match(loaderSource, /context\.watcher/);
+  assert.match(loaderSource, /context\.config\.publicDir/);
 });
 
 test('publishing status helpers normalize draft and locked states', () => {

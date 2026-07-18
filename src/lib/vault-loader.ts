@@ -10,6 +10,7 @@ import {
   primeVaultIndex,
   type VaultIndex,
 } from './vault-index.ts';
+import { reconcileDevVaultAssets } from './integrations/copy-vault-images.ts';
 
 const WATCH_DEBOUNCE_MS = 50;
 
@@ -65,6 +66,14 @@ async function scanVault(context: LoaderContext, vaultRoot: string): Promise<voi
         digest: context.generateDigest(post.raw),
         rendered,
       });
+    }
+
+    const isRealDevContext =
+      Boolean(context.watcher && context.config.publicDir) &&
+      process.env.NODE_ENV !== 'production' &&
+      !process.argv.includes('build');
+    if (isRealDevContext) {
+      await reconcileDevVaultAssets(nextIndex, context.config.publicDir);
     }
   } catch (error) {
     if (previousIndex) primeVaultIndex(previousIndex);

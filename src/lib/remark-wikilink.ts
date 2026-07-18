@@ -80,7 +80,6 @@ function buildEmbed(
   sourceFilePath?: string,
 ): PhrasingContent {
   const resolved = resolveVaultAsset(index, target, sourceFilePath);
-  const isImage = IMG_EXTS.has(fileExt(target));
 
   if (!resolved) {
     return {
@@ -90,6 +89,7 @@ function buildEmbed(
   }
 
   const resourceUrl = `/_images/${resolved.outputName}`;
+  const isImage = IMG_EXTS.has(fileExt(resolved.outputName));
   if (!isImage) {
     return {
       type: 'link',

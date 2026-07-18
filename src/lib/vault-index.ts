@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { visit } from 'unist-util-visit';
 import type { PublishedVaultPost } from './vault-source.ts';
 import { walkVaultFiles } from './vault-source.ts';
 
@@ -19,6 +21,7 @@ export interface VaultIndex {
 }
 
 const CACHE_KEY = '__xyvora_vault_index__';
+const UNSAFE_ASSET_TARGET = Symbol('unsafe-vault-asset-target');
 const SUPPORTED_ASSET_EXTENSIONS = new Set([
   '.png',
   '.jpg',
@@ -116,6 +119,7 @@ export function resolveVaultAsset(
   if (candidates.length === 0) return missingAsset(index, basename);
 
   const selected = selectCandidate(index.root, candidates, cleanedTarget, sourceFilePath);
+  if (selected === UNSAFE_ASSET_TARGET) return missingAsset(index, basename);
   if (!selected) {
     throw new Error(`Ambiguous vault asset "${basename}"`);
   }
@@ -127,19 +131,32 @@ export function resolveVaultAsset(
 
 function extractAssetReferences(body: string): string[] {
   const references: string[] = [];
-  const obsidianEmbed = /!\[\[([^\]]+)\]\]/g;
-  let match: RegExpExecArray | null;
+  const tree = fromMarkdown(body);
+  const definitions = new Map<string, string>();
 
-  while ((match = obsidianEmbed.exec(body)) !== null) {
-    const target = match[1].split('|', 1)[0].trim();
-    if (isLocalAssetTarget(target)) references.push(target);
-  }
+  visit(tree, (node: any) => {
+    if (node.type === 'definition') definitions.set(node.identifier, node.url);
+  });
 
-  const markdownImage = /!\[[^\]]*\]\(\s*(?:<([^>\r\n]+)>|([^\s)\r\n]+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/g;
-  while ((match = markdownImage.exec(body)) !== null) {
-    const target = (match[1] ?? match[2] ?? '').trim();
-    if (isLocalAssetTarget(target)) references.push(target);
-  }
+  visit(tree, (node: any) => {
+    if (node.type === 'image') {
+      if (isLocalAssetTarget(node.url)) references.push(node.url);
+      return;
+    }
+    if (node.type === 'imageReference') {
+      const target = definitions.get(node.identifier);
+      if (target && isLocalAssetTarget(target)) references.push(target);
+      return;
+    }
+    if (node.type !== 'text') return;
+
+    const obsidianEmbed = /!\[\[([^\]]+)\]\]/g;
+    let match: RegExpExecArray | null;
+    while ((match = obsidianEmbed.exec(node.value)) !== null) {
+      const target = match[1].split('|', 1)[0].trim();
+      if (isLocalAssetTarget(target)) references.push(target);
+    }
+  });
 
   return references;
 }
@@ -183,32 +200,57 @@ function selectCandidate(
   candidates: string[],
   target: string,
   sourceFilePath?: string,
-): string | undefined {
+): string | typeof UNSAFE_ASSET_TARGET | undefined {
+  const rootRelative = target.startsWith('/');
+  if (!rootRelative && path.win32.isAbsolute(target)) return UNSAFE_ASSET_TARGET;
   const normalizedTarget = target.replace(/[\\/]+/g, path.sep);
-  const exactPaths: string[] = [];
 
-  if (sourceFilePath) {
-    exactPaths.push(path.resolve(path.dirname(path.resolve(sourceFilePath)), normalizedTarget));
+  if (sourceFilePath && !rootRelative) {
+    const sourceRelativePath = path.resolve(path.dirname(path.resolve(sourceFilePath)), normalizedTarget);
+    if (!isInside(root, sourceRelativePath)) return UNSAFE_ASSET_TARGET;
+    const exact = candidates.find((candidate) =>
+      vaultPathsEqual(candidate, sourceRelativePath, path),
+    );
+    if (exact) return exact;
   }
 
   const rootRelativeTarget = normalizedTarget.replace(/^[/\\]+/, '');
-  exactPaths.push(path.resolve(root, rootRelativeTarget));
-
-  for (const exactPath of exactPaths) {
-    if (!isInside(root, exactPath)) continue;
-    const exact = candidates.find((candidate) => path.resolve(candidate) === exactPath);
+  const rootRelativePath = path.resolve(root, rootRelativeTarget);
+  if (isInside(root, rootRelativePath)) {
+    const exact = candidates.find((candidate) =>
+      vaultPathsEqual(candidate, rootRelativePath, path),
+    );
     if (exact) return exact;
+  } else if (!sourceFilePath || rootRelative) {
+    return UNSAFE_ASSET_TARGET;
   }
 
   if (sourceFilePath) {
     const sourceDirectory = path.dirname(path.resolve(sourceFilePath));
     const sameDirectory = candidates.filter(
-      (candidate) => path.dirname(path.resolve(candidate)) === sourceDirectory,
+      (candidate) => vaultPathsEqual(path.dirname(candidate), sourceDirectory, path),
     );
     if (sameDirectory.length === 1) return sameDirectory[0];
   }
 
   return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+interface PathImplementation {
+  resolve(...paths: string[]): string;
+  sep: string;
+}
+
+export function vaultPathsEqual(
+  left: string,
+  right: string,
+  pathImplementation: PathImplementation = path,
+): boolean {
+  const resolvedLeft = pathImplementation.resolve(left);
+  const resolvedRight = pathImplementation.resolve(right);
+  return pathImplementation.sep === '\\'
+    ? resolvedLeft.toLowerCase() === resolvedRight.toLowerCase()
+    : resolvedLeft === resolvedRight;
 }
 
 function isInside(root: string, candidate: string): boolean {

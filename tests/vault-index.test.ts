@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverPublishedPosts } from '../src/lib/vault-source.ts';
 import {
   buildVaultIndex,
@@ -197,6 +197,87 @@ test('output name collisions permit identical content and reject different conte
   });
 });
 
+test('explicit paths outside the vault never fall back to an in-vault basename', async () => {
+  await withVault(async (directory) => {
+    const root = path.join(directory, 'vault');
+    const source = put(
+      root,
+      'articles/demo.md',
+      note(
+        'demo',
+        '![[../../outside/secret.png]]\n![[..%2F..%2Foutside%2Fsecret.png]]\n![[C:\\outside\\secret.png]]\n![[/assets/root.png]]',
+      ),
+    );
+    const inVaultSecret = put(root, 'assets/secret.png', 'in-vault-secret');
+    const rootAsset = put(root, 'assets/root.png', 'root-asset');
+    put(directory, 'outside/secret.png', 'outside-secret');
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+
+    assert.equal(resolveVaultAsset(index, '../../outside/secret.png', source), undefined);
+    assert.equal(resolveVaultAsset(index, '..%2F..%2Foutside%2Fsecret.png', source), undefined);
+    assert.equal(resolveVaultAsset(index, 'C:\\outside\\secret.png', source), undefined);
+    assert.equal([...index.resolvedAssetsByOutputName.values()].includes(inVaultSecret), false);
+    assert.deepEqual(resolveVaultAsset(index, '/assets/root.png', source), {
+      absolutePath: rootAsset,
+      outputName: 'root.png',
+    });
+  });
+});
+
+test('Markdown AST extraction supports complex images and ignores literal-code embeds', async () => {
+  await withVault(async (root) => {
+    put(
+      root,
+      'demo.md',
+      note(
+        'demo',
+        [
+          '![nested](./assets/chart_(final).png)',
+          '![reference][diagram]',
+          '',
+          '[diagram]: ./assets/reference.png',
+          '',
+          '![[real.png]]',
+          '`![[inline-code.png]]`',
+          '<!-- ![[comment.png]] -->',
+          '```md',
+          '![[fenced.png]]',
+          '![code image](./assets/code-image.png)',
+          '```',
+        ].join('\n'),
+      ),
+    );
+    const nested = put(root, 'assets/chart_(final).png', 'nested');
+    const reference = put(root, 'assets/reference.png', 'reference');
+    const real = put(root, 'assets/real.png', 'real');
+    const ignored = [
+      put(root, 'assets/inline-code.png', 'inline'),
+      put(root, 'assets/comment.png', 'comment'),
+      put(root, 'assets/fenced.png', 'fenced'),
+      put(root, 'assets/code-image.png', 'code-image'),
+    ];
+
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+
+    assert.deepEqual(index.assetCandidatesByName.get('chart_(final).png'), [nested]);
+    assert.deepEqual(index.assetCandidatesByName.get('reference.png'), [reference]);
+    assert.deepEqual(index.assetCandidatesByName.get('real.png'), [real]);
+    for (const absolutePath of ignored) {
+      assert.equal(index.assetCandidatesByName.has(path.basename(absolutePath)), false);
+      assert.equal(index.contentHashByPath.has(absolutePath), false);
+    }
+  });
+});
+
+test('path comparison follows Windows case rules without weakening POSIX', async () => {
+  const vaultIndex = await import('../src/lib/vault-index.ts');
+  const compare = (vaultIndex as any).vaultPathsEqual;
+
+  assert.equal(typeof compare, 'function');
+  assert.equal(compare('C:\\Vault\\Asset.PNG', 'c:\\vault\\asset.png', path.win32), true);
+  assert.equal(compare('/Vault/Asset.PNG', '/vault/asset.png', path.posix), false);
+});
+
 test('remark and rehype resolve assets relative to the Markdown source file', async () => {
   await withVault(async (root) => {
     const demoPath = put(
@@ -271,6 +352,34 @@ test('remark and rehype resolve assets relative to the Markdown source file', as
     assert.equal(images[1].properties.src, 'https://example.com/external.png');
     assert.equal(images[2].tagName, 'span');
     assert.equal(index.missingReferences.has('missing.png'), true);
+  });
+});
+
+test('remark determines encoded image extensions from the resolved asset', async () => {
+  await withVault(async (root) => {
+    const source = put(
+      root,
+      'articles/demo.md',
+      note('demo', '![[./assets/encoded-image%2Epng]]'),
+    );
+    put(root, 'articles/assets/encoded-image.png', 'encoded image');
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+    primeVaultIndex(index);
+    const tree: any = {
+      type: 'root',
+      children: [
+        {
+          type: 'paragraph',
+          children: [{ type: 'text', value: '![[./assets/encoded-image%2Epng]]' }],
+        },
+      ],
+    };
+
+    remarkWikilink()(tree, { path: source } as any);
+
+    assert.equal(tree.children[0].children[0].type, 'html');
+    assert.match(tree.children[0].children[0].value, /<img /);
+    assert.match(tree.children[0].children[0].value, /\/_images\/encoded-image\.png/);
   });
 });
 
@@ -393,6 +502,53 @@ test('loader primes the new index for rendering and restores the previous index 
     assert.equal(observedNewIndex, true);
     assert.equal(getVaultIndex(), previousIndex);
     assert.deepEqual([...entries.keys()], ['old-note']);
+  });
+});
+
+test('successful real dev loader scans reconcile the configured public image directory', async () => {
+  await withVault(async (root) => {
+    const vaultRoot = path.join(root, 'vault');
+    const publicDirectory = path.join(root, 'site-public');
+    const notePath = put(vaultRoot, 'demo.md', note('demo', '![[asset.png]]'));
+    put(vaultRoot, 'asset.png', 'current-asset');
+    const stalePath = put(publicDirectory, '_images/stale.png', 'stale');
+    const entries = new Map<string, any>();
+    const watcher = {
+      add: () => watcher,
+      on: () => watcher,
+      off: () => watcher,
+    };
+    const context: any = {
+      store: {
+        set: (entry: any) => entries.set(entry.id, entry),
+        clear: () => entries.clear(),
+      },
+      parseData: async ({ data }: any) => data,
+      renderMarkdown: async (content: string, options: { fileURL: URL }) => {
+        if (content.includes('![[asset.png]]')) {
+          resolveVaultAsset(getVaultIndex(), 'asset.png', fileURLToPath(options.fileURL));
+        }
+        return { html: '<p>demo</p>' };
+      },
+      generateDigest: () => 'digest',
+      config: {
+        root: pathToFileURL(`${root}${path.sep}`),
+        publicDir: pathToFileURL(`${publicDirectory}${path.sep}`),
+      },
+      watcher,
+      logger: { info: () => {}, error: () => {}, warn: () => {}, debug: () => {} },
+    };
+    const loader = vaultLoader(vaultRoot);
+
+    await loader.load(context);
+
+    const copiedPath = path.join(publicDirectory, '_images/asset.png');
+    assert.equal(readFileSync(copiedPath, 'utf8'), 'current-asset');
+    assert.equal(existsSync(stalePath), false);
+
+    writeFileSync(notePath, note('demo', '# No assets'), 'utf8');
+    await loader.load(context);
+    assert.equal(existsSync(copiedPath), false);
   });
 });
 
