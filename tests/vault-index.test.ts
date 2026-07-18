@@ -269,6 +269,33 @@ test('Markdown AST extraction supports complex images and ignores literal-code e
   });
 });
 
+test('duplicate reference definitions retain the first asset like CommonMark', async () => {
+  await withVault(async (root) => {
+    const source = put(
+      root,
+      'demo.md',
+      note(
+        'demo',
+        ['![x][diagram]', '', '[diagram]: first.png', '[diagram]: second.png'].join('\n'),
+      ),
+    );
+    const first = put(root, 'first.png', 'first');
+    const second = put(root, 'second.png', 'second');
+
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+
+    assert.deepEqual(index.assetCandidatesByName.get('first.png'), [first]);
+    assert.equal(index.contentHashByPath.get(first), sha256('first'));
+    assert.deepEqual(resolveVaultAsset(index, 'first.png', source), {
+      absolutePath: first,
+      outputName: 'first.png',
+    });
+    assert.equal(index.assetCandidatesByName.has('second.png'), false);
+    assert.equal(index.contentHashByPath.has(second), false);
+    assert.equal(resolveVaultAsset(index, 'second.png', source), undefined);
+  });
+});
+
 test('path comparison follows Windows case rules without weakening POSIX', async () => {
   const vaultIndex = await import('../src/lib/vault-index.ts');
   const compare = (vaultIndex as any).vaultPathsEqual;

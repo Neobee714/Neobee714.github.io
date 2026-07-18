@@ -135,7 +135,9 @@ function extractAssetReferences(body: string): string[] {
   const definitions = new Map<string, string>();
 
   visit(tree, (node: any) => {
-    if (node.type === 'definition') definitions.set(node.identifier, node.url);
+    if (node.type === 'definition' && !definitions.has(node.identifier)) {
+      definitions.set(node.identifier, node.url);
+    }
   });
 
   visit(tree, (node: any) => {
