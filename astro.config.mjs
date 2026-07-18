@@ -10,7 +10,6 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 
-import { slugUniquenessCheck } from './src/lib/integrations/slug-check.ts';
 import { copyVaultImages } from './src/lib/integrations/copy-vault-images.ts';
 import { remarkDataviewStrip } from './src/lib/remark-dataview-strip.ts';
 import { remarkCallout } from './src/lib/remark-callout.ts';
@@ -38,7 +37,6 @@ export default defineConfig({
         !page.includes('/404') &&
         !page.includes('/test-render'),
     }),
-    slugUniquenessCheck(),
     copyVaultImages(),
   ],
   markdown: {

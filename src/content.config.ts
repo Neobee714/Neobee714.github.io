@@ -1,24 +1,7 @@
-// Content Collections configuration.
-//
-// Points the `posts` collection at the Obsidian vault located via env var
-// ASTRO_VAULT_PATH (e.g. `F:/Work/Obsidian` locally or `./vault` in CI).
-//
-// Implements:
-//   - REQ-04-1 (field mapping, incl. Chinese keys)
-//   - REQ-04-2 (flexible date parsing)
-//   - REQ-04-3 (status semantics: 进行中 -> draft; 已锁住 -> locked)
-//   - REQ-01-1 / 01-2 / 01-3 (scan all .md; only 发布:true)
-//   - REQ-03-3 (missing Slug -> skipped with warning)
-
 import { defineCollection, z } from 'astro:content';
-import { glob } from 'astro/loaders';
-import { pathToFileURL } from 'node:url';
 import { parseFlexDate } from './lib/date-parser.ts';
-import { resolveVaultPath } from './lib/resolve-vault-path.ts';
-
-// Resolve vault path from env. Fallback to `./vault` (CI checkout directory).
-const vaultPathRaw = process.env.ASTRO_VAULT_PATH?.trim() || './vault';
-const vaultAbsPath = resolveVaultPath(vaultPathRaw);
+import { hasPublishFlag } from './lib/publishing.ts';
+import { vaultLoader } from './lib/vault-loader.ts';
 
 // Coerce "truthy-like" values into boolean. Accepts:
 //   - real booleans
@@ -56,11 +39,8 @@ const flexTags = z.preprocess((v) => {
 }, z.array(z.string()));
 
 const postSchema = z.object({
-  // --- Required for publishing ---
-  Slug: z.string().min(1).optional(),
-  发布: flexBool.optional().default(false),
-
-  // --- Optional metadata ---
+  Slug: z.string().trim().min(1),
+  发布: z.preprocess(hasPublishFlag, z.literal(true)),
   是否锁住: flexBool.optional().default(false),
   日期: flexDate,
   类型: z.string().optional(),
@@ -69,30 +49,12 @@ const postSchema = z.object({
   简介: z.string().optional().default(''),
   tags: flexTags.optional().default([]),
   状态: z.string().optional(),
-
-  // --- Fields present on translated copies (`<slug>.en.md`) ---
-  lang: z.enum(['zh', 'en']).optional(),
-  source: z.string().optional(),
-  source_hash: z.string().optional(),
-  translated_at: z.string().optional(),
 });
 
 export type PostFrontmatter = z.infer<typeof postSchema>;
 
 const posts = defineCollection({
-  loader: glob({
-    // Only scan notes inside SecNotes/. Root-level helper files like
-    // `类型.md` (Obsidian syntax cheat sheet) and `copilot/` conversation
-    // logs are excluded.
-    pattern: [
-      'SecNotes/**/*.md',
-      'Translated/SecNotes/**/*.md',
-      '!SecNotes/**/Templates/**',
-      '!**/.obsidian/**',
-      '!**/.trash/**',
-    ],
-    base: pathToFileURL(vaultAbsPath).href,
-  }),
+  loader: vaultLoader(process.env.ASTRO_VAULT_PATH?.trim() || './vault'),
   schema: postSchema,
 });
 

@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { isPublishedFm } from '../src/lib/integrations/slug-check.ts';
-import { isDraftStatus, isLockedStatus } from '../src/lib/publishing.ts';
+import {
+  hasPublishFlag,
+  isDraftStatus,
+  isLockedStatus,
+  normalizeFrontmatterScalar,
+} from '../src/lib/publishing.ts';
 
 test('SearchModal does not render search data through template innerHTML', () => {
   const source = readFileSync('src/components/SearchModal.astro', 'utf8');
@@ -106,14 +110,16 @@ test('tag and category path segments are URL encoded in hrefs', () => {
   assert.match(homepage, /\/categories\/\$\{encodeURIComponent\(topic\.name\)\}/);
 });
 
-test('draft frontmatter is excluded from slug uniqueness publish count', () => {
-  assert.equal(isPublishedFm({ '发布': 'true', '状态': '进行中', Slug: 'draft-post' }), false);
-  assert.equal(isPublishedFm({ '发布': 'true', '状态': 'draft', Slug: 'draft-post' }), false);
-  assert.equal(isPublishedFm({ '发布': 'true', '状态': 'writing', Slug: 'draft-post' }), false);
-  assert.equal(isPublishedFm({ '发布': '"true"', Slug: '"live-post"' }), true);
-  assert.equal(isPublishedFm({ '发布': "'yes'", '状态': "'draft'", Slug: "'draft-post'" }), false);
-  assert.equal(isPublishedFm({ '发布': 'true' }), false);
-  assert.equal(isPublishedFm({ '发布': 'true', Slug: 'live-post' }), true);
+test('publishing helpers classify frontmatter flags, drafts, and Slugs', () => {
+  assert.equal(hasPublishFlag('"true"'), true);
+  assert.equal(hasPublishFlag("'yes'"), true);
+  assert.equal(hasPublishFlag('false'), false);
+  assert.equal(isDraftStatus('进行中'), true);
+  assert.equal(isDraftStatus("'draft'"), true);
+  assert.equal(isDraftStatus('writing'), true);
+  assert.equal(isDraftStatus('published'), false);
+  assert.equal(normalizeFrontmatterScalar('"live-post"'), 'live-post');
+  assert.equal(normalizeFrontmatterScalar(undefined), '');
 });
 
 test('obsidian parser caches collection-derived post index', () => {
