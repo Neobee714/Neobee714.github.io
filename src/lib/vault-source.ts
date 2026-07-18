@@ -90,16 +90,32 @@ function toPosixRelative(root: string, absolutePath: string): string {
   return path.relative(root, absolutePath).split(path.sep).join('/');
 }
 
-function extractScalarFields(raw: string): Record<string, string> {
+const CLASSIFICATION_FIELD = /^(?:"(发布|状态|Slug)"|'(发布|状态|Slug)'|(发布|状态|Slug))\s*:/;
+
+function extractClassificationFields(raw: string): Record<string, unknown> {
   const block = extractFrontmatter(raw);
   if (block === undefined) return {};
 
-  const fields: Record<string, string> = {};
-  for (const line of block.split(/\r?\n/)) {
-    const match = line.match(/^([^\s:][^:]*?):\s*(.*)$/);
-    if (match) fields[match[1].trim()] = match[2].trim();
+  const lines = block.split(/\r?\n/);
+  const selectedEntries: string[] = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    if (!CLASSIFICATION_FIELD.test(lines[index])) continue;
+
+    let end = index + 1;
+    while (
+      end < lines.length &&
+      (lines[end].trim() === '' || /^\s/.test(lines[end]) || /^\s*#/.test(lines[end]))
+    ) {
+      end++;
+    }
+    selectedEntries.push(lines.slice(index, end).join('\n'));
+    index = end - 1;
   }
-  return fields;
+
+  if (selectedEntries.length === 0) return {};
+  const synthetic = `---\n${selectedEntries.join('\n')}\n---\n`;
+  return parseFrontmatter(synthetic).frontmatter;
 }
 
 export async function discoverPublishedPosts(root: string): Promise<VaultScanResult> {
@@ -148,7 +164,15 @@ export async function discoverPublishedPosts(root: string): Promise<VaultScanRes
       );
     }
 
-    const fields = extractScalarFields(raw);
+    let fields: Record<string, unknown>;
+    try {
+      fields = extractClassificationFields(raw);
+    } catch {
+      throw new VaultSourceError(
+        'INVALID_FRONTMATTER',
+        `Invalid publishing frontmatter in note: ${relativePath}`,
+      );
+    }
     if (!hasPublishFlag(fields['发布'])) {
       unpublished++;
       continue;
@@ -189,11 +213,10 @@ export async function discoverPublishedPosts(root: string): Promise<VaultScanRes
     let parsed: ReturnType<typeof parseFrontmatter>;
     try {
       parsed = parseFrontmatter(candidate.raw);
-    } catch (cause) {
+    } catch {
       throw new VaultSourceError(
         'INVALID_FRONTMATTER',
         `Invalid frontmatter in published note: ${candidate.relativePath}`,
-        { cause },
       );
     }
 

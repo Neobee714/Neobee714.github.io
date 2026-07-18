@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { inspect } from 'node:util';
 import {
   discoverPublishedPosts,
   VaultSourceError,
@@ -153,6 +154,57 @@ test('classifies publish flags and drafts without parsing unpublished private no
   });
 });
 
+test('classifies selected fields with YAML comments, quoted keys, and escaped scalars', async () => {
+  await withVault(async (root) => {
+    put(root, 'commented-draft.md', markdown('发布: true\n状态: draft # private\nSlug: draft'));
+    put(
+      root,
+      'quoted.md',
+      markdown('"发布": true\n"Slug": "public\\x2Dnote"\nprivate: safe', 'private body\n'),
+    );
+    put(root, 'commented-slug.md', markdown('发布: yes\nSlug: clean-slug # public URL'));
+
+    const result = await discoverPublishedPosts(root);
+
+    assert.deepEqual(result.posts.map(({ slug }) => slug).sort(), ['clean-slug', 'public-note']);
+    assert.deepEqual(result.stats, {
+      markdown: 3,
+      published: 2,
+      drafts: 1,
+      unpublished: 0,
+      missingSlug: 0,
+    });
+  });
+});
+
+test('classifies block scalars for publish, status, and Slug', async () => {
+  await withVault(async (root) => {
+    put(root, 'block-public.md', markdown('发布: |-\n  yes\nSlug: |-\n  block-slug'));
+    put(
+      root,
+      'block-draft.md',
+      markdown('发布: |-\n  true\n状态: |-\n  draft\nSlug: hidden-draft'),
+    );
+
+    const result = await discoverPublishedPosts(root);
+
+    assert.deepEqual(result.posts.map(({ slug }) => slug), ['block-slug']);
+    assert.equal(result.stats.drafts, 1);
+  });
+});
+
+test('treats YAML null and comment-only Slugs as missing', async () => {
+  await withVault(async (root) => {
+    put(root, 'null.md', markdown('发布: true\nSlug: null'));
+    put(root, 'comment-only.md', markdown('发布: yes\nSlug: # intentionally missing'));
+
+    const error = await expectVaultError(() => discoverPublishedPosts(root), 'MISSING_SLUG');
+    assert.match(error.message, /2/);
+    assert.match(error.message, /null\.md/);
+    assert.match(error.message, /comment-only\.md/);
+  });
+});
+
 test('reports an unavailable vault root', async () => {
   await withVault(async (root) => {
     const missing = path.join(root, 'does-not-exist');
@@ -225,5 +277,26 @@ test('reports invalid YAML only when a note is a publish candidate', async () =>
     );
     assert.match(error.message, /invalid\.md/);
     assert.doesNotMatch(error.message, /body must not appear/);
+  });
+});
+
+test('does not retain malformed published frontmatter secrets in inspected errors', async () => {
+  await withVault(async (root) => {
+    put(
+      root,
+      'secret-invalid.md',
+      markdown(
+        '发布: true\nSlug: secret-invalid\nmetadata: [FRONTMATTER_SECRET_7f31',
+        'BODY_SECRET_98ac\n',
+      ),
+    );
+
+    const error = await expectVaultError(
+      () => discoverPublishedPosts(root),
+      'INVALID_FRONTMATTER',
+    );
+    const inspected = inspect(error, { depth: null });
+    assert.doesNotMatch(inspected, /FRONTMATTER_SECRET_7f31/);
+    assert.doesNotMatch(inspected, /BODY_SECRET_98ac/);
   });
 });
