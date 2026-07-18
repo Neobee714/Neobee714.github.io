@@ -142,6 +142,8 @@ test('indexes only published notes and assets referenced by published bodies', a
     );
     assert.equal(resolveVaultAsset(index, 'missing.png', demoPath), undefined);
     assert.equal(resolveVaultAsset(index, 'https://example.com/external.png', demoPath), undefined);
+    assert.equal(resolveVaultAsset(index, 'http:example.png', demoPath), undefined);
+    assert.equal(resolveVaultAsset(index, 'https:example.png', demoPath), undefined);
     assert.equal(resolveVaultAsset(index, '//example.com/protocol.png', demoPath), undefined);
     assert.equal(resolveVaultAsset(index, 'data:image/png;base64,AAAA', demoPath), undefined);
     assert.deepEqual([...index.missingReferences], ['missing.png']);
@@ -269,6 +271,89 @@ test('remark and rehype resolve assets relative to the Markdown source file', as
     assert.equal(images[1].properties.src, 'https://example.com/external.png');
     assert.equal(images[2].tagName, 'span');
     assert.equal(index.missingReferences.has('missing.png'), true);
+  });
+});
+
+test('remark leaves external Obsidian embeds literal and does not track them as missing', async () => {
+  await withVault(async (root) => {
+    const syntaxes = [
+      '![[http://example.com/image.png]]',
+      '![[https://example.com/image.png]]',
+      '![[http:example.png]]',
+      '![[https:example.png]]',
+      '![[//cdn.example.com/image.png]]',
+      '![[data:image/png;base64,AAAA]]',
+    ];
+    put(root, 'demo.md', note('demo', syntaxes.join('\n')));
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+    primeVaultIndex(index);
+
+    for (const syntax of syntaxes) {
+      const tree: any = {
+        type: 'root',
+        children: [{ type: 'paragraph', children: [{ type: 'text', value: syntax }] }],
+      };
+      remarkWikilink()(tree, { path: path.join(root, 'demo.md') } as any);
+      assert.deepEqual(tree.children[0].children, [{ type: 'text', value: syntax }]);
+    }
+    assert.deepEqual([...index.missingReferences], []);
+  });
+});
+
+test('rehype leaves every supported external image form unchanged and untracked', async () => {
+  await withVault(async (root) => {
+    put(root, 'demo.md', note('demo', '# Images'));
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+    primeVaultIndex(index);
+    const tree: any = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'p',
+          properties: {},
+          children: [
+            { type: 'element', tagName: 'img', properties: { src: 'http:example.png' }, children: [] },
+            { type: 'element', tagName: 'img', properties: { src: 'https:example.png' }, children: [] },
+            { type: 'element', tagName: 'img', properties: { src: '//cdn.example.com/image.png' }, children: [] },
+            { type: 'element', tagName: 'img', properties: { src: 'data:image/png;base64,AAAA' }, children: [] },
+          ],
+        },
+      ],
+    };
+    const before = structuredClone(tree);
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    try {
+      rehypeImageRewrite()(tree, { path: path.join(root, 'demo.md') } as any);
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    assert.deepEqual(tree, before);
+    assert.deepEqual([...index.missingReferences], []);
+  });
+});
+
+test('remark renders a missing non-image embed as an accessible visible placeholder', async () => {
+  await withVault(async (root) => {
+    const source = put(root, 'demo.md', note('demo', '![[missing.pdf]]'));
+    const index = await buildVaultIndex(root, (await discoverPublishedPosts(root)).posts);
+    primeVaultIndex(index);
+    const tree: any = {
+      type: 'root',
+      children: [{ type: 'paragraph', children: [{ type: 'text', value: '![[missing.pdf]]' }] }],
+    };
+
+    remarkWikilink()(tree, { path: source } as any);
+
+    const placeholder = tree.children[0].children[0];
+    assert.equal(placeholder.type, 'html');
+    assert.match(placeholder.value, /class="missing-image"/);
+    assert.match(placeholder.value, /role="img"/);
+    assert.match(placeholder.value, /aria-label="Missing image"/);
+    assert.match(placeholder.value, /Missing: missing\.pdf/);
+    assert.deepEqual([...index.missingReferences], ['missing.pdf']);
   });
 });
 

@@ -1,7 +1,12 @@
 /** Translate Obsidian wiki links and embeds using the primed published vault index. */
 import { visit, SKIP } from 'unist-util-visit';
 import type { Root, Text, PhrasingContent } from 'mdast';
-import { getVaultIndex, resolveVaultAsset, type VaultIndex } from './vault-index.ts';
+import {
+  getVaultIndex,
+  isExternalTarget,
+  resolveVaultAsset,
+  type VaultIndex,
+} from './vault-index.ts';
 
 const WIKI_PATTERN = String.raw`(!?)\[\[([^\]]+)\]\]`;
 const IMG_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
@@ -48,11 +53,15 @@ export function remarkWikilink() {
         const target = hashIndex === -1 ? targetRaw : targetRaw.slice(0, hashIndex);
         const heading = hashIndex === -1 ? '' : targetRaw.slice(hashIndex + 1);
 
-        output.push(
-          bang === '!'
-            ? buildEmbed(target, aliasOrSize, index, sourceFilePath)
-            : buildWikiLink(target, heading, aliasOrSize, index),
-        );
+        if (bang === '!' && isExternalTarget(target)) {
+          output.push({ type: 'text', value: full });
+        } else {
+          output.push(
+            bang === '!'
+              ? buildEmbed(target, aliasOrSize, index, sourceFilePath)
+              : buildWikiLink(target, heading, aliasOrSize, index),
+          );
+        }
         cursor = match.index + full.length;
       }
 
@@ -74,14 +83,6 @@ function buildEmbed(
   const isImage = IMG_EXTS.has(fileExt(target));
 
   if (!resolved) {
-    if (!isImage) {
-      return {
-        type: 'link',
-        url: '#',
-        children: [{ type: 'text', value: target }],
-        data: { hProperties: { className: ['embed-link'], title: 'Embedded resource' } },
-      } as any;
-    }
     return {
       type: 'html',
       value: `<span class="missing-image" role="img" aria-label="Missing image">⚠ Missing: ${escapeAttr(target)}</span>`,

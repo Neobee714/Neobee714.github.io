@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { visit, SKIP } from 'unist-util-visit';
-import { getVaultIndex, resolveVaultAsset } from './vault-index.ts';
+import { getVaultIndex, isExternalTarget, resolveVaultAsset } from './vault-index.ts';
 
 const copied = new Set<string>();
 
@@ -15,7 +15,7 @@ export function rehypeImageRewrite() {
       if (node.tagName !== 'img') return;
       const properties = (node.properties ||= {});
       const rawSource = String(properties.src ?? '').trim();
-      if (!rawSource || isExternal(rawSource)) return;
+      if (!rawSource || isExternalTarget(rawSource)) return;
 
       const resolved = resolveVaultAsset(index, rawSource, sourceFilePath);
       const originalName = displayName(rawSource);
@@ -34,10 +34,6 @@ export function rehypeImageRewrite() {
       properties.alt = properties.alt || originalName;
     });
   };
-}
-
-function isExternal(source: string): boolean {
-  return /^https?:\/\//i.test(source) || source.startsWith('//') || /^data:/i.test(source);
 }
 
 function displayName(source: string): string {

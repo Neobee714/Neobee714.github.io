@@ -144,14 +144,14 @@ function extractAssetReferences(body: string): string[] {
   return references;
 }
 
+export function isExternalTarget(target: string): boolean {
+  const trimmed = target.trim();
+  return /^https?:/i.test(trimmed) || trimmed.startsWith('//') || /^data:/i.test(trimmed);
+}
+
 function isLocalAssetTarget(target: string): boolean {
   const trimmed = target.trim();
-  return (
-    trimmed !== '' &&
-    !/^https?:\/\//i.test(trimmed) &&
-    !trimmed.startsWith('//') &&
-    !/^data:/i.test(trimmed)
-  );
+  return trimmed !== '' && !isExternalTarget(trimmed);
 }
 
 function cleanAssetTarget(target: string): string {
