@@ -12,8 +12,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "test:node": "node --import tsx --test tests/*.test.ts",
-    "test:python": "python3 -m unittest discover -s tests -p 'test_*.py'",
-    "test": "npm run test:node && npm run test:python"
+    "test": "npm run test:node"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",

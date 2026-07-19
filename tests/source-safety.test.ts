@@ -195,3 +195,42 @@ test('test-render smoke pages are not present in production routes', () => {
 test('unused preview wordmark asset is absent', () => {
   assert.equal(existsSync('public/preview-logo-wordmark.png'), false);
 });
+
+test('Python translation tooling and tests are absent', () => {
+  const obsoleteFiles = [
+    'scripts/check_codeblocks.py',
+    'scripts/check_en_quality.py',
+    'scripts/translate.py',
+    'scripts/translate_summary.py',
+    'scripts/lib/__init__.py',
+    'scripts/lib/chunker.py',
+    'scripts/lib/codeblocks.py',
+    'scripts/lib/frontmatter.py',
+    'scripts/lib/hash_util.py',
+    'scripts/lib/llm_client.py',
+    'scripts/lib/translation_paths.py',
+    'scripts/requirements.txt',
+    'tests/test_translation_paths.py',
+    'tests/test_codeblocks.py',
+  ];
+
+  assert.deepEqual(obsoleteFiles.filter((file) => existsSync(file)), []);
+  assert.equal(existsSync('scripts'), false);
+});
+
+test('build workflow contains no translation jobs or credentials', () => {
+  const workflow = readFileSync('.github/workflows/build.yml', 'utf8');
+
+  assert.doesNotMatch(workflow, /LLM_(?:API|BASE|MODEL)|VAULT_PUSH_TOKEN/);
+  assert.doesNotMatch(workflow, /translate\.py|\.en\.md/);
+  assert.doesNotMatch(workflow, /^\s+translate:/im);
+  assert.doesNotMatch(workflow, /Setup Python/);
+});
+
+test('npm test runs the Node test suite only', () => {
+  const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+
+  assert.equal(packageJson.scripts['test:python'], undefined);
+  assert.equal(packageJson.scripts.test, 'npm run test:node');
+  assert.equal(packageJson.scripts['test:node'], 'node --import tsx --test tests/*.test.ts');
+});

@@ -6,12 +6,6 @@ on:
   repository_dispatch:
     types: [vault-updated]
   workflow_dispatch:
-    inputs:
-      translate:
-        description: 'Run LLM translation (only for new articles)'
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   build-deploy:
@@ -48,37 +42,6 @@ jobs:
       - name: Clone vault
         run: |
           GIT_SSH_COMMAND="ssh -i ~/.ssh/vault_key" git clone --depth 1 git@github.com:Neobee714/obsidian-vault.git vault
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: pip install -r scripts/requirements.txt
-
-      - name: Translate
-        if: false  # Skip: translations done locally
-        continue-on-error: true
-        env:
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
-          LLM_MODEL: ${{ secrets.LLM_MODEL }}
-        run: python scripts/translate.py --vault ./vault
-
-      - name: Commit translations back to vault
-        run: |
-          cd vault
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "No translation changes to commit"
-          else
-            git add -A '*.en.md'
-            git commit -m "chore: update translations [skip ci]"
-            git remote set-url origin https://x-access-token:${{ secrets.VAULT_PUSH_TOKEN }}@github.com/Neobee714/obsidian-vault.git
-            git push
-          fi
 
       - name: Build Astro site
         run: npm run build
