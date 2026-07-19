@@ -234,3 +234,9 @@ test('npm test runs the Node test suite only', () => {
   assert.equal(packageJson.scripts.test, 'npm run test:node');
   assert.equal(packageJson.scripts['test:node'], 'node --import tsx --test tests/*.test.ts');
 });
+
+test('README local setup writes the vault path to the ignored env file', () => {
+  const readme = readFileSync('README.md', 'utf8');
+
+  assert.match(readme, /printf 'ASTRO_VAULT_PATH=\/path\/to\/vault\\n' > \.env/);
+});

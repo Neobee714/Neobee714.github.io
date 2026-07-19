@@ -6,10 +6,11 @@ Astro 静态博客，内容源自私有 Obsidian vault。站点源代码公开�
 
 ```bash
 # Prerequisite: Node.js 22+
-npm install
+# Replace /path/to/vault with the path to your local Obsidian vault
+printf 'ASTRO_VAULT_PATH=/path/to/vault\n' > .env
 
-# Point Astro at a local Obsidian vault in .env
-ASTRO_VAULT_PATH=/path/to/vault
+# Install dependencies
+npm install
 
 # Dev server
 npm run dev
