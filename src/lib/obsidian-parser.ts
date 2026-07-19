@@ -16,8 +16,6 @@ export type Post = CollectionEntry<'posts'>;
 interface PostIndex {
   published: Post[];
   publishedBySlug: Map<string, Post>;
-  translationsBySlug: Map<string, Post>;
-  translationsBySourceId: Map<string, Post>;
 }
 
 const CACHE_KEY = '__xyvora_post_index__';
@@ -25,13 +23,6 @@ const CACHE_KEY = '__xyvora_post_index__';
 type GlobalWithCache = typeof globalThis & {
   [CACHE_KEY]?: Promise<PostIndex>;
 };
-
-/**
- * Is this entry a translation artifact (e.g. `htb bruno.en.md`)?
- */
-function isTranslation(post: Post): boolean {
-  return post.data.lang === 'en' || post.id.endsWith('.en');
-}
 
 /**
  * Normalize "locked" state: accept `是否锁住:Yes` OR legacy `状态:已锁住`.
@@ -74,23 +65,8 @@ async function getPostIndex() {
 function buildPostIndex(all: Post[]): PostIndex {
   const published: Post[] = [];
   const publishedBySlug = new Map<string, Post>();
-  const translationsBySlug = new Map<string, Post>();
-  const translationsBySourceId = new Map<string, Post>();
 
   for (const post of all) {
-    if (isTranslation(post)) {
-      const slug = post.data.Slug?.trim();
-      if (slug) {
-        translationsBySlug.set(slug, post);
-      }
-
-      const sourceId = getTranslationSourceId(post);
-      if (sourceId) {
-        translationsBySourceId.set(sourceId, post);
-      }
-      continue;
-    }
-
     if (!isPublishable(post)) continue;
 
     const slug = post.data.Slug!;
@@ -116,52 +92,16 @@ function buildPostIndex(all: Post[]): PostIndex {
   return {
     published,
     publishedBySlug,
-    translationsBySlug,
-    translationsBySourceId,
   };
 }
 
-function getTranslationSourceId(post: Post): string | undefined {
-  const source = post.data.source?.trim();
-  if (!source) return undefined;
-  return normalizeNoteRef(source);
-}
-
-function getPostSourceId(post: Post): string {
-  if (post.filePath) {
-    return normalizeNoteRef(post.filePath);
-  }
-  return normalizeNoteRef(post.id);
-}
-
-function normalizeNoteRef(value: string): string {
-  const normalized = value.replace(/\\/g, '/').split('/').pop() || value;
-  return normalized.replace(/\.en\.md$/i, '').replace(/\.md$/i, '').trim().toLowerCase();
-}
-
 /**
- * Get all published posts (ORIGINALS ONLY — excludes .en.md translations).
- * Sorted by 日期 descending. Locked posts are included (they still show in
- * lists with the ACCESS DENIED banner on the detail page).
+ * Get all published posts sorted by 日期 descending. Locked posts are included
+ * (they still show in lists with the ACCESS DENIED banner on the detail page).
  */
 export async function getPublishedPosts(): Promise<Post[]> {
   const index = await getPostIndex();
   return index.published;
-}
-
-/**
- * Look up a post (and its English translation, if any) by Slug.
- */
-export async function getPostWithTranslation(
-  slug: string
-): Promise<{ zh: Post | undefined; en: Post | undefined }> {
-  const index = await getPostIndex();
-  const zh = index.publishedBySlug.get(slug);
-  const en =
-    index.translationsBySlug.get(slug) ||
-    (zh ? index.translationsBySourceId.get(getPostSourceId(zh)) : undefined);
-
-  return { zh, en };
 }
 
 /**
@@ -217,7 +157,7 @@ export function getPostTitle(post: Post): string {
   if (filePath) {
     const normalized = filePath.replace(/\\/g, '/');
     const filename = normalized.split('/').pop() || '';
-    const title = filename.replace(/\.en\.md$/i, '').replace(/\.md$/i, '');
+    const title = filename.replace(/\.md$/i, '');
     if (title) return title;
   }
 

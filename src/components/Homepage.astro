@@ -1,7 +1,7 @@
 ---
 import FeaturedPost from '@/components/FeaturedPost.astro';
 import PostCard from '@/components/PostCard.astro';
-import { getCategory, getPostTitle, getPostWithTranslation, getPublishedPosts } from '@/lib/obsidian-parser';
+import { getCategory, getPostTitle, getPublishedPosts } from '@/lib/obsidian-parser';
 
 const posts = await getPublishedPosts();
 const featured = posts[0];
@@ -15,22 +15,19 @@ const latestDate = posts[0]?.data.日期
 
 const stats = [
   {
-    label: 'Posts',
+    label: '文章',
     value: String(posts.length).padStart(2, '0'),
-    noteZh: '已发布文章',
-    noteEn: 'Published notes',
+    note: '已发布文章',
   },
   {
-    label: 'Topics',
+    label: '专题',
     value: String(categories.length).padStart(2, '0'),
-    noteZh: '当前专题',
-    noteEn: 'Tracked topics',
+    note: '当前专题',
   },
   {
-    label: 'Updated',
+    label: '更新',
     value: latestDate || '--',
-    noteZh: '最近更新',
-    noteEn: 'Latest publish date',
+    note: '最近更新',
   },
 ];
 
@@ -39,58 +36,35 @@ const topicCards = categories.slice(0, 6).map((name, index) => ({
   index: String(index + 1).padStart(2, '0'),
   count: posts.filter((post) => getCategory(post) === name).length,
 }));
-
-const homepagePosts = [featured, ...secondary, ...gridPosts].filter(Boolean);
-const translationEntries = await Promise.all(
-  homepagePosts.map(async (post) => {
-    const { en } = await getPostWithTranslation(post.data.Slug!);
-    return [post.data.Slug!, en] as const;
-  })
-);
-const translationBySlug = new Map(translationEntries);
 ---
 
 <section class="preview-shell preview-reveal" data-reveal>
   <div class="preview-eyebrow preview-reveal__item" data-reveal-item>
     <span class="preview-eyebrow__dot"></span>
-    <span class="lang-zh">Xyvora 安全研究</span>
-    <span class="lang-en">Xyvora Security Research</span>
+    <span>Xyvora 安全研究</span>
   </div>
 
   <div class="preview-hero">
     <div class="preview-hero__copy preview-reveal__item" data-reveal-item>
       <p class="preview-kicker">
-        <span class="lang-zh">Xyvora / 安全研究日志</span>
-        <span class="lang-en">Xyvora / Security Research Journal</span>
+        <span>Xyvora / 安全研究日志</span>
       </p>
-      <h1>
-        <span class="lang-zh">安全研究与实战笔记。</span>
-        <span class="lang-en">Security research and field notes.</span>
-      </h1>
+      <h1>安全研究与实战笔记。</h1>
 
       <div class="preview-actions">
-        <a href="#preview-featured" class="preview-button preview-button--primary">
-          <span class="lang-zh">最新重点</span>
-          <span class="lang-en">Featured</span>
-        </a>
-        <a href="#preview-topics" class="preview-button">
-          <span class="lang-zh">浏览专题</span>
-          <span class="lang-en">Topics</span>
-        </a>
+        <a href="#preview-featured" class="preview-button preview-button--primary">最新重点</a>
+        <a href="#preview-topics" class="preview-button">浏览专题</a>
       </div>
     </div>
 
     <aside class="preview-panel preview-reveal__item" data-reveal-item>
-      <div class="preview-panel__label">Snapshot</div>
+      <div class="preview-panel__label">概览</div>
       <div class="preview-panel__grid">
         {stats.map((item) => (
           <div class="preview-stat">
             <div class="preview-stat__label">{item.label}</div>
             <div class="preview-stat__value">{item.value}</div>
-            <div class="preview-stat__note">
-              <span class="lang-zh">{item.noteZh}</span>
-              <span class="lang-en">{item.noteEn}</span>
-            </div>
+            <div class="preview-stat__note">{item.note}</div>
           </div>
         ))}
       </div>
@@ -102,35 +76,25 @@ const translationBySlug = new Map(translationEntries);
   <section id="preview-featured" class="preview-section preview-reveal" data-reveal>
     <div class="preview-section__head preview-reveal__item" data-reveal-item>
       <div>
-        <p class="preview-section__eyebrow">
-          <span class="lang-zh">精选研究</span>
-          <span class="lang-en">Featured Research</span>
-        </p>
-        <h2>
-          <span class="lang-zh">精选研究</span>
-          <span class="lang-en">Featured Research</span>
-        </h2>
+        <p class="preview-section__eyebrow">精选研究</p>
+        <h2>精选研究</h2>
       </div>
     </div>
 
     <div class="preview-reveal__item" data-reveal-item>
-      <FeaturedPost post={featured} translation={translationBySlug.get(featured.data.Slug!)} />
+      <FeaturedPost post={featured} />
     </div>
 
     {secondary.length > 0 && (
       <div class="preview-mini-grid">
         {secondary.map((post) => (
           <article class="preview-mini-card preview-reveal__item" data-reveal-item>
-            <div class="preview-mini-card__meta">{getCategory(post) || 'Blog'}</div>
+            <div class="preview-mini-card__meta">{getCategory(post) || '博客'}</div>
             <h3 class="preview-mini-card__title">
-              <a href={`/post/${post.data.Slug!}/`}>
-                <span class="lang-zh">{getPostTitle(post)}</span>
-                <span class="lang-en">{post.data.Slug!}</span>
-              </a>
+              <a href={`/post/${post.data.Slug!}/`}>{getPostTitle(post)}</a>
             </h3>
             <p class="preview-mini-card__text">
-              <span class="lang-zh">{(post.data.简介 || 'Research note preview').slice(0, 90)}</span>
-              <span class="lang-en">{(translationBySlug.get(post.data.Slug!)?.data.简介 || 'Research note preview').slice(0, 90)}</span>
+              {(post.data.简介 || '研究笔记预览').slice(0, 90)}
             </p>
           </article>
         ))}
@@ -143,14 +107,8 @@ const translationBySlug = new Map(translationEntries);
   <section id="preview-topics" class="preview-section preview-reveal" data-reveal>
     <div class="preview-section__head preview-reveal__item" data-reveal-item>
       <div>
-        <p class="preview-section__eyebrow">
-          <span class="lang-zh">专题导航</span>
-          <span class="lang-en">Topic Navigation</span>
-        </p>
-        <h2>
-          <span class="lang-zh">专题导航</span>
-          <span class="lang-en">Topic Navigation</span>
-        </h2>
+        <p class="preview-section__eyebrow">专题导航</p>
+        <h2>专题导航</h2>
       </div>
     </div>
 
@@ -160,7 +118,7 @@ const translationBySlug = new Map(translationEntries);
           <div class="preview-topic-card__index">{topic.index}</div>
           <div class="preview-topic-card__body">
             <h3>{topic.name}</h3>
-            <p>{topic.count} posts</p>
+            <p>{topic.count} 篇文章</p>
           </div>
           <div class="preview-topic-card__arrow">↗</div>
         </a>
@@ -173,21 +131,15 @@ const translationBySlug = new Map(translationEntries);
   <section class="preview-section preview-reveal" data-reveal>
     <div class="preview-section__head preview-reveal__item" data-reveal-item>
       <div>
-        <p class="preview-section__eyebrow">
-          <span class="lang-zh">最近更新</span>
-          <span class="lang-en">Recent Updates</span>
-        </p>
-        <h2>
-          <span class="lang-zh">最近更新</span>
-          <span class="lang-en">Recent Updates</span>
-        </h2>
+        <p class="preview-section__eyebrow">最近更新</p>
+        <h2>最近更新</h2>
       </div>
     </div>
 
     <div class="preview-card-grid">
       {gridPosts.map((post) => (
         <div class="preview-reveal__item" data-reveal-item>
-          <PostCard post={post} translation={translationBySlug.get(post.data.Slug!)} />
+          <PostCard post={post} />
         </div>
       ))}
     </div>

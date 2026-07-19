@@ -1,11 +1,11 @@
 ---
 /**
- * Post detail page — renders article content with bilingual support.
+ * Post detail page — renders article content.
  * Locked posts show LockedBanner instead of content.
  */
 import PostLayout from '@/layouts/PostLayout.astro';
 import LockedBanner from '@/components/LockedBanner.astro';
-import { getPublishedPosts, getPostWithTranslation, isLocked } from '@/lib/obsidian-parser';
+import { getPublishedPosts, isLocked } from '@/lib/obsidian-parser';
 import { render } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -19,53 +19,14 @@ export async function getStaticPaths() {
 const { post } = Astro.props;
 const locked = isLocked(post);
 
-// Get translation pair
-const { en } = await getPostWithTranslation(post.data.Slug!);
-
-// Render Chinese content
-const { Content: ZhContent, headings } = await render(post);
-
-// Render English content if available
-let EnContent: any = null;
-let headingsEn: { depth: number; slug: string; text: string }[] = [];
-if (en) {
-  const rendered = await render(en);
-  EnContent = rendered.Content;
-  headingsEn = rendered.headings;
-}
+const { Content, headings } = await render(post);
 
 const mermaidFence = ['`', '`', '`', 'mermaid'].join('');
 const hasMermaid =
   !locked &&
-  ((post.body || '').toLowerCase().includes(mermaidFence) ||
-    (en?.body || '').toLowerCase().includes(mermaidFence));
+  (post.body || '').toLowerCase().includes(mermaidFence);
 ---
 
-<PostLayout post={post} postEn={en} headings={headings} headingsEn={headingsEn} hasMermaid={hasMermaid}>
-  {locked ? (
-    <LockedBanner />
-  ) : (
-    <div class="post-bilingual">
-      <div class="lang-zh">
-        <ZhContent />
-      </div>
-      <div class="lang-en">
-        {EnContent ? (
-          <EnContent />
-        ) : (
-          <p class="post-bilingual__fallback">
-            English translation is not available for this post.
-          </p>
-        )}
-      </div>
-    </div>
-  )}
+<PostLayout post={post} headings={headings} hasMermaid={hasMermaid}>
+  {locked ? <LockedBanner /> : <Content />}
 </PostLayout>
-
-<style>
-  .post-bilingual__fallback {
-    color: var(--text-dim);
-    font-style: italic;
-    padding: 2rem 0;
-  }
-</style>

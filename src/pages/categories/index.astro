@@ -20,10 +20,7 @@ const sortedCats = [...catCounts.entries()].sort((a, b) => b[1] - a[1]);
 
 <BaseLayout title="分类 - Xyvora" description="All categories">
   <div class="categories-page">
-    <h1 class="categories-page__title">
-      <span class="lang-zh">分类</span>
-      <span class="lang-en">Categories</span>
-    </h1>
+    <h1 class="categories-page__title">分类</h1>
 
     {sortedCats.length > 0 ? (
       <div class="categories-page__cloud">
@@ -34,10 +31,7 @@ const sortedCats = [...catCounts.entries()].sort((a, b) => b[1] - a[1]);
         ))}
       </div>
     ) : (
-      <p class="categories-page__empty">
-        <span class="lang-zh">暂无分类</span>
-        <span class="lang-en">No categories yet</span>
-      </p>
+      <p class="categories-page__empty">暂无分类</p>
     )}
   </div>
 </BaseLayout>

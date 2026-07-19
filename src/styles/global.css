@@ -2,9 +2,6 @@
 @import './theme.css';
 @import './callout.css';
 
-html[data-lang='zh'] .lang-en { display: none; }
-html[data-lang='en'] .lang-zh { display: none; }
-
 body {
   background-color: var(--bg);
   color: var(--text);

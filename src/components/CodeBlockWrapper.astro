@@ -165,7 +165,7 @@
         const expandBtn = document.createElement('button');
         expandBtn.className = 'code-block-expand';
         expandBtn.type = 'button';
-        expandBtn.innerHTML = '<span class="lang-zh">展开</span><span class="lang-en">Expand</span>';
+        expandBtn.textContent = '展开';
         expandBtn.addEventListener('click', () => {
           wrapper.classList.remove('code-block-collapsed');
           expandBtn.remove();

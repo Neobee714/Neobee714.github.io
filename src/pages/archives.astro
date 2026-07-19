@@ -22,10 +22,7 @@ const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
 
 <BaseLayout title="归档 - Xyvora" description="All posts by date">
   <div class="archives-page">
-    <h1 class="archives-page__title">
-      <span class="lang-zh">归档</span>
-      <span class="lang-en">Archives</span>
-    </h1>
+    <h1 class="archives-page__title">归档</h1>
 
     {sortedKeys.map((key) => {
       const groupPosts = groups.get(key)!;
@@ -50,10 +47,7 @@ const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
     })}
 
     {posts.length === 0 && (
-      <p class="archives-page__empty">
-        <span class="lang-zh">暂无文章</span>
-        <span class="lang-en">No posts yet</span>
-      </p>
+      <p class="archives-page__empty">暂无文章</p>
     )}
   </div>
 </BaseLayout>

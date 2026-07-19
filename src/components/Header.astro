@@ -1,11 +1,10 @@
 ---
 /**
  * Header — minimal site header.
- * Brand "Xyvora" on left, theme toggle + lang toggle on right.
+ * Brand "Xyvora" on left, theme toggle on right.
  * Backdrop blur with semi-transparent background.
  */
 import ThemeToggle from './ThemeToggle.astro';
-import LangToggle from './LangToggle.astro';
 ---
 
 <header class="sticky top-0 z-50 border-b border-[var(--border)]" style="background: color-mix(in srgb, var(--bg) 94%, transparent);">
@@ -13,7 +12,6 @@ import LangToggle from './LangToggle.astro';
     <a href="/" class="text-xl font-semibold text-[var(--text)] no-underline">Xyvora</a>
     <div class="flex items-center gap-2">
       <ThemeToggle />
-      <LangToggle />
     </div>
   </div>
 </header>

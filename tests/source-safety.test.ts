@@ -49,15 +49,46 @@ test('TableOfContents cleans observers before reinitializing after navigation', 
 
 test('header toggles use once-bound event delegation for swapped DOM', () => {
   const themeToggle = readFileSync('src/components/ThemeToggle.astro', 'utf8');
-  const langToggle = readFileSync('src/components/LangToggle.astro', 'utf8');
 
   assert.doesNotMatch(themeToggle, /let themeToggleBound = false/);
   assert.match(themeToggle, /__blogThemeToggle/);
   assert.match(themeToggle, /closest\('#theme-toggle'\)/);
+});
 
-  assert.doesNotMatch(langToggle, /let langToggleBound = false/);
-  assert.match(langToggle, /__blogLangToggle/);
-  assert.match(langToggle, /closest\('#lang-toggle'\)/);
+test('active blog UI contains no English translation experience', () => {
+  // Giscus' data-lang config controls the third-party widget locale and is intentionally excluded.
+  const giscusSource = readFileSync('src/components/Giscus.astro', 'utf8');
+  const activeFiles = [
+    'src/components/Header.astro',
+    'src/components/Homepage.astro',
+    'src/components/PostCard.astro',
+    'src/components/FeaturedPost.astro',
+    'src/components/TableOfContents.astro',
+    'src/components/LockedBanner.astro',
+    'src/components/CodeBlockWrapper.astro',
+    'src/layouts/PostLayout.astro',
+    'src/layouts/BaseLayout.astro',
+    'src/pages/post/[slug].astro',
+    'src/pages/about.astro',
+    'src/pages/404.astro',
+    'src/pages/archives.astro',
+    'src/pages/categories/index.astro',
+    'src/pages/tags/index.astro',
+    'src/lib/obsidian-parser.ts',
+    'src/lib/theme-init.ts',
+    'src/styles/global.css',
+  ];
+  const activeSources = activeFiles
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n');
+
+  assert.equal(existsSync('src/components/LangToggle.astro'), false);
+  assert.match(giscusSource, /data-lang="zh-CN"/);
+  assert.doesNotMatch(activeSources, /lang-en|lang-zh|data-lang|LangToggle/);
+  assert.doesNotMatch(
+    activeSources,
+    /getPostWithTranslation|translationsBySlug|translationsBySourceId|postEn|headingsEn/,
+  );
 });
 
 test('Giscus theme observer is only attached once', () => {
@@ -130,8 +161,6 @@ test('obsidian parser caches collection-derived post index', () => {
   assert.match(source, /g\[CACHE_KEY\] = \(async \(\) =>/);
   assert.match(source, /const index = await getPostIndex\(\);/);
   assert.match(source, /const publishedBySlug = new Map/);
-  assert.match(source, /const translationsBySlug = new Map/);
-  assert.match(source, /const translationsBySourceId = new Map/);
 });
 
 test('image rewrite keeps build-time copying in the integration layer only', () => {

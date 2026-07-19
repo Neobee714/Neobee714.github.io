@@ -10,21 +10,18 @@ import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
   post: Post;
-  translation?: Post;
 }
 
-const { post, translation } = Astro.props;
+const { post } = Astro.props;
 
 const slug = post.data.Slug!;
 const category = getCategory(post);
 const dateStr = getDateIso(post);
 const locked = isLocked(post);
 const summaryZh = post.data.简介 || '';
-const summaryEn = translation?.data.简介 || '';
 const tags = post.data.tags || [];
 
 const titleZh = getPostTitle(post);
-const showDualTitle = titleZh !== slug;
 
 const bodyLength = post.body?.length ?? 0;
 const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
@@ -42,20 +39,12 @@ const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
     </div>
 
     <h2 class="featured-post__title">
-      {showDualTitle ? (
-        <>
-          <span class="lang-zh">{titleZh}</span>
-          <span class="lang-en">{slug}</span>
-        </>
-      ) : (
-        <span>{titleZh}</span>
-      )}
+      {titleZh}
     </h2>
 
-    {(summaryZh || summaryEn) && (
+    {summaryZh && (
       <p class="featured-post__summary">
-        {summaryZh && <span class="lang-zh">{summaryZh.length > 150 ? summaryZh.slice(0, 150) + '…' : summaryZh}</span>}
-        {summaryEn && <span class="lang-en">{summaryEn.length > 150 ? summaryEn.slice(0, 150) + '…' : summaryEn}</span>}
+        {summaryZh.length > 150 ? summaryZh.slice(0, 150) + '…' : summaryZh}
       </p>
     )}
 
@@ -71,8 +60,7 @@ const readingMinutes = Math.max(1, Math.ceil(bodyLength / 400));
     <div class="featured-post__footer">
       {dateStr && <span class="featured-post__date">{dateStr}</span>}
       <span class="featured-post__reading-time">
-        <span class="lang-zh">{readingMinutes} 分钟</span>
-        <span class="lang-en">{readingMinutes} min</span>
+        {readingMinutes} 分钟
       </span>
     </div>
   </div>

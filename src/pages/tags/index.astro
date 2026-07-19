@@ -21,10 +21,7 @@ const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
 
 <BaseLayout title="标签 - Xyvora" description="All tags">
   <div class="tags-page">
-    <h1 class="tags-page__title">
-      <span class="lang-zh">标签</span>
-      <span class="lang-en">Tags</span>
-    </h1>
+    <h1 class="tags-page__title">标签</h1>
 
     {sortedTags.length > 0 ? (
       <div class="tags-page__cloud">
@@ -35,10 +32,7 @@ const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
         ))}
       </div>
     ) : (
-      <p class="tags-page__empty">
-        <span class="lang-zh">暂无标签</span>
-        <span class="lang-en">No tags yet</span>
-      </p>
+      <p class="tags-page__empty">暂无标签</p>
     )}
   </div>
 </BaseLayout>

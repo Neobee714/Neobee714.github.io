@@ -2,7 +2,7 @@
 /**
  * LockedBanner — terminal-style "ACCESS DENIED" banner.
  * Shown instead of article content for locked posts.
- * Bilingual with blinking cursor effect.
+ * Includes a blinking cursor effect.
  */
 ---
 
@@ -15,18 +15,9 @@
     </div>
     <div class="locked-banner__body">
       <p class="locked-banner__line">$ cat article.md</p>
-      <p class="locked-banner__line locked-banner__error">
-        <span class="lang-zh">[错误] 访问被拒绝 — ACCESS DENIED</span>
-        <span class="lang-en">[ERROR] ACCESS DENIED</span>
-      </p>
-      <p class="locked-banner__line">
-        <span class="lang-zh">此文章已锁定，内容暂不公开。</span>
-        <span class="lang-en">This article is locked and not publicly available.</span>
-      </p>
-      <p class="locked-banner__line">
-        <span class="lang-zh">如需访问，请联系作者。</span>
-        <span class="lang-en">Contact the author for access.</span>
-      </p>
+      <p class="locked-banner__line locked-banner__error">[错误] 访问被拒绝 — ACCESS DENIED</p>
+      <p class="locked-banner__line">此文章已锁定，内容暂不公开。</p>
+      <p class="locked-banner__line">如需访问，请联系作者。</p>
       <p class="locked-banner__line locked-banner__prompt">
         $<span class="locked-banner__cursor">█</span>
       </p>

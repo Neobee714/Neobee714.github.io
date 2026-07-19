@@ -6,33 +6,19 @@
  */
 interface Props {
   headings: { depth: number; slug: string; text: string }[];
-  headingsEn?: { depth: number; slug: string; text: string }[];
 }
 
-const { headings, headingsEn = [] } = Astro.props;
+const { headings } = Astro.props;
 
 // Only show h1-h3
 const filtered = headings.filter((h) => h.depth >= 1 && h.depth <= 3);
-const filteredEn = headingsEn.filter((h) => h.depth >= 1 && h.depth <= 3);
 ---
 
 {filtered.length > 0 && (
   <nav class="toc" aria-label="Table of Contents">
-    <h4 class="toc__title">
-      <span class="lang-zh">目录</span>
-      <span class="lang-en">Contents</span>
-    </h4>
-    <ul class="toc__list lang-zh">
+    <h4 class="toc__title">目录</h4>
+    <ul class="toc__list">
       {filtered.map((heading) => (
-        <li class={`toc__item toc__item--depth-${heading.depth}`}>
-          <a href={`#${heading.slug}`} class="toc__link" data-toc-slug={heading.slug}>
-            {heading.text}
-          </a>
-        </li>
-      ))}
-    </ul>
-    <ul class="toc__list lang-en">
-      {(filteredEn.length > 0 ? filteredEn : filtered).map((heading) => (
         <li class={`toc__item toc__item--depth-${heading.depth}`}>
           <a href={`#${heading.slug}`} class="toc__link" data-toc-slug={heading.slug}>
             {heading.text}

@@ -7,19 +7,16 @@ import type { Post } from '@/lib/obsidian-parser';
 
 interface Props {
   post: Post;
-  translation?: Post;
 }
 
-const { post, translation } = Astro.props;
+const { post } = Astro.props;
 
 const slug = post.data.Slug!;
 const category = getCategory(post);
 const dateStr = getDateIso(post);
 const locked = isLocked(post);
 const summaryZh = post.data.简介 || '';
-const summaryEn = translation?.data.简介 || '';
 const titleZh = getPostTitle(post);
-const showDualTitle = titleZh !== slug;
 const visualSeed = [...`${slug}:${category}`].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
 const visualHue = 180 + (visualSeed % 150);
 const visualStyle = `--post-card-hue:${visualHue}`;
@@ -48,26 +45,17 @@ const visualStyle = `--post-card-hue:${visualHue}`;
     </div>
 
     <h3 class="mt-3 text-2xl md:text-3xl font-semibold tracking-tight m-0 line-clamp-2">
-      {showDualTitle ? (
-        <>
-          <span class="lang-zh">{titleZh}</span>
-          <span class="lang-en">{slug}</span>
-        </>
-      ) : (
-        <span>{titleZh}</span>
-      )}
+      {titleZh}
     </h3>
 
-    {(summaryZh || summaryEn) && (
+    {summaryZh && (
       <p class="mt-3 text-[var(--text-muted)] m-0 line-clamp-2 text-sm">
-        {summaryZh && <span class="lang-zh">{summaryZh.length > 100 ? summaryZh.slice(0, 100) + '…' : summaryZh}</span>}
-        {summaryEn && <span class="lang-en">{summaryEn.length > 100 ? summaryEn.slice(0, 100) + '…' : summaryEn}</span>}
+        {summaryZh.length > 100 ? summaryZh.slice(0, 100) + '…' : summaryZh}
       </p>
     )}
 
     <div class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[var(--text)] transition-all group-hover:gap-4">
-      <span class="lang-zh">阅读</span>
-      <span class="lang-en">Read article</span>
+      <span>阅读</span>
       <span aria-hidden="true">→</span>
     </div>
   </div>

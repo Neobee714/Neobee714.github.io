@@ -13,4 +13,4 @@
  *   4. Set data-theme on <html> immediately (before paint)
  */
 
-export const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement;var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}d.setAttribute('data-theme',t);var l=localStorage.getItem('lang')||d.getAttribute('data-lang')||'zh';d.setAttribute('data-lang',l);d.setAttribute('lang',l==='en'?'en':'zh-CN')})();`;
+export const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement;var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}d.setAttribute('data-theme',t)})();`;
